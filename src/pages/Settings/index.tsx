@@ -1,68 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect } from 'react';
 import { Settings2, X } from 'lucide-react';
-import type { ReaderMode, ReaderWidthMode } from '@renderer/pages/Reader';
 import { cn } from '@renderer/lib/utils';
+import { OptionCard, SegmentButton, ToggleSwitch } from './components/SettingsPrimitives';
+import { useSettingsDraft } from './hooks/useSettingsDraft';
+import type { ReaderSettingsPayload } from './types';
 
-interface SettingsPageProps {
+interface SettingsPageProps extends ReaderSettingsPayload {
   open: boolean;
-  readerMode: ReaderMode;
-  widthMode: ReaderWidthMode;
-  fixedWidthPercent: number;
-  pageAnimationEnabled: boolean;
-  onSave: (next: {
-    readerMode: ReaderMode;
-    widthMode: ReaderWidthMode;
-    fixedWidthPercent: number;
-    pageAnimationEnabled: boolean;
-  }) => void;
+  onSave: (next: ReaderSettingsPayload) => void;
   onClose: () => void;
-}
-
-function SegmentButton({
-  active,
-  label,
-  onClick
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'h-9 flex-1 rounded-lg text-[13px] font-semibold transition',
-        active ? 'bg-white text-[#2f6cf6] shadow-[0_2px_6px_rgba(47,108,246,0.12)]' : 'text-[#5d6d85] hover:bg-white/60'
-      )}
-    >
-      {label}
-    </button>
-  );
-}
-
-function OptionCard({
-  active,
-  title,
-  desc,
-  onClick
-}: {
-  active: boolean;
-  title: string;
-  desc: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'rounded-xl border p-3 text-left transition',
-        active ? 'border-[#2f6cf6] bg-[#eef5ff]' : 'border-[#dbe2ee] bg-white hover:bg-[#f7f9fc]'
-      )}
-    >
-      <p className={cn('text-[13px] font-semibold', active ? 'text-[#2f6cf6]' : 'text-[#1f2b3d]')}>{title}</p>
-      <p className="mt-0.5 text-[12px] text-[#667892]">{desc}</p>
-    </button>
-  );
 }
 
 export function SettingsPage({
@@ -74,18 +20,24 @@ export function SettingsPage({
   onSave,
   onClose
 }: SettingsPageProps) {
-  const [draftReaderMode, setDraftReaderMode] = useState<ReaderMode>(readerMode);
-  const [draftWidthMode, setDraftWidthMode] = useState<ReaderWidthMode>(widthMode);
-  const [draftFixedWidthPercent, setDraftFixedWidthPercent] = useState(fixedWidthPercent);
-  const [draftPageAnimationEnabled, setDraftPageAnimationEnabled] = useState(pageAnimationEnabled);
-
-  useEffect(() => {
-    if (!open) return;
-    setDraftReaderMode(readerMode);
-    setDraftWidthMode(widthMode);
-    setDraftFixedWidthPercent(fixedWidthPercent);
-    setDraftPageAnimationEnabled(pageAnimationEnabled);
-  }, [fixedWidthPercent, open, pageAnimationEnabled, readerMode, widthMode]);
+  const {
+    draftReaderMode,
+    draftWidthMode,
+    draftFixedWidthPercent,
+    draftPageAnimationEnabled,
+    setDraftReaderMode,
+    setDraftWidthMode,
+    setDraftFixedWidthPercent,
+    setDraftPageAnimationEnabled,
+    dirty,
+    buildPayload
+  } = useSettingsDraft({
+    open,
+    readerMode,
+    widthMode,
+    fixedWidthPercent,
+    pageAnimationEnabled
+  });
 
   useEffect(() => {
     if (!open) return;
@@ -100,24 +52,6 @@ export function SettingsPage({
     window.addEventListener('keydown', handleKeydown);
     return () => window.removeEventListener('keydown', handleKeydown);
   }, [onClose, open]);
-
-  const dirty = useMemo(() => {
-    return (
-      draftReaderMode !== readerMode ||
-      draftWidthMode !== widthMode ||
-      draftFixedWidthPercent !== fixedWidthPercent ||
-      draftPageAnimationEnabled !== pageAnimationEnabled
-    );
-  }, [
-    draftFixedWidthPercent,
-    draftPageAnimationEnabled,
-    draftReaderMode,
-    draftWidthMode,
-    fixedWidthPercent,
-    pageAnimationEnabled,
-    readerMode,
-    widthMode
-  ]);
 
   if (!open) {
     return null;
@@ -203,27 +137,12 @@ export function SettingsPage({
           </section>
 
           <section className="border-t border-[#dbe2ee] pt-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[13px] font-bold text-[#1f2b3d]">翻页动画</p>
-                <p className="mt-0.5 text-[12px] text-[#6f819b]">开启后滚动模式切页会使用平滑动画。</p>
-              </div>
-              <button
-                className={cn(
-                  'relative h-7 w-[52px] rounded-full border border-[#bcc9dd] transition',
-                  draftPageAnimationEnabled ? 'bg-[#2f6cf6] border-[#2f6cf6]' : 'bg-[#c8d2e0]'
-                )}
-                onClick={() => setDraftPageAnimationEnabled((prev) => !prev)}
-                title="切换翻页动画"
-              >
-                <span
-                  className={cn(
-                    'absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition',
-                    draftPageAnimationEnabled ? 'left-[26px]' : 'left-[2px]'
-                  )}
-                />
-              </button>
-            </div>
+            <ToggleSwitch
+              checked={draftPageAnimationEnabled}
+              title="翻页动画"
+              description="开启后滚动模式切页会使用平滑动画。"
+              onToggle={() => setDraftPageAnimationEnabled((prev) => !prev)}
+            />
           </section>
         </div>
 
@@ -237,16 +156,11 @@ export function SettingsPage({
           <button
             className={cn(
               'h-9 rounded-lg px-5 text-[13px] font-semibold text-white shadow-[0_8px_18px_rgba(47,108,246,0.26)] transition',
-              dirty ? 'bg-[#2f6cf6] hover:bg-[#255de0]' : 'bg-[#8fb3f8] cursor-not-allowed'
+              dirty ? 'bg-[#2f6cf6] hover:bg-[#255de0]' : 'cursor-not-allowed bg-[#8fb3f8]'
             )}
             onClick={() => {
               if (!dirty) return;
-              onSave({
-                readerMode: draftReaderMode,
-                widthMode: draftWidthMode,
-                fixedWidthPercent: draftFixedWidthPercent,
-                pageAnimationEnabled: draftPageAnimationEnabled
-              });
+              onSave(buildPayload());
               onClose();
             }}
             disabled={!dirty}

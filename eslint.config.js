@@ -5,6 +5,9 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
+  {
+    ignores: ['out/**', 'node_modules/**', 'postcss.config.cjs']
+  },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
