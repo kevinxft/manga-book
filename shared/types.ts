@@ -1,0 +1,171 @@
+export type MangaStructure = 'singleVolume' | 'multiVolume';
+
+export interface MangaBook {
+  id: string;
+  title: string;
+  folderPath: string;
+  sourceFolderPath: string;
+  structure: MangaStructure;
+  addedAt: string;
+  lastReadAt: string | null;
+  isFavorite: 0 | 1;
+  lastChapterIndex: number;
+  lastPageIndex: number;
+  totalPages: number;
+}
+
+export interface MangaBookWithCover extends MangaBook {
+  coverPath: string | null;
+}
+
+export interface LibraryFolder {
+  id: string;
+  path: string;
+  displayName: string;
+  addedAt: string;
+}
+
+export interface MangaTag {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface MangaBookTag {
+  mangaId: string;
+  tagId: string;
+  createdAt: string;
+}
+
+export interface Bookmark {
+  id: string;
+  mangaId: string;
+  chapterIndex: number;
+  pageIndex: number;
+  chapterName: string;
+  title: string;
+  note: string;
+  createdAt: string;
+}
+
+export interface DirectoryAlias {
+  id: string;
+  alias: string;
+  canonicalName: string;
+  createdAt: string;
+}
+
+export interface TargetDirectorySummary {
+  directory: string;
+  mangaCount: number;
+}
+
+export interface MangaFilter {
+  query?: string;
+  sourceFolderPaths?: string[];
+  sortBy?: 'title' | 'addedAt' | 'lastReadAt';
+}
+
+export interface ScanProgress {
+  taskId: string | null;
+  status: 'idle' | 'running';
+  current: number;
+  total: number;
+  message: string;
+}
+
+export interface IpcError {
+  code: string;
+  message: string;
+}
+
+export type IpcResult<T> = { ok: true; data: T } | { ok: false; error: IpcError };
+
+export interface LibraryAddSourceRequest {
+  path: string;
+}
+
+export interface LibraryAddSourcesRequest {
+  paths: string[];
+}
+
+export interface LibraryAddSourcesResult {
+  added: LibraryFolder[];
+  skipped: Array<{
+    path: string;
+    reason: 'DUPLICATE' | 'NOT_FOUND' | 'INVALID' | 'ORGANIZER_ROOT_CONFLICT';
+  }>;
+  taskId: string | null;
+}
+
+export interface LibraryRemoveSourceRequest {
+  id: string;
+}
+
+export interface LibrarySyncSourcesRequest {
+  paths?: string[];
+  forceRescan?: boolean;
+}
+
+export interface ReaderSaveProgressRequest {
+  mangaId: string;
+  chapterIndex: number;
+  pageIndex: number;
+  totalPages: number;
+}
+
+export interface ReaderListPagesRequest {
+  mangaId: string;
+}
+
+export interface BookmarkCreateRequest {
+  mangaId: string;
+  chapterIndex: number;
+  pageIndex: number;
+  title?: string;
+  note?: string;
+}
+
+export interface BookmarkUpdateRequest {
+  id: string;
+  title: string;
+  note: string;
+}
+
+export interface OrganizerMoveMangaRequest {
+  mangaId: string;
+  destinationPath: string;
+}
+
+export interface OrganizerRenameMangaRequest {
+  mangaId: string;
+  newTitle: string;
+}
+
+export interface OrganizerDeleteMangaRequest {
+  mangaId: string;
+  withFiles: boolean;
+}
+
+export interface IpcChannels {
+  'library.addSource': { req: LibraryAddSourceRequest; res: LibraryFolder };
+  'library.addSources': { req: LibraryAddSourcesRequest; res: LibraryAddSourcesResult };
+  'library.pickSourceDirectories': { req: void; res: { paths: string[] } };
+  'library.removeSource': { req: LibraryRemoveSourceRequest; res: { removed: boolean } };
+  'library.listSources': { req: void; res: LibraryFolder[] };
+  'library.syncSources': { req: LibrarySyncSourcesRequest | void; res: { taskId: string } };
+  'library.listMangas': { req: MangaFilter | void; res: MangaBookWithCover[] };
+  'library.getScanProgress': { req: void; res: ScanProgress };
+
+  'organizer.moveManga': { req: OrganizerMoveMangaRequest; res: MangaBook };
+  'organizer.renameManga': { req: OrganizerRenameMangaRequest; res: MangaBook };
+  'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
+
+  'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
+  'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };
+
+  'bookmark.create': { req: BookmarkCreateRequest; res: Bookmark };
+  'bookmark.update': { req: BookmarkUpdateRequest; res: Bookmark };
+  'bookmark.delete': { req: { id: string }; res: { deleted: boolean } };
+  'bookmark.listByManga': { req: { mangaId: string }; res: Bookmark[] };
+}

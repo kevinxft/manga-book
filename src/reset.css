@@ -1,0 +1,23 @@
+:root {
+  font-family: 'IBM Plex Sans', 'Segoe UI', sans-serif;
+  color: #102331;
+  background: linear-gradient(120deg, #f4f7fb 0%, #e9f0f5 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  min-height: 100%;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}

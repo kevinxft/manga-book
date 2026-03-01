@@ -1,0 +1,56 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 22% 95%;
+    --foreground: 218 30% 18%;
+    --card: 0 0% 100%;
+    --card-foreground: 218 30% 18%;
+    --primary: 220 87% 58%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 214 34% 92%;
+    --secondary-foreground: 218 28% 23%;
+    --muted: 214 24% 90%;
+    --muted-foreground: 218 15% 42%;
+    --accent: 219 89% 95%;
+    --accent-foreground: 220 70% 35%;
+    --border: 214 26% 86%;
+    --input: 214 26% 86%;
+    --ring: 220 87% 58%;
+    --radius: 0.7rem;
+    --shadow: 220 38% 20%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Noto Sans SC', 'Manrope', sans-serif;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply rounded-xl border border-white/60 bg-white/75 backdrop-blur-md shadow-soft;
+  }
+
+  .paper-panel {
+    @apply rounded-xl border border-border/80 bg-card/90 shadow-hard;
+  }
+
+  .page-grid {
+    @apply grid gap-4 lg:grid-cols-[330px_1fr];
+  }
+}
