@@ -3,6 +3,7 @@ import {
   Clock3,
   FolderClosed,
   Folders,
+  FolderTree,
   Heart,
   Import,
   PanelLeftClose,
@@ -38,6 +39,7 @@ interface LibrarySidebarProps {
   onPickAndAddSources: () => void;
   onRemoveSource: (sourceId: string) => void;
   onOpenSettings?: () => void;
+  onOpenOrganizer?: () => void;
 }
 
 export function LibrarySidebar({
@@ -54,7 +56,8 @@ export function LibrarySidebar({
   onOpenTagDialog,
   onPickAndAddSources,
   onRemoveSource,
-  onOpenSettings
+  onOpenSettings,
+  onOpenOrganizer
 }: LibrarySidebarProps) {
   return (
     <aside className="flex h-full flex-col border-r border-[#dce1ea] bg-[#f6f7f9]">
@@ -84,7 +87,7 @@ export function LibrarySidebar({
         ) : null}
       </div>
 
-      <div className={cn('space-y-5 px-4', sidebarCollapsed && 'px-2')}>
+      <div className={cn('flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-4 py-5', sidebarCollapsed && 'px-2')}>
         <section>
           {!sidebarCollapsed ? <p className="mb-3 px-2 text-xs font-semibold text-[#8893a4]">常规</p> : null}
           <div className="space-y-1.5">
@@ -153,9 +156,9 @@ export function LibrarySidebar({
         ) : null}
 
         {!sidebarCollapsed ? (
-          <section>
+          <section className="flex min-h-0 flex-1 flex-col">
             <p className="mb-3 px-2 text-xs font-semibold text-[#8893a4]">已导入目录 ({sources.length})</p>
-            <div className="max-h-[180px] space-y-2 overflow-auto pr-1">
+            <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
               {sources.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-[#d4dbe7] bg-[#f8fafd] px-3 py-2 text-xs text-[#8c97aa]">
                   暂无已导入目录
@@ -216,6 +219,18 @@ export function LibrarySidebar({
           <Import className={cn('h-4 w-4', !sidebarCollapsed && 'mr-2')} />
           {!sidebarCollapsed ? '导入目录' : null}
         </Button>
+
+        <button
+          className={cn(
+            'flex w-full items-center rounded-lg py-2 text-sm font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
+            sidebarCollapsed ? 'justify-center px-0' : 'gap-2 px-3'
+          )}
+          title="漫画整理"
+          onClick={onOpenOrganizer}
+        >
+          <FolderTree className="h-4 w-4" />
+          {!sidebarCollapsed ? '漫画整理' : null}
+        </button>
 
         <button
           className={cn(

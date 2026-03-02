@@ -14,9 +14,10 @@ import { getMangaPathCategory } from './utils';
 interface LibraryPageProps {
   onOpenManga?: (manga: MangaBookWithCover) => void;
   onOpenSettings?: () => void;
+  onOpenOrganizer?: () => void;
 }
 
-export function LibraryPage({ onOpenManga, onOpenSettings }: LibraryPageProps) {
+export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: LibraryPageProps) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('addedAt');
   const [activeMenu, setActiveMenu] = useState('all');
@@ -120,6 +121,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings }: LibraryPageProps) {
               void removeSource(sourceId);
             }}
             onOpenSettings={onOpenSettings}
+            onOpenOrganizer={onOpenOrganizer}
           />
 
           <section className="relative flex min-h-0 flex-col bg-[#f3f5f9]">

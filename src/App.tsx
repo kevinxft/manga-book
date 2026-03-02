@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { LibraryPage } from '@renderer/pages/Library';
+import { OrganizerPage } from '@renderer/pages/Organizer';
 import { ReaderPage } from '@renderer/pages/Reader';
 import { SettingsPage } from '@renderer/pages/Settings';
 import { useReaderSettingsStore } from '@renderer/stores/readerSettingsStore';
 
 export default function App() {
+  const [activePage, setActivePage] = useState<'library' | 'organizer'>('library');
   const [activeManga, setActiveManga] = useState<MangaBookWithCover | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const {
@@ -42,7 +44,18 @@ export default function App() {
 
   return (
     <>
-      <LibraryPage onOpenManga={setActiveManga} onOpenSettings={() => setSettingsOpen(true)} />
+      {activePage === 'library' ? (
+        <LibraryPage
+          onOpenManga={setActiveManga}
+          onOpenSettings={() => setSettingsOpen(true)}
+          onOpenOrganizer={() => setActivePage('organizer')}
+        />
+      ) : (
+        <OrganizerPage
+          onBack={() => setActivePage('library')}
+          onOpenManga={setActiveManga}
+        />
+      )}
       <SettingsPage
         open={settingsOpen}
         readerMode={readerMode}

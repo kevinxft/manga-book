@@ -47,6 +47,27 @@ export function ReaderPage({
 
   const maxPageIndex = Math.max(pagePaths.length - 1, 0);
 
+  const scrollByViewport = useCallback(
+    (delta: number): boolean => {
+      if (readerMode !== 'scroll') {
+        return false;
+      }
+
+      const root = scrollContainerRef.current;
+      if (!root) {
+        return false;
+      }
+
+      root.scrollBy({
+        top: root.clientHeight * delta,
+        behavior: pageAnimationEnabled ? 'smooth' : 'auto'
+      });
+
+      return true;
+    },
+    [pageAnimationEnabled, readerMode, scrollContainerRef]
+  );
+
   const scrollToPage = useCallback(
     (index: number, behavior?: ScrollBehavior) => {
       if (readerMode !== 'scroll') {
@@ -74,6 +95,10 @@ export function ReaderPage({
         return;
       }
 
+      if (scrollByViewport(delta)) {
+        return;
+      }
+
       setCurrentPageIndex((prev) => {
         const next = Math.max(0, Math.min(prev + delta, maxPageIndex));
         if (next !== prev) {
@@ -82,7 +107,7 @@ export function ReaderPage({
         return next;
       });
     },
-    [maxPageIndex, pagePaths.length, scrollToPage, setCurrentPageIndex]
+    [maxPageIndex, pagePaths.length, scrollByViewport, scrollToPage, setCurrentPageIndex]
   );
 
   const jumpToPage = useCallback(

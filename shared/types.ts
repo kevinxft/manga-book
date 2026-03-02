@@ -137,15 +137,32 @@ export interface OrganizerMoveMangaRequest {
   destinationPath: string;
 }
 
+export interface OrganizerShowMangaContextMenuRequest {
+  mangaId: string;
+  x?: number;
+  y?: number;
+}
+
 export interface OrganizerRenameMangaRequest {
   mangaId: string;
   newTitle: string;
+}
+
+export interface OrganizerAddAliasRequest {
+  alias: string;
+  canonicalName: string;
 }
 
 export interface OrganizerDeleteMangaRequest {
   mangaId: string;
   withFiles: boolean;
 }
+
+export type OrganizerContextMenuAction =
+  | { type: 'requestRename'; mangaId: string; currentTitle: string }
+  | { type: 'moved'; mangaId: string }
+  | { type: 'openedInFolder'; mangaId: string }
+  | { type: 'error'; mangaId: string; message: string };
 
 export interface IpcChannels {
   'library.addSource': { req: LibraryAddSourceRequest; res: LibraryFolder };
@@ -158,7 +175,9 @@ export interface IpcChannels {
   'library.getScanProgress': { req: void; res: ScanProgress };
 
   'organizer.moveManga': { req: OrganizerMoveMangaRequest; res: MangaBook };
+  'organizer.showMangaContextMenu': { req: OrganizerShowMangaContextMenuRequest; res: { shown: boolean } };
   'organizer.renameManga': { req: OrganizerRenameMangaRequest; res: MangaBook };
+  'organizer.addAlias': { req: OrganizerAddAliasRequest; res: DirectoryAlias };
   'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
 
   'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
