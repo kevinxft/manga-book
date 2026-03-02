@@ -74,10 +74,7 @@ function sortMoveTargets(a: OrganizerCategory, b: OrganizerCategory, sortBy: Mov
   if (sortBy === 'nameDesc') {
     return b.label.localeCompare(a.label, 'zh-Hans-CN');
   }
-  if (sortBy === 'recentAsc') {
-    return a.latestAddedAt.localeCompare(b.latestAddedAt) || a.count - b.count;
-  }
-  return b.latestAddedAt.localeCompare(a.latestAddedAt) || b.count - a.count;
+  return compareByMovedAt(false);
 }
 
 export function CoverContextMenu<T extends CoverContextMenuItem>({
@@ -92,7 +89,7 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
   onDelete
 }: CoverContextMenuProps<T>) {
   const [moveSearch, setMoveSearch] = useState('');
-  const [moveSortBy, setMoveSortBy] = useState<MoveSortKey>('recentDesc');
+  const [moveSortBy, setMoveSortBy] = useState<MoveSortKey>('movedDesc');
 
   const moveTargets = useMemo(() => {
     if (!menu) {
@@ -129,7 +126,7 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
       return;
     }
     setMoveSearch('');
-    setMoveSortBy('recentDesc');
+    setMoveSortBy('movedDesc');
   }, [menu]);
 
   useEffect(() => {
