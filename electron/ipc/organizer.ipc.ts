@@ -68,6 +68,18 @@ export function registerOrganizerIpc(context: IpcContext): void {
     return ok(stored);
   });
 
+  registerHandler('organizer.listAliases', async () => {
+    return ok(alias.list());
+  });
+
+  registerHandler('organizer.removeAlias', async (request) => {
+    const inputAlias = request.alias?.trim();
+    if (!inputAlias) {
+      return fail('VALIDATION', 'Alias is required');
+    }
+    return ok({ removed: alias.remove(inputAlias) });
+  });
+
   registerHandler('organizer.deleteManga', async (request) => {
     const book = manga.getById(request.mangaId);
     if (!book) {

@@ -1,4 +1,4 @@
-import type { MangaBookWithCover } from '@shared/types';
+import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory, OrganizerItem, OrganizerSortKey, OrganizerStatusFilter } from './types';
 import { getMangaDisplayPath, getMangaPathCategory, normalizeDirectoryName } from '@renderer/pages/Library/utils';
 
@@ -56,7 +56,45 @@ function getSegmentAfterMarker(segments: string[], marker: string[]): string | n
   return null;
 }
 
-function getOwnerBadge(manga: MangaBookWithCover): string | null {
+function toLookupKey(value: string): string {
+  return value.trim().toLocaleLowerCase();
+}
+
+interface AliasLookupContext {
+  canonicalByAnyName: Map<string, string>;
+  aliasesByCanonicalName: Map<string, string[]>;
+}
+
+function createAliasLookup(aliases: DirectoryAlias[]): AliasLookupContext {
+  const canonicalByAnyName = new Map<string, string>();
+  const aliasesByCanonicalName = new Map<string, string[]>();
+
+  for (const record of aliases) {
+    const canonicalName = record.canonicalName.trim();
+    const aliasName = record.alias.trim();
+    if (!canonicalName || !aliasName) {
+      continue;
+    }
+
+    const canonicalKey = toLookupKey(canonicalName);
+    const aliasKey = toLookupKey(aliasName);
+    canonicalByAnyName.set(canonicalKey, canonicalName);
+    canonicalByAnyName.set(aliasKey, canonicalName);
+
+    const currentAliases = aliasesByCanonicalName.get(canonicalKey) ?? [];
+    if (!currentAliases.some((item) => toLookupKey(item) === aliasKey)) {
+      currentAliases.push(aliasName);
+      aliasesByCanonicalName.set(canonicalKey, currentAliases);
+    }
+  }
+
+  return {
+    canonicalByAnyName,
+    aliasesByCanonicalName
+  };
+}
+
+function getOwnerBadge(manga: MangaBookWithCover, aliasLookup: AliasLookupContext | null): string | null {
   const sourceKind = getMangaPathCategory(manga.folderPath, manga.sourceFolderPath);
   if (sourceKind === 'other') {
     return null;
@@ -77,7 +115,17 @@ function getOwnerBadge(manga: MangaBookWithCover): string | null {
     return null;
   }
 
-  return `作者 ${ownerName}`;
+  const canonicalName = aliasLookup?.canonicalByAnyName.get(toLookupKey(ownerName)) ?? ownerName;
+  const canonicalKey = toLookupKey(canonicalName);
+  const aliases = (aliasLookup?.aliasesByCanonicalName.get(canonicalKey) ?? []).filter(
+    (alias) => toLookupKey(alias) !== canonicalKey
+  );
+
+  if (aliases.length === 0) {
+    return canonicalName;
+  }
+
+  return `${canonicalName} (${aliases.join(' / ')})`;
 }
 
 export function buildOrganizerCategories(mangas: MangaBookWithCover[]): OrganizerCategory[] {
@@ -108,6 +156,7 @@ export function buildOrganizerCategories(mangas: MangaBookWithCover[]): Organize
     bucket.set(key, {
       key,
       label: location.label,
+      aliases: [],
       path: location.path,
       count: 1,
       kind: 'artists',
@@ -123,11 +172,13 @@ export function buildOrganizerCategories(mangas: MangaBookWithCover[]): Organize
   });
 }
 
-export function buildOrganizerItems(mangas: MangaBookWithCover[]): OrganizerItem[] {
+export function buildOrganizerItems(mangas: MangaBookWithCover[], aliases: DirectoryAlias[] = []): OrganizerItem[] {
+  const aliasLookup = aliases.length > 0 ? createAliasLookup(aliases) : null;
+
   return mangas.map((manga) => ({
     ...manga,
     displayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
-    ownerBadge: getOwnerBadge(manga),
+    ownerBadge: getOwnerBadge(manga, aliasLookup),
     organizeStatus: getMangaPathCategory(manga.folderPath, manga.sourceFolderPath) === 'other' ? 'unorganized' : 'organized'
   }));
 }
@@ -152,7 +203,8 @@ export function filterAndSortOrganizerItems(
     const matchesQuery =
       keyword.length === 0 ||
       manga.title.toLowerCase().includes(keyword) ||
-      manga.displayPath.toLowerCase().includes(keyword);
+      manga.displayPath.toLowerCase().includes(keyword) ||
+      (manga.ownerBadge?.toLowerCase().includes(keyword) ?? false);
 
     if (!matchesQuery) {
       return false;

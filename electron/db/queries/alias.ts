@@ -33,6 +33,7 @@ export function createAliasQueries(db: Database.Database) {
     'SELECT canonical_name FROM directory_aliases WHERE alias_key = ? LIMIT 1'
   );
   const listStatement = db.prepare('SELECT * FROM directory_aliases ORDER BY alias ASC');
+  const removeStatement = db.prepare('DELETE FROM directory_aliases WHERE alias_key = ?');
 
   function insert(alias: string, canonicalName: string): DirectoryAlias {
     const now = new Date().toISOString();
@@ -69,9 +70,15 @@ export function createAliasQueries(db: Database.Database) {
     return rows.map(mapRow);
   }
 
+  function remove(alias: string): boolean {
+    const result = removeStatement.run(toKey(alias));
+    return result.changes > 0;
+  }
+
   return {
     insert,
     resolve,
-    list
+    list,
+    remove
   };
 }

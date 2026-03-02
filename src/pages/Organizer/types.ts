@@ -6,6 +6,7 @@ export type OrganizerStatusFilter = 'all' | 'organized' | 'unorganized';
 export interface OrganizerCategory {
   key: string;
   label: string;
+  aliases: string[];
   path: string;
   count: number;
   kind: 'artists' | 'series' | 'other';

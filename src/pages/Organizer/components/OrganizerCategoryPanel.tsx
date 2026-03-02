@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownUp, Folder, Loader2, Search } from 'lucide-react';
+import { ArrowDownUp, Folder, Loader2, Search, Tags, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
@@ -12,9 +12,16 @@ interface OrganizerCategoryPanelProps {
   moving: boolean;
   hasIpcBridge: boolean;
   moveError: string | null;
+  onClearMoveError: () => void;
   onSelectCategory: (key: string) => void;
   onMoveSelected: () => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
+}
+
+interface CategoryContextMenuState {
+  x: number;
+  y: number;
+  category: OrganizerCategory;
 }
 
 export function OrganizerCategoryPanel({
@@ -24,6 +31,7 @@ export function OrganizerCategoryPanel({
   moving,
   hasIpcBridge,
   moveError,
+  onClearMoveError,
   onSelectCategory,
   onMoveSelected,
   onRequestAddAlias
@@ -33,7 +41,9 @@ export function OrganizerCategoryPanel({
     'recentDesc' | 'recentAsc' | 'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc'
   >('recentDesc');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<CategoryContextMenuState | null>(null);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
 
   const selectedCategory = categories.find((item) => item.key === selectedCategoryKey) ?? null;
   const filteredCategories = useMemo(() => {
@@ -42,7 +52,8 @@ export function OrganizerCategoryPanel({
       (category) =>
         keyword.length === 0 ||
         category.label.toLowerCase().includes(keyword) ||
-        category.path.toLowerCase().includes(keyword)
+        category.path.toLowerCase().includes(keyword) ||
+        category.aliases.some((alias) => alias.toLowerCase().includes(keyword))
     );
 
     return [...searched].sort((a, b) => {
@@ -69,6 +80,7 @@ export function OrganizerCategoryPanel({
     items.map((category) => {
       const active = category.key === selectedCategoryKey;
       const label = category.label;
+      const aliasText = category.aliases.length > 0 ? `(${category.aliases.join(' / ')})` : null;
 
       return (
         <button
@@ -79,17 +91,38 @@ export function OrganizerCategoryPanel({
               ? 'border-[#2f7fe6] bg-[#2f7fe6] shadow-[0_8px_18px_rgba(47,127,230,0.34)]'
               : 'border-transparent hover:bg-[#e8edf6]'
           )}
-          onClick={() => onSelectCategory(category.key)}
+          onClick={() => {
+            onSelectCategory(category.key);
+            setContextMenu(null);
+          }}
           onContextMenu={(event) => {
             event.preventDefault();
-            onRequestAddAlias(category);
+            onSelectCategory(category.key);
+            setContextMenu({
+              x: event.clientX,
+              y: event.clientY,
+              category
+            });
           }}
           title={category.path}
         >
           <span className="inline-flex min-w-0 items-center gap-2">
             <Folder className={cn('h-4 w-4', active ? 'text-white' : 'text-[#2f7fe6]')} />
-            <span className={cn('truncate text-[13px] font-semibold', active ? 'text-white' : 'text-[#1f2f48]')}>
-              {label}
+            <span className="inline-flex min-w-0 items-baseline gap-1">
+              <span className={cn('truncate text-[13px] font-semibold', active ? 'text-white' : 'text-[#1f2f48]')}>
+                {label}
+              </span>
+              {aliasText ? (
+                <span
+                  className={cn(
+                    'truncate text-[12px] font-medium',
+                    active ? 'text-white/80' : 'text-[#71839d]'
+                  )}
+                  title={category.aliases.join(' / ')}
+                >
+                  {aliasText}
+                </span>
+              ) : null}
             </span>
           </span>
           <span
@@ -116,64 +149,90 @@ export function OrganizerCategoryPanel({
     return () => document.removeEventListener('mousedown', handleDocumentClick);
   }, []);
 
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+
+    const closeMenu = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (contextMenuRef.current && !contextMenuRef.current.contains(target)) {
+        setContextMenu(null);
+      }
+    };
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setContextMenu(null);
+      }
+    };
+
+    const closeOnResize = () => {
+      setContextMenu(null);
+    };
+
+    window.addEventListener('mousedown', closeMenu);
+    window.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', closeOnResize, { once: true });
+
+    return () => {
+      window.removeEventListener('mousedown', closeMenu);
+      window.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', closeOnResize);
+    };
+  }, [contextMenu]);
+
   return (
     <aside className="flex h-full w-[340px] flex-col bg-[#f1f3f7]">
       <div className="flex min-h-0 flex-1 flex-col border-b border-[#dbe1eb] px-5 pb-4 pt-5">
-        <div className="mb-3">
-          <div>
-            <h3 className="text-[18px] font-bold text-[#1a2940]">整理目录</h3>
-            <p className="mt-0.5 text-[11px] font-semibold text-[#8a98ad]">右键目录可添加别名</p>
+        <div className="mb-3 flex items-center gap-2">
+          <h3 className="shrink-0 text-[18px] font-bold text-[#1a2940]">整理目录</h3>
+
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b98ac]" />
+            <Input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 text-[12px]"
+              placeholder="搜索目录..."
+            />
           </div>
-        </div>
 
-        <div className="mb-3 space-y-2.5">
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b98ac]" />
-              <Input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 text-[12px]"
-                placeholder="搜索目录..."
-              />
-            </div>
+          <div className="relative" ref={sortMenuRef}>
+            <button
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#dce2ec] bg-[#eceff4] text-[#5f6c80] hover:bg-[#e2e7f0]"
+              onClick={() => setSortMenuOpen((prev) => !prev)}
+              title="排序"
+            >
+              <ArrowDownUp className="h-4 w-4 text-[#5e6c80]" />
+            </button>
 
-            <div className="relative" ref={sortMenuRef}>
-              <button
-                className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#dce2ec] bg-[#eceff4] text-[#5f6c80] hover:bg-[#e2e7f0]"
-                onClick={() => setSortMenuOpen((prev) => !prev)}
-                title="排序"
-              >
-                <ArrowDownUp className="h-4 w-4 text-[#5e6c80]" />
-              </button>
-
-              {sortMenuOpen ? (
-                <div className="absolute right-0 top-10 z-30 w-44 rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_28px_rgba(48,68,99,0.18)]">
-                  {[
-                    { key: 'recentDesc' as const, label: '最近导入(新-旧)' },
-                    { key: 'recentAsc' as const, label: '最近导入(旧-新)' },
-                    { key: 'countDesc' as const, label: '漫画本数(多-少)' },
-                    { key: 'countAsc' as const, label: '漫画本数(少-多)' },
-                    { key: 'nameAsc' as const, label: '名称(A-Z)' },
-                    { key: 'nameDesc' as const, label: '名称(Z-A)' }
-                  ].map((item) => (
-                    <button
-                      key={item.key}
-                      onClick={() => {
-                        setSortBy(item.key);
-                        setSortMenuOpen(false);
-                      }}
-                      className={cn(
-                        'flex w-full items-center rounded-md px-2.5 py-2 text-left text-xs font-semibold transition',
-                        sortBy === item.key ? 'bg-[#e7efff] text-[#2f6cf6]' : 'text-[#4f5d73] hover:bg-[#edf2f9]'
-                      )}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+            {sortMenuOpen ? (
+              <div className="absolute right-0 top-10 z-30 w-44 rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_28px_rgba(48,68,99,0.18)]">
+                {[
+                  { key: 'recentDesc' as const, label: '最近导入(新-旧)' },
+                  { key: 'recentAsc' as const, label: '最近导入(旧-新)' },
+                  { key: 'countDesc' as const, label: '漫画本数(多-少)' },
+                  { key: 'countAsc' as const, label: '漫画本数(少-多)' },
+                  { key: 'nameAsc' as const, label: '名称(A-Z)' },
+                  { key: 'nameDesc' as const, label: '名称(Z-A)' }
+                ].map((item) => (
+                  <button
+                    key={item.key}
+                    onClick={() => {
+                      setSortBy(item.key);
+                      setSortMenuOpen(false);
+                    }}
+                    className={cn(
+                      'flex w-full items-center rounded-md px-2.5 py-2 text-left text-xs font-semibold transition',
+                      sortBy === item.key ? 'bg-[#e7efff] text-[#2f6cf6]' : 'text-[#4f5d73] hover:bg-[#edf2f9]'
+                    )}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -209,7 +268,16 @@ export function OrganizerCategoryPanel({
 
       {moveError ? (
         <div className="shrink-0 px-5 pt-4">
-          <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">{moveError}</p>
+          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+            <p className="min-w-0 flex-1 break-words">{moveError}</p>
+            <button
+              className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-red-500 transition hover:bg-red-100 hover:text-red-700"
+              onClick={onClearMoveError}
+              title="关闭错误提示"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -223,6 +291,25 @@ export function OrganizerCategoryPanel({
           移动到所选目录 ({selectedCount})
         </Button>
       </div>
+
+      {contextMenu ? (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[90] w-[172px] rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_30px_rgba(36,54,86,0.24)]"
+          style={{ left: contextMenu.x + 6, top: contextMenu.y + 6 }}
+        >
+          <button
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+            onClick={() => {
+              onRequestAddAlias(contextMenu.category);
+              setContextMenu(null);
+            }}
+          >
+            <Tags className="h-3.5 w-3.5 text-[#627694]" />
+            添加别名
+          </button>
+        </div>
+      ) : null}
     </aside>
   );
 }

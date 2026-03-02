@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { MangaBookWithCover } from '@shared/types';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
+import { X } from 'lucide-react';
+import { Button } from '@renderer/components/ui/button';
+import { Input } from '@renderer/components/ui/input';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { useLibraryStore } from '@renderer/stores/libraryStore';
 import { OrganizerCategoryPanel } from './components/OrganizerCategoryPanel';
@@ -21,19 +24,62 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const [moving, setMoving] = useState(false);
   const [moveError, setMoveError] = useState<string | null>(null);
+  const [aliasDialogOpen, setAliasDialogOpen] = useState(false);
+  const [aliasTargetCategory, setAliasTargetCategory] = useState<OrganizerCategory | null>(null);
+  const [aliasInput, setAliasInput] = useState('');
+  const [aliasSaving, setAliasSaving] = useState(false);
+  const [aliasRemoving, setAliasRemoving] = useState<string | null>(null);
+  const [aliasError, setAliasError] = useState<string | null>(null);
+  const [aliases, setAliases] = useState<DirectoryAlias[]>([]);
 
   const { mangas, loading, error, fetchMangas } = useLibraryStore();
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
+
+  const fetchAliases = useCallback(async () => {
+    if (!hasIpcBridge) {
+      return;
+    }
+    try {
+      const records = await ipcInvoke('organizer.listAliases', undefined);
+      setAliases(records);
+    } catch {
+      // ignore alias load errors to avoid blocking page
+    }
+  }, [hasIpcBridge]);
 
   useEffect(() => {
     if (!hasIpcBridge) {
       return;
     }
-    void fetchMangas({ sortBy: 'addedAt' });
-  }, [fetchMangas, hasIpcBridge]);
+    void (async () => {
+      await Promise.all([fetchMangas({ sortBy: 'addedAt' }), fetchAliases()]);
+    })();
+  }, [fetchAliases, fetchMangas, hasIpcBridge]);
 
-  const categories = useMemo(() => buildOrganizerCategories(mangas), [mangas]);
-  const organizerItems = useMemo(() => buildOrganizerItems(mangas), [mangas]);
+  const categories = useMemo(() => {
+    const aliasMap = new Map<string, string[]>();
+    for (const item of aliases) {
+      const key = item.canonicalName.trim().toLocaleLowerCase();
+      const prev = aliasMap.get(key) ?? [];
+      if (!prev.some((name) => name.toLocaleLowerCase() === item.alias.toLocaleLowerCase())) {
+        prev.push(item.alias);
+        aliasMap.set(key, prev);
+      }
+    }
+
+    return buildOrganizerCategories(mangas).map((category) => ({
+      ...category,
+      aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? []
+    }));
+  }, [aliases, mangas]);
+  const organizerItems = useMemo(() => buildOrganizerItems(mangas, aliases), [aliases, mangas]);
+  const aliasTargetItems = useMemo(() => {
+    if (!aliasTargetCategory) {
+      return [] as DirectoryAlias[];
+    }
+    const canonicalKey = aliasTargetCategory.label.trim().toLocaleLowerCase();
+    return aliases.filter((item) => item.canonicalName.trim().toLocaleLowerCase() === canonicalKey);
+  }, [aliasTargetCategory, aliases]);
 
   useEffect(() => {
     if (categories.length === 0) {
@@ -120,6 +166,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
       return;
     }
 
+    setMoveError(null);
     try {
       await ipcInvoke('organizer.moveManga', { mangaId, destinationPath });
       setSelectedIds((prev) => {
@@ -140,6 +187,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
       return;
     }
 
+    setMoveError(null);
     try {
       await ipcInvoke('organizer.renameManga', {
         mangaId: item.id,
@@ -152,6 +200,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
   };
 
   const handleOpenInFolder = async (mangaId: string) => {
+    setMoveError(null);
     try {
       await ipcInvoke('organizer.openMangaFolder', { mangaId });
     } catch (error) {
@@ -159,24 +208,91 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     }
   };
 
+  const closeAliasDialog = (force = false) => {
+    if (aliasSaving && !force) {
+      return;
+    }
+    setAliasDialogOpen(false);
+    setAliasTargetCategory(null);
+    setAliasInput('');
+    setAliasRemoving(null);
+    setAliasError(null);
+  };
+
   const handleRequestAddAlias = (canonicalCategory: OrganizerCategory) => {
-    const aliasValue = window.prompt(`给作者“${canonicalCategory.label}”添加别名`, '');
-    const trimmed = aliasValue?.trim();
-    if (!trimmed) {
+    setMoveError(null);
+    setAliasError(null);
+    setAliasInput('');
+    setAliasTargetCategory(canonicalCategory);
+    setAliasDialogOpen(true);
+  };
+
+  const handleConfirmAddAlias = async () => {
+    if (!aliasTargetCategory || aliasSaving) {
       return;
     }
 
-    void (async () => {
+    const trimmed = aliasInput.trim();
+    if (!trimmed) {
+      setAliasError('请输入别名');
+      return;
+    }
+
+    setAliasSaving(true);
+    setAliasError(null);
+    setMoveError(null);
+    try {
+      const storedAlias = await ipcInvoke('organizer.addAlias', {
+        alias: trimmed,
+        canonicalName: aliasTargetCategory.label
+      });
+      setAliases((prev) => {
+        const aliasKey = storedAlias.alias.trim().toLocaleLowerCase();
+        const next = prev.filter((item) => item.alias.trim().toLocaleLowerCase() !== aliasKey);
+        next.push(storedAlias);
+        next.sort((a, b) => a.alias.localeCompare(b.alias, 'zh-Hans-CN'));
+        return next;
+      });
+      closeAliasDialog(true);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '保存别名失败';
+      setAliasError(message);
+      setMoveError(message);
+    } finally {
+      setAliasSaving(false);
+    }
+  };
+
+  const handleRemoveAlias = async (aliasName: string) => {
+    if (!aliasTargetCategory || aliasSaving || aliasRemoving) {
+      return;
+    }
+
+    setAliasRemoving(aliasName);
+    setAliasError(null);
+    setMoveError(null);
+    try {
       try {
-        await ipcInvoke('organizer.addAlias', {
-          alias: trimmed,
-          canonicalName: canonicalCategory.label
-        });
-        await fetchMangas({ sortBy: 'addedAt' });
+        await ipcInvoke('organizer.removeAlias', { alias: aliasName });
       } catch (error) {
-        setMoveError(error instanceof Error ? error.message : '保存别名失败');
+        const message = error instanceof Error ? error.message : '';
+        if (message.includes("No handler registered for 'organizer.removeAlias'")) {
+          await ipcInvoke('organizer.addAlias', {
+            alias: aliasName,
+            canonicalName: aliasName
+          });
+        } else {
+          throw error;
+        }
       }
-    })();
+      setAliases((prev) => prev.filter((item) => item.alias.trim().toLocaleLowerCase() !== aliasName.trim().toLocaleLowerCase()));
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '删除别名失败';
+      setAliasError(message);
+      setMoveError(message);
+    } finally {
+      setAliasRemoving(null);
+    }
   };
 
   return (
@@ -222,6 +338,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               moving={moving}
               hasIpcBridge={hasIpcBridge}
               moveError={moveError}
+              onClearMoveError={() => setMoveError(null)}
               onSelectCategory={setSelectedCategoryKey}
               onMoveSelected={() => void handleMoveSelected()}
               onRequestAddAlias={handleRequestAddAlias}
@@ -236,6 +353,86 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
           <span className="tracking-[0.08em] text-[#8191a8]">MANGA ORGANIZER</span>
         </footer>
       </div>
+
+      {aliasDialogOpen && aliasTargetCategory ? (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-[440px] rounded-xl border border-[#d3dced] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
+            <p className="text-[15px] font-semibold text-[#1f2f48]">管理别名</p>
+            <p className="mt-1 text-[12px] text-[#647792]">
+              目标目录：<span className="font-semibold text-[#2e4360]">{aliasTargetCategory.label}</span>
+            </p>
+
+            <div className="mt-3 rounded-lg border border-[#dde5f1] bg-white/75 p-2.5">
+              <p className="text-[11px] font-semibold text-[#7687a0]">已有别名</p>
+              {aliasTargetItems.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {aliasTargetItems.map((item) => {
+                    const removing = aliasRemoving === item.alias;
+                    return (
+                      <span
+                        key={item.id}
+                        className="inline-flex items-center gap-1 rounded-md bg-[#e8eef8] px-1.5 py-1 text-[11px] font-semibold text-[#355173]"
+                      >
+                        {item.alias}
+                        <button
+                          className="inline-flex h-4 w-4 items-center justify-center rounded-sm text-[#607593] transition hover:bg-[#d6e0ef] hover:text-[#29425f]"
+                          onClick={() => void handleRemoveAlias(item.alias)}
+                          title="删除别名"
+                          disabled={removing || aliasSaving}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-1 text-[11px] text-[#8b9ab0]">暂无别名</p>
+              )}
+            </div>
+
+            <form
+              className="mt-3 space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleConfirmAddAlias();
+              }}
+            >
+              <Input
+                value={aliasInput}
+                onChange={(event) => setAliasInput(event.target.value)}
+                className="h-9 rounded-lg border-[#d5deea] bg-white text-[13px]"
+                placeholder="输入别名，例如：浅葱"
+                autoFocus
+              />
+
+              {aliasError ? (
+                <p className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-[12px] text-red-700">
+                  {aliasError}
+                </p>
+              ) : null}
+
+              <div className="flex justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  className="h-8 rounded-lg border border-[#d2dbe8] bg-white px-3 text-[12px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
+                  onClick={() => closeAliasDialog()}
+                  disabled={aliasSaving || aliasRemoving !== null}
+                >
+                  取消
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-8 rounded-lg bg-[#2f7fe6] px-3 text-[12px] font-semibold text-white hover:bg-[#236ecc]"
+                  disabled={aliasSaving || aliasRemoving !== null}
+                >
+                  {aliasSaving ? '保存中...' : '保存别名'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
