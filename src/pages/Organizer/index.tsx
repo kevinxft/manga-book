@@ -32,45 +32,6 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     void fetchMangas({ sortBy: 'addedAt' });
   }, [fetchMangas, hasIpcBridge]);
 
-  useEffect(() => {
-    if (!hasIpcBridge || typeof window.mangaBookApi.onOrganizerContextAction !== 'function') {
-      return;
-    }
-
-    const unsubscribe = window.mangaBookApi.onOrganizerContextAction((payload) => {
-      if (payload.type === 'moved') {
-        void fetchMangas({ sortBy: 'addedAt' });
-        return;
-      }
-
-      if (payload.type === 'requestRename') {
-        const nextTitle = window.prompt('请输入新的漫画名称', payload.currentTitle);
-        const trimmed = nextTitle?.trim();
-        if (!trimmed || trimmed === payload.currentTitle) {
-          return;
-        }
-        void (async () => {
-          try {
-            await ipcInvoke('organizer.renameManga', {
-              mangaId: payload.mangaId,
-              newTitle: trimmed
-            });
-            await fetchMangas({ sortBy: 'addedAt' });
-          } catch (error) {
-            setMoveError(error instanceof Error ? error.message : '重命名失败');
-          }
-        })();
-        return;
-      }
-
-      if (payload.type === 'error') {
-        setMoveError(payload.message);
-      }
-    });
-
-    return unsubscribe;
-  }, [fetchMangas, hasIpcBridge]);
-
   const categories = useMemo(() => buildOrganizerCategories(mangas), [mangas]);
   const organizerItems = useMemo(() => buildOrganizerItems(mangas), [mangas]);
 
@@ -91,16 +52,6 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
   const visibleItems = useMemo(() => {
     return filterAndSortOrganizerItems(organizerItems, query, statusFilter, sortBy);
   }, [organizerItems, query, sortBy, statusFilter]);
-
-  const scopedCount = useMemo(() => {
-    if (statusFilter === 'all') {
-      return organizerItems.length;
-    }
-    if (statusFilter === 'organized') {
-      return organizerItems.filter((item) => item.organizeStatus === 'organized').length;
-    }
-    return organizerItems.filter((item) => item.organizeStatus === 'unorganized').length;
-  }, [organizerItems, statusFilter]);
 
   const allVisibleSelected = useMemo(() => {
     if (visibleItems.length === 0) {
@@ -164,15 +115,48 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     }
   };
 
-  const handleShowContextMenu = (mangaId: string, x: number, y: number) => {
+  const handleQuickMoveSingle = async (mangaId: string, destinationPath: string) => {
     if (!hasIpcBridge) {
       return;
     }
-    void ipcInvoke('organizer.showMangaContextMenu', {
-      mangaId,
-      x,
-      y
-    });
+
+    try {
+      await ipcInvoke('organizer.moveManga', { mangaId, destinationPath });
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(mangaId);
+        return next;
+      });
+      await fetchMangas({ sortBy: 'addedAt' });
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : '快速移动失败');
+    }
+  };
+
+  const handleRenameSingle = async (item: MangaBookWithCover) => {
+    const nextTitle = window.prompt('请输入新的漫画名称', item.title);
+    const trimmed = nextTitle?.trim();
+    if (!trimmed || trimmed === item.title) {
+      return;
+    }
+
+    try {
+      await ipcInvoke('organizer.renameManga', {
+        mangaId: item.id,
+        newTitle: trimmed
+      });
+      await fetchMangas({ sortBy: 'addedAt' });
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : '重命名失败');
+    }
+  };
+
+  const handleOpenInFolder = async (mangaId: string) => {
+    try {
+      await ipcInvoke('organizer.openMangaFolder', { mangaId });
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : '打开文件夹失败');
+    }
   };
 
   const handleRequestAddAlias = (canonicalCategory: OrganizerCategory) => {
@@ -198,7 +182,17 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
   return (
     <main className="h-full w-full bg-[#ebedf1] p-2">
       <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[14px] border border-[#cad3e0] bg-[#f4f6fa] shadow-[0_18px_48px_rgba(32,45,68,0.22)]">
-        <OrganizerHeader count={scopedCount} onBack={onBack} />
+        <OrganizerHeader
+          query={query}
+          statusFilter={statusFilter}
+          sortBy={sortBy}
+          allVisibleSelected={allVisibleSelected}
+          onBack={onBack}
+          onQueryChange={setQuery}
+          onStatusFilterChange={setStatusFilter}
+          onSortByChange={setSortBy}
+          onToggleSelectAllVisible={toggleSelectAllVisible}
+        />
 
         {!hasIpcBridge ? (
           <div className="mx-7 mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
@@ -213,17 +207,12 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               error={error}
               visibleItems={visibleItems}
               selectedIds={selectedIds}
-              allVisibleSelected={allVisibleSelected}
-              query={query}
-              statusFilter={statusFilter}
-              sortBy={sortBy}
-              onQueryChange={setQuery}
-              onStatusFilterChange={setStatusFilter}
-              onSortByChange={setSortBy}
-              onToggleSelectAllVisible={toggleSelectAllVisible}
+              categories={categories}
               onToggleItem={toggleItem}
               onOpenManga={(item) => onOpenManga?.(item)}
-              onShowContextMenu={handleShowContextMenu}
+              onQuickMoveManga={handleQuickMoveSingle}
+              onRenameManga={handleRenameSingle}
+              onOpenInFolder={handleOpenInFolder}
             />
 
             <OrganizerCategoryPanel

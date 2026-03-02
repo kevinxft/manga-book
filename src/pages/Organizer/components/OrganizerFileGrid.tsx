@@ -1,25 +1,39 @@
-import { CheckSquare2, Eye, ImageOff, Search, Square } from 'lucide-react';
-import { Input } from '@renderer/components/ui/input';
+import { Eye, FolderInput, FolderOpen, ImageOff } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import { toCoverSrc } from '@renderer/pages/Library/utils';
-import type { OrganizerItem, OrganizerSortKey, OrganizerStatusFilter } from '../types';
+import type { OrganizerCategory, OrganizerItem } from '../types';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 interface OrganizerFileGridProps {
   loading: boolean;
   error: string | null;
   visibleItems: OrganizerItem[];
   selectedIds: Set<string>;
-  allVisibleSelected: boolean;
-  query: string;
-  statusFilter: OrganizerStatusFilter;
-  sortBy: OrganizerSortKey;
-  onQueryChange: (value: string) => void;
-  onStatusFilterChange: (value: OrganizerStatusFilter) => void;
-  onSortByChange: (value: OrganizerSortKey) => void;
-  onToggleSelectAllVisible: () => void;
+  categories: OrganizerCategory[];
   onToggleItem: (id: string) => void;
+  onQuickMoveManga: (mangaId: string, destinationPath: string) => void;
+  onRenameManga: (item: OrganizerItem) => void;
+  onOpenInFolder: (mangaId: string) => void;
   onOpenManga?: (item: OrganizerItem) => void;
-  onShowContextMenu?: (mangaId: string, x: number, y: number) => void;
+}
+
+interface ContextMenuState {
+  x: number;
+  y: number;
+  item: OrganizerItem;
+}
+
+function normalizePath(value: string): string {
+  return value.replace(/\\/g, '/').replace(/\/+$/, '');
+}
+
+function getParentPath(folderPath: string): string {
+  const normalized = normalizePath(folderPath);
+  const segments = normalized.split('/').filter(Boolean);
+  if (segments.length <= 1) {
+    return normalized;
+  }
+  return `${normalized.startsWith('/') ? '/' : ''}${segments.slice(0, -1).join('/')}`;
 }
 
 export function OrganizerFileGrid({
@@ -27,62 +41,52 @@ export function OrganizerFileGrid({
   error,
   visibleItems,
   selectedIds,
-  allVisibleSelected,
-  query,
-  statusFilter,
-  sortBy,
-  onQueryChange,
-  onStatusFilterChange,
-  onSortByChange,
-  onToggleSelectAllVisible,
+  categories,
   onToggleItem,
-  onOpenManga,
-  onShowContextMenu
+  onQuickMoveManga,
+  onRenameManga,
+  onOpenInFolder,
+  onOpenManga
 }: OrganizerFileGridProps) {
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  const moveTargets = useMemo(() => {
+    if (!contextMenu) {
+      return [] as OrganizerCategory[];
+    }
+    const currentParent = normalizePath(getParentPath(contextMenu.item.folderPath));
+    return categories.filter((category) => normalizePath(category.path) !== currentParent);
+  }, [categories, contextMenu]);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+
+    const closeMenu = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (menuRef.current && !menuRef.current.contains(target)) {
+        setContextMenu(null);
+      }
+    };
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setContextMenu(null);
+      }
+    };
+
+    window.addEventListener('mousedown', closeMenu);
+    window.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', () => setContextMenu(null), { once: true });
+
+    return () => {
+      window.removeEventListener('mousedown', closeMenu);
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [contextMenu]);
+
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-[#dbe1eb] bg-[#f6f8fc]">
-      <div className="shrink-0 border-b border-[#d9dfe9] px-7 py-4">
-        <div className="flex items-center gap-3">
-          <div className="relative w-[54%] min-w-[260px] max-w-[560px]">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8c9bb0]" />
-            <Input
-              value={query}
-              onChange={(event) => onQueryChange(event.target.value)}
-              className="h-10 rounded-xl border-[#d8deea] bg-[#ecf0f6] pl-9 text-[13px]"
-              placeholder="搜索漫画名或路径..."
-            />
-          </div>
-
-          <select
-            value={statusFilter}
-            onChange={(event) => onStatusFilterChange(event.target.value as OrganizerStatusFilter)}
-            className="h-10 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[12px] font-semibold text-[#3d4d67] outline-none"
-          >
-            <option value="all">状态: 全部</option>
-            <option value="organized">状态: 已整理</option>
-            <option value="unorganized">状态: 未整理</option>
-          </select>
-
-          <select
-            value={sortBy}
-            onChange={(event) => onSortByChange(event.target.value as OrganizerSortKey)}
-            className="h-10 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[12px] font-semibold text-[#3d4d67] outline-none"
-          >
-            <option value="addedAt">排序: 最近导入</option>
-            <option value="title">排序: 标题</option>
-            <option value="pages">排序: 页数</option>
-          </select>
-
-          <button
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d8deea] bg-[#ecf0f6] text-[#5f708a] hover:bg-[#e6edf6]"
-            title="全选当前结果"
-            onClick={onToggleSelectAllVisible}
-          >
-            {allVisibleSelected ? <CheckSquare2 className="h-5 w-5" /> : <Square className="h-5 w-5" />}
-          </button>
-        </div>
-      </div>
-
       <div className="min-h-0 flex-1 overflow-auto px-7 py-5">
         {loading ? <p className="text-sm font-semibold text-[#5f6f89]">加载中...</p> : null}
 
@@ -106,13 +110,10 @@ export function OrganizerFileGrid({
                     )}
                     onContextMenu={(event) => {
                       event.preventDefault();
-                      onShowContextMenu?.(item.id, event.clientX, event.clientY);
+                      setContextMenu({ x: event.clientX, y: event.clientY, item });
                     }}
                   >
-                    <button
-                      className="block w-full text-left"
-                      onClick={() => onToggleItem(item.id)}
-                    >
+                    <button className="block w-full text-left" onClick={() => onToggleItem(item.id)}>
                       <div className="aspect-[3/4]">
                         {item.coverPath ? (
                           <img
@@ -173,6 +174,59 @@ export function OrganizerFileGrid({
           </div>
         ) : null}
       </div>
+
+      {contextMenu ? (
+        <div
+          ref={menuRef}
+          className="fixed z-[80] w-[240px] rounded-xl border border-[#d6deea] bg-white p-2 shadow-[0_18px_40px_rgba(30,50,83,0.26)]"
+          style={{ left: contextMenu.x + 6, top: contextMenu.y + 6 }}
+        >
+          <p className="px-2 pb-1 text-[11px] font-bold tracking-[0.08em] text-[#7b89a1]">快速移动到作者</p>
+          <div className="mb-2 max-h-[190px] space-y-1 overflow-auto rounded-md border border-[#e2e8f3] bg-[#f8fafe] p-1">
+            {moveTargets.length > 0 ? (
+              moveTargets.map((category) => (
+                <button
+                  key={category.key}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#28415f] transition hover:bg-[#e7efff]"
+                  onClick={() => {
+                    onQuickMoveManga(contextMenu.item.id, category.path);
+                    setContextMenu(null);
+                  }}
+                >
+                  <FolderInput className="h-3.5 w-3.5 text-[#2f7fe6]" />
+                  <span className="truncate">{category.label}</span>
+                </button>
+              ))
+            ) : (
+              <div className="px-2 py-1.5 text-[12px] text-[#8a97ac]">暂无可用目录</div>
+            )}
+          </div>
+
+          <div className="h-px bg-[#e6ecf5]" />
+
+          <button
+            className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+            onClick={() => {
+              onRenameManga(contextMenu.item);
+              setContextMenu(null);
+            }}
+          >
+            <FolderInput className="h-3.5 w-3.5 text-[#5f708a]" />
+            重命名
+          </button>
+
+          <button
+            className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+            onClick={() => {
+              onOpenInFolder(contextMenu.item.id);
+              setContextMenu(null);
+            }}
+          >
+            <FolderOpen className="h-3.5 w-3.5 text-[#5f708a]" />
+            在文件夹中打开
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

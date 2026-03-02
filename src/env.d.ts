@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 
-import type { IpcChannels, IpcResult, OrganizerContextMenuAction } from '@shared/types';
+import type { IpcChannels, IpcResult } from '@shared/types';
 
 declare global {
   interface Window {
@@ -9,7 +9,6 @@ declare global {
         channel: K,
         request: IpcChannels[K]['req']
       ): Promise<IpcResult<IpcChannels[K]['res']>>;
-      onOrganizerContextAction?: (listener: (payload: OrganizerContextMenuAction) => void) => () => void;
     };
   }
 }
