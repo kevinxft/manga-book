@@ -165,6 +165,24 @@ export interface OrganizerDeleteMangaRequest {
   withFiles: boolean;
 }
 
+export interface TagAddToMangaRequest {
+  mangaId: string;
+  tagName: string;
+}
+
+export interface TagAddToMangaResult {
+  tag: MangaTag;
+  linked: boolean;
+}
+
+export interface TagUpsertRequest {
+  name: string;
+}
+
+export interface TagDeleteRequest {
+  id: string;
+}
+
 export interface IpcChannels {
   'library.addSource': { req: LibraryAddSourceRequest; res: LibraryFolder };
   'library.addSources': { req: LibraryAddSourcesRequest; res: LibraryAddSourcesResult };
@@ -184,6 +202,11 @@ export interface IpcChannels {
   'organizer.listAuthorDirectories': { req: void; res: TargetDirectorySummary[] };
   'organizer.createAuthorDirectory': { req: OrganizerCreateAuthorDirectoryRequest; res: { path: string; created: boolean } };
   'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
+
+  'tag.list': { req: void; res: MangaTag[] };
+  'tag.upsert': { req: TagUpsertRequest; res: MangaTag };
+  'tag.delete': { req: TagDeleteRequest; res: { deleted: boolean } };
+  'tag.addToManga': { req: TagAddToMangaRequest; res: TagAddToMangaResult };
 
   'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
   'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };

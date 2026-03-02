@@ -16,3 +16,4 @@ export type TagItem = {
 
 export type MangaPathCategory = 'artists' | 'series' | 'other';
 export type MangaCategoryFilter = 'all' | MangaPathCategory;
+export type LibraryStatusFilter = 'all' | 'organized' | 'unorganized';

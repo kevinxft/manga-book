@@ -7,7 +7,6 @@ import { getTagTextColor, toRgba } from '../utils';
 interface TagManagementDialogProps {
   open: boolean;
   draftTags: TagItem[];
-  editingTagId: string | null;
   newTagLabel: string;
   newTagColor: string;
   colorOptions: string[];
@@ -17,14 +16,11 @@ interface TagManagementDialogProps {
   onSetNewTagColor: (value: string) => void;
   onUpsertTag: () => void;
   onRemoveTag: (id: string) => void;
-  onStartEditTag: (tag: TagItem) => void;
-  onCancelEdit: () => void;
 }
 
 export function TagManagementDialog({
   open,
   draftTags,
-  editingTagId,
   newTagLabel,
   newTagColor,
   colorOptions,
@@ -33,9 +29,7 @@ export function TagManagementDialog({
   onSetNewTagLabel,
   onSetNewTagColor,
   onUpsertTag,
-  onRemoveTag,
-  onStartEditTag,
-  onCancelEdit
+  onRemoveTag
 }: TagManagementDialogProps) {
   if (!open) {
     return null;
@@ -81,17 +75,15 @@ export function TagManagementDialog({
                       borderColor: toRgba(tag.color, 0.35)
                     }}
                   >
-                    <button
-                      className="min-w-0 rounded-md px-2.5 py-1 text-xs font-semibold transition hover:opacity-90"
+                    <span
+                      className="min-w-0 rounded-md px-2.5 py-1 text-xs font-semibold"
                       style={{
                         backgroundColor: tag.color,
                         color: getTagTextColor(tag.color)
                       }}
-                      onClick={() => onStartEditTag(tag)}
-                      title="点击编辑标签"
                     >
                       <span className="truncate">{tag.label}</span>
-                    </button>
+                    </span>
                     <button
                       className="rounded-md p-1 text-[#98a7bc] hover:bg-[#f2f6fb] hover:text-[#50617a]"
                       onClick={() => onRemoveTag(tag.id)}
@@ -107,9 +99,7 @@ export function TagManagementDialog({
           <div className="h-px bg-[#dde3ee]" />
 
           <section>
-            <p className="mb-4 text-base font-extrabold tracking-wide text-[#1d2739]">
-              {editingTagId ? '编辑标签' : '新增标签'}
-            </p>
+            <p className="mb-4 text-base font-extrabold tracking-wide text-[#1d2739]">新增标签</p>
 
             <div className="space-y-2">
               <label className="text-xs font-bold tracking-wide text-[#6d7f99]">标签名称</label>
@@ -147,17 +137,8 @@ export function TagManagementDialog({
               onClick={onUpsertTag}
             >
               <Plus className="h-5 w-5" />
-              {editingTagId ? '保存标签' : '新建标签'}
+              新建标签
             </button>
-
-            {editingTagId ? (
-              <button
-                className="mt-2 flex h-9 w-full items-center justify-center rounded-xl text-xs font-semibold text-[#667891] transition hover:bg-[#e9eef7]"
-                onClick={onCancelEdit}
-              >
-                取消编辑
-              </button>
-            ) : null}
           </section>
         </div>
 

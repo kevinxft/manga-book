@@ -1,4 +1,4 @@
-import { ArrowLeft, BookOpen, CheckSquare2, Search, Square } from 'lucide-react';
+import { ArrowLeft, BookOpen, CheckSquare2, Search, Square, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import type { OrganizerSortKey, OrganizerStatusFilter } from '../types';
@@ -38,14 +38,23 @@ export function OrganizerHeader({
           返回
         </Button>
 
-        <div className="relative w-[50%] min-w-[220px] max-w-[560px]">
+        <div className="relative w-[25%] min-w-[180px] max-w-[280px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8c9bb0]" />
           <Input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            className="h-10 rounded-xl border-[#d8deea] bg-[#ecf0f6] pl-9 text-[13px]"
+            className="h-10 rounded-xl border-[#d8deea] bg-[#ecf0f6] pl-9 pr-9 text-[13px]"
             placeholder="搜索漫画名或路径..."
           />
+          {query.trim().length > 0 ? (
+            <button
+              className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
+              onClick={() => onQueryChange('')}
+              title="清空搜索"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          ) : null}
         </div>
 
         <select

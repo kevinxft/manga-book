@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { RefreshCw, Search, SlidersHorizontal } from 'lucide-react';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
-import type { MangaCategoryFilter, SortKey } from '../types';
+import type { LibraryStatusFilter, MangaCategoryFilter, SortKey } from '../types';
 
 interface LibraryHeaderProps {
   sortBy: SortKey;
@@ -11,10 +11,12 @@ interface LibraryHeaderProps {
   scanRunning: boolean;
   search: string;
   categoryFilter: MangaCategoryFilter;
+  statusFilter: LibraryStatusFilter;
   onSortByChange: (value: SortKey) => void;
   onSearchChange: (value: string) => void;
   onSyncSources: () => void;
   onCategoryFilterChange: (value: MangaCategoryFilter) => void;
+  onStatusFilterChange: (value: LibraryStatusFilter) => void;
 }
 
 export function LibraryHeader({
@@ -24,10 +26,12 @@ export function LibraryHeader({
   scanRunning,
   search,
   categoryFilter,
+  statusFilter,
   onSortByChange,
   onSearchChange,
   onSyncSources,
-  onCategoryFilterChange
+  onCategoryFilterChange,
+  onStatusFilterChange
 }: LibraryHeaderProps) {
   const [filterMenuOpen, setFilterMenuOpen] = useState(false);
   const filterMenuRef = useRef<HTMLDivElement | null>(null);
@@ -47,6 +51,19 @@ export function LibraryHeader({
   return (
     <header className="flex h-16 items-center justify-between border-b border-[#dde2eb] bg-[#f1f3f6] px-6">
       <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-[#4f5d73]">
+          <span>状态:</span>
+          <select
+            className="rounded-md border border-transparent bg-transparent px-1 py-1 text-sm outline-none hover:border-[#d0d7e3]"
+            value={statusFilter}
+            onChange={(event) => onStatusFilterChange(event.target.value as LibraryStatusFilter)}
+          >
+            <option value="all">全部</option>
+            <option value="organized">已整理</option>
+            <option value="unorganized">未整理</option>
+          </select>
+        </div>
+
         <div className="flex items-center gap-2 text-sm font-semibold text-[#4f5d73]">
           <span>排序:</span>
           <select

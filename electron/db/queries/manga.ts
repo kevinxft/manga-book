@@ -72,7 +72,7 @@ export function createMangaQueries(db: Database.Database) {
   const deleteBySourceStatement = db.prepare('DELETE FROM manga_books WHERE source_folder_path = ?');
   const deleteByIdStatement = db.prepare('DELETE FROM manga_books WHERE id = ?');
   const updatePathStatement = db.prepare(
-    'UPDATE manga_books SET title = @title, folder_path = @folder_path WHERE id = @id'
+    'UPDATE manga_books SET title = @title, folder_path = @folder_path, source_folder_path = @source_folder_path WHERE id = @id'
   );
   const updateProgressStatement = db.prepare(
     `UPDATE manga_books SET
@@ -170,8 +170,8 @@ export function createMangaQueries(db: Database.Database) {
     return rows.map(mapRow);
   }
 
-  function updatePath(id: string, title: string, folderPath: string): MangaBook {
-    updatePathStatement.run({ id, title, folder_path: folderPath });
+  function updatePath(id: string, title: string, folderPath: string, sourceFolderPath: string): MangaBook {
+    updatePathStatement.run({ id, title, folder_path: folderPath, source_folder_path: sourceFolderPath });
     const row = byIdStatement.get(id) as MangaBookRow | undefined;
     if (!row) {
       throw new Error('Manga not found after update');

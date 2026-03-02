@@ -16,6 +16,21 @@ function isArtistsDirectoryName(name: string): boolean {
   return normalized === 'artists' || normalized === 'artist';
 }
 
+function resolveSourceFolderPath(nextFolderPath: string, availableSourcePaths: string[], fallback: string): string {
+  const normalizedNextPath = normalizeAbsolutePath(nextFolderPath);
+  const candidates = availableSourcePaths
+    .map((value) => normalizeAbsolutePath(value))
+    .sort((a, b) => b.length - a.length);
+
+  for (const sourcePath of candidates) {
+    if (normalizedNextPath === sourcePath || normalizedNextPath.startsWith(`${sourcePath}${path.sep}`)) {
+      return sourcePath;
+    }
+  }
+
+  return normalizeAbsolutePath(fallback);
+}
+
 export function registerOrganizerIpc(context: IpcContext): void {
   const { manga, alias, library } = context.repositories;
 
@@ -58,8 +73,11 @@ export function registerOrganizerIpc(context: IpcContext): void {
     const nextFolderPath = path.join(destinationRoot, path.basename(book.folderPath));
     await movePath(book.folderPath, nextFolderPath);
 
+    const sourcePaths = library.list().map((source) => source.path);
+    const nextSourceFolderPath = resolveSourceFolderPath(nextFolderPath, sourcePaths, book.sourceFolderPath);
+
     invalidateCoverPath(book.folderPath);
-    const updated = manga.updatePath(book.id, path.basename(nextFolderPath), nextFolderPath);
+    const updated = manga.updatePath(book.id, path.basename(nextFolderPath), nextFolderPath, nextSourceFolderPath);
 
     return ok(updated);
   });
@@ -75,8 +93,11 @@ export function registerOrganizerIpc(context: IpcContext): void {
 
     await movePath(book.folderPath, nextFolderPath);
 
+    const sourcePaths = library.list().map((source) => source.path);
+    const nextSourceFolderPath = resolveSourceFolderPath(nextFolderPath, sourcePaths, book.sourceFolderPath);
+
     invalidateCoverPath(book.folderPath);
-    const updated = manga.updatePath(book.id, request.newTitle, nextFolderPath);
+    const updated = manga.updatePath(book.id, request.newTitle, nextFolderPath, nextSourceFolderPath);
 
     return ok(updated);
   });
