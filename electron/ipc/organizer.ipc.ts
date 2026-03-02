@@ -1,15 +1,50 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { shell } from 'electron';
-import trash from 'trash';
 import type { IpcContext } from './context';
 import { registerHandler, ok, fail } from './helpers';
-import { ensureDirectory, movePath } from '@main/utils/fsUtils';
+import { directoryExists, ensureDirectory, listDirectories, movePath } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath } from '@main/utils/pathUtils';
 import { invalidateCoverPath } from '@main/scanner/coverFinder';
 
+function normalizeDirectoryName(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function isArtistsDirectoryName(name: string): boolean {
+  const normalized = normalizeDirectoryName(name);
+  return normalized === 'artists' || normalized === 'artist';
+}
+
 export function registerOrganizerIpc(context: IpcContext): void {
-  const { manga, alias } = context.repositories;
+  const { manga, alias, library } = context.repositories;
+
+  const listArtistsRoots = async (): Promise<string[]> => {
+    const roots: string[] = [];
+    const sourceFolders = library.list();
+
+    for (const source of sourceFolders) {
+      const sourcePath = normalizeAbsolutePath(source.path);
+      const sourceBaseName = path.basename(sourcePath);
+
+      if (isArtistsDirectoryName(sourceBaseName)) {
+        roots.push(sourcePath);
+        continue;
+      }
+
+      try {
+        const children = await listDirectories(sourcePath);
+        const artistFolder = children.find((childPath) => isArtistsDirectoryName(path.basename(childPath)));
+        if (artistFolder) {
+          roots.push(normalizeAbsolutePath(artistFolder));
+        }
+      } catch {
+        // ignore unreadable source path
+      }
+    }
+
+    return Array.from(new Set(roots));
+  };
 
   registerHandler('organizer.moveManga', async (request) => {
     const book = manga.getById(request.mangaId);
@@ -80,6 +115,72 @@ export function registerOrganizerIpc(context: IpcContext): void {
     return ok({ removed: alias.remove(inputAlias) });
   });
 
+  registerHandler('organizer.listAuthorDirectories', async () => {
+    const artistsRoots = await listArtistsRoots();
+    const directories: string[] = [];
+
+    for (const rootPath of artistsRoots) {
+      if (!(await directoryExists(rootPath))) {
+        continue;
+      }
+      const children = await listDirectories(rootPath);
+      for (const childPath of children) {
+        directories.push(normalizeAbsolutePath(childPath));
+      }
+    }
+
+    const mangaBooks = manga.list();
+    const uniqueDirectories = Array.from(new Set(directories)).sort((a, b) => a.localeCompare(b));
+    const summaries = uniqueDirectories.map((directory) => {
+      const normalizedDirectory = normalizeAbsolutePath(directory);
+      const prefix = `${normalizedDirectory}${path.sep}`;
+      const mangaCount = mangaBooks.filter((book) => book.folderPath.startsWith(prefix)).length;
+      return {
+        directory: normalizedDirectory,
+        mangaCount
+      };
+    });
+
+    return ok(summaries);
+  });
+
+  registerHandler('organizer.createAuthorDirectory', async (request) => {
+    const name = request.name?.trim();
+    if (!name) {
+      return fail('VALIDATION', 'Author name is required');
+    }
+    if (name === '.' || name === '..' || /[\\/]/.test(name)) {
+      return fail('VALIDATION', 'Invalid author directory name');
+    }
+
+    const artistsRoots = await listArtistsRoots();
+    if (artistsRoots.length === 0) {
+      return fail('NO_TARGET_ROOT', 'No Artists root found. Please import organizer root first.');
+    }
+
+    let targetRoot = artistsRoots[0] as string;
+    const preferredBasePath = request.basePath?.trim();
+    if (preferredBasePath) {
+      const normalizedBasePath = normalizeAbsolutePath(preferredBasePath);
+      const normalizedBaseParent = normalizeAbsolutePath(path.dirname(normalizedBasePath));
+      const matchedRoot = artistsRoots.find(
+        (rootPath) => rootPath === normalizedBasePath || rootPath === normalizedBaseParent
+      );
+      if (matchedRoot) {
+        targetRoot = matchedRoot;
+      }
+    }
+
+    const targetPath = normalizeAbsolutePath(path.join(targetRoot, name));
+    const exists = await directoryExists(targetPath);
+    if (!exists) {
+      await ensureDirectory(targetPath);
+      return ok({ path: targetPath, created: true });
+    }
+
+    return ok({ path: targetPath, created: false });
+  });
+
   registerHandler('organizer.deleteManga', async (request) => {
     const book = manga.getById(request.mangaId);
     if (!book) {
@@ -87,7 +188,7 @@ export function registerOrganizerIpc(context: IpcContext): void {
     }
 
     if (request.withFiles) {
-      await trash([book.folderPath]);
+      await fs.rm(book.folderPath, { recursive: true, force: false });
     } else {
       await fs.access(book.folderPath);
     }

@@ -1,6 +1,7 @@
-import { Eye, FolderInput, FolderOpen, ImageOff } from 'lucide-react';
+import { ArrowDownUp, Eye, FolderInput, FolderOpen, ImageOff, Search, Trash2 } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import { toCoverSrc } from '@renderer/pages/Library/utils';
+import { Input } from '@renderer/components/ui/input';
 import type { OrganizerCategory, OrganizerItem } from '../types';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
@@ -14,6 +15,7 @@ interface OrganizerFileGridProps {
   onQuickMoveManga: (mangaId: string, destinationPath: string) => void;
   onRenameManga: (item: OrganizerItem) => void;
   onOpenInFolder: (mangaId: string) => void;
+  onDeleteManga: (item: OrganizerItem) => void;
   onOpenManga?: (item: OrganizerItem) => void;
 }
 
@@ -46,9 +48,14 @@ export function OrganizerFileGrid({
   onQuickMoveManga,
   onRenameManga,
   onOpenInFolder,
+  onDeleteManga,
   onOpenManga
 }: OrganizerFileGridProps) {
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [moveSearch, setMoveSearch] = useState('');
+  const [moveSortBy, setMoveSortBy] = useState<
+    'recentDesc' | 'recentAsc' | 'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc'
+  >('recentDesc');
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const moveTargets = useMemo(() => {
@@ -56,8 +63,48 @@ export function OrganizerFileGrid({
       return [] as OrganizerCategory[];
     }
     const currentParent = normalizePath(getParentPath(contextMenu.item.folderPath));
-    return categories.filter((category) => normalizePath(category.path) !== currentParent);
-  }, [categories, contextMenu]);
+    const keyword = moveSearch.trim().toLowerCase();
+    const filtered = categories.filter((category) => {
+      if (normalizePath(category.path) === currentParent) {
+        return false;
+      }
+      if (keyword.length === 0) {
+        return true;
+      }
+      return (
+        category.label.toLowerCase().includes(keyword) ||
+        category.path.toLowerCase().includes(keyword) ||
+        category.aliases.some((alias) => alias.toLowerCase().includes(keyword))
+      );
+    });
+
+    return filtered.sort((a, b) => {
+      if (moveSortBy === 'countDesc') {
+        return b.count - a.count || b.latestAddedAt.localeCompare(a.latestAddedAt);
+      }
+      if (moveSortBy === 'countAsc') {
+        return a.count - b.count || a.latestAddedAt.localeCompare(b.latestAddedAt);
+      }
+      if (moveSortBy === 'nameAsc') {
+        return a.label.localeCompare(b.label, 'zh-Hans-CN');
+      }
+      if (moveSortBy === 'nameDesc') {
+        return b.label.localeCompare(a.label, 'zh-Hans-CN');
+      }
+      if (moveSortBy === 'recentAsc') {
+        return a.latestAddedAt.localeCompare(b.latestAddedAt) || a.count - b.count;
+      }
+      return b.latestAddedAt.localeCompare(a.latestAddedAt) || b.count - a.count;
+    });
+  }, [categories, contextMenu, moveSearch, moveSortBy]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+    setMoveSearch('');
+    setMoveSortBy('recentDesc');
+  }, [contextMenu]);
 
   useEffect(() => {
     if (!contextMenu) return;
@@ -178,11 +225,37 @@ export function OrganizerFileGrid({
       {contextMenu ? (
         <div
           ref={menuRef}
-          className="fixed z-[80] w-[240px] rounded-xl border border-[#d6deea] bg-white p-2 shadow-[0_18px_40px_rgba(30,50,83,0.26)]"
+          className="fixed z-[80] w-[286px] rounded-xl border border-[#d6deea] bg-white p-2 shadow-[0_18px_40px_rgba(30,50,83,0.26)]"
           style={{ left: contextMenu.x + 6, top: contextMenu.y + 6 }}
         >
           <p className="px-2 pb-1 text-[11px] font-bold tracking-[0.08em] text-[#7b89a1]">快速移动到作者</p>
-          <div className="mb-2 max-h-[190px] space-y-1 overflow-auto rounded-md border border-[#e2e8f3] bg-[#f8fafe] p-1">
+          <div className="mb-2 grid grid-cols-[1fr_126px] items-center gap-1.5 px-1">
+            <div className="relative min-w-0">
+              <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8b98ac]" />
+              <Input
+                value={moveSearch}
+                onChange={(event) => setMoveSearch(event.target.value)}
+                className="h-7 rounded-md border-[#d7deeb] bg-[#f3f6fb] pl-7 text-[11px]"
+                placeholder="搜索作者/别名"
+              />
+            </div>
+            <label className="relative flex items-center">
+              <ArrowDownUp className="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[#7f8da1]" />
+              <select
+                className="h-7 w-full appearance-none rounded-md border border-[#d7deeb] bg-[#f3f6fb] pl-7 pr-2 text-[11px] font-semibold text-[#4f617d] outline-none"
+                value={moveSortBy}
+                onChange={(event) => setMoveSortBy(event.target.value as typeof moveSortBy)}
+              >
+                <option value="recentDesc">最近(新-旧)</option>
+                <option value="recentAsc">最近(旧-新)</option>
+                <option value="countDesc">本数(多-少)</option>
+                <option value="countAsc">本数(少-多)</option>
+                <option value="nameAsc">名称(A-Z)</option>
+                <option value="nameDesc">名称(Z-A)</option>
+              </select>
+            </label>
+          </div>
+          <div className="mb-2 max-h-[260px] space-y-1 overflow-auto rounded-md border border-[#e2e8f3] bg-[#f8fafe] p-1">
             {moveTargets.length > 0 ? (
               moveTargets.map((category) => (
                 <button
@@ -194,7 +267,14 @@ export function OrganizerFileGrid({
                   }}
                 >
                   <FolderInput className="h-3.5 w-3.5 text-[#2f7fe6]" />
-                  <span className="truncate">{category.label}</span>
+                  <span className="inline-flex min-w-0 items-baseline gap-1">
+                    <span className="truncate">{category.label}</span>
+                    {category.aliases.length > 0 ? (
+                      <span className="truncate text-[11px] font-medium text-[#6e7f97]">
+                        ({category.aliases.join(' / ')})
+                      </span>
+                    ) : null}
+                  </span>
                 </button>
               ))
             ) : (
@@ -224,6 +304,17 @@ export function OrganizerFileGrid({
           >
             <FolderOpen className="h-3.5 w-3.5 text-[#5f708a]" />
             在文件夹中打开
+          </button>
+
+          <button
+            className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#ab2f2f] transition hover:bg-[#fff0f0]"
+            onClick={() => {
+              onDeleteManga(contextMenu.item);
+              setContextMenu(null);
+            }}
+          >
+            <Trash2 className="h-3.5 w-3.5 text-[#c73737]" />
+            删除漫画
           </button>
         </div>
       ) : null}

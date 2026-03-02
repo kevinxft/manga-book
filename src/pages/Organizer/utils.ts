@@ -14,6 +14,11 @@ function splitPath(value: string): { segments: string[]; hasLeadingSlash: boolea
   };
 }
 
+function getPathLabel(pathValue: string): string {
+  const { segments } = splitPath(pathValue);
+  return segments[segments.length - 1] ?? '未命名目录';
+}
+
 function joinPath(segments: string[], hasLeadingSlash: boolean): string {
   if (segments.length === 0) {
     return hasLeadingSlash ? '/' : '';
@@ -128,7 +133,7 @@ function getOwnerBadge(manga: MangaBookWithCover, aliasLookup: AliasLookupContex
   return `${canonicalName} (${aliases.join(' / ')})`;
 }
 
-export function buildOrganizerCategories(mangas: MangaBookWithCover[]): OrganizerCategory[] {
+export function buildOrganizerCategories(mangas: MangaBookWithCover[], directoryPaths: string[] = []): OrganizerCategory[] {
   const bucket = new Map<string, OrganizerCategory>();
 
   for (const manga of mangas) {
@@ -161,6 +166,27 @@ export function buildOrganizerCategories(mangas: MangaBookWithCover[]): Organize
       count: 1,
       kind: 'artists',
       latestAddedAt: manga.addedAt
+    });
+  }
+
+  for (const rawPath of directoryPaths) {
+    const normalizedPath = normalizePath(rawPath);
+    if (!normalizedPath) {
+      continue;
+    }
+    const key = `artists:${normalizedPath}`;
+    if (bucket.has(key)) {
+      continue;
+    }
+
+    bucket.set(key, {
+      key,
+      label: getPathLabel(normalizedPath),
+      aliases: [],
+      path: normalizedPath,
+      count: 0,
+      kind: 'artists',
+      latestAddedAt: '1970-01-01T00:00:00.000Z'
     });
   }
 

@@ -10,12 +10,14 @@ interface OrganizerCategoryPanelProps {
   selectedCategoryKey: string | null;
   selectedCount: number;
   moving: boolean;
+  creatingAuthor: boolean;
   hasIpcBridge: boolean;
   moveError: string | null;
   onClearMoveError: () => void;
   onSelectCategory: (key: string) => void;
   onMoveSelected: () => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
+  onRequestCreateAuthor: () => void;
 }
 
 interface CategoryContextMenuState {
@@ -29,12 +31,14 @@ export function OrganizerCategoryPanel({
   selectedCategoryKey,
   selectedCount,
   moving,
+  creatingAuthor,
   hasIpcBridge,
   moveError,
   onClearMoveError,
   onSelectCategory,
   onMoveSelected,
-  onRequestAddAlias
+  onRequestAddAlias,
+  onRequestCreateAuthor
 }: OrganizerCategoryPanelProps) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<
@@ -257,13 +261,15 @@ export function OrganizerCategoryPanel({
           ) : null}
         </div>
 
-        <button
-          className="mt-3 flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[#b9c8de] text-[13px] font-semibold text-[#647793] opacity-60"
-          title="新建分类（即将支持）"
-          disabled
+        <Button
+          className="mt-3 h-10 w-full rounded-xl border border-dashed border-[#b9c8de] bg-white/70 text-[13px] font-semibold text-[#4f6484] hover:bg-white"
+          title="新建作者目录"
+          onClick={onRequestCreateAuthor}
+          disabled={!hasIpcBridge || creatingAuthor}
         >
-          + 新建分类
-        </button>
+          {creatingAuthor ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : null}
+          + 新建作者
+        </Button>
       </div>
 
       {moveError ? (

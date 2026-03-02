@@ -155,6 +155,11 @@ export interface OrganizerRemoveAliasRequest {
   alias: string;
 }
 
+export interface OrganizerCreateAuthorDirectoryRequest {
+  name: string;
+  basePath?: string;
+}
+
 export interface OrganizerDeleteMangaRequest {
   mangaId: string;
   withFiles: boolean;
@@ -176,6 +181,8 @@ export interface IpcChannels {
   'organizer.addAlias': { req: OrganizerAddAliasRequest; res: DirectoryAlias };
   'organizer.listAliases': { req: void; res: DirectoryAlias[] };
   'organizer.removeAlias': { req: OrganizerRemoveAliasRequest; res: { removed: boolean } };
+  'organizer.listAuthorDirectories': { req: void; res: TargetDirectorySummary[] };
+  'organizer.createAuthorDirectory': { req: OrganizerCreateAuthorDirectoryRequest; res: { path: string; created: boolean } };
   'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
 
   'reader.listPages': { req: ReaderListPagesRequest; res: string[] };

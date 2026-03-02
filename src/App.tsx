@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
+import { cn } from '@renderer/lib/utils';
 import { LibraryPage } from '@renderer/pages/Library';
 import { OrganizerPage } from '@renderer/pages/Organizer';
 import { ReaderPage } from '@renderer/pages/Reader';
@@ -26,45 +27,52 @@ export default function App() {
     hydrate();
   }, [hydrate]);
 
-  if (activeManga) {
-    return (
-      <ReaderPage
-        manga={activeManga}
-        readerMode={readerMode}
-        widthMode={widthMode}
-        fixedWidthPercent={fixedWidthPercent}
-        pageAnimationEnabled={pageAnimationEnabled}
-        onReaderModeChange={setReaderMode}
-        onWidthModeChange={setWidthMode}
-        onFixedWidthPercentChange={setFixedWidthPercent}
-        onBack={() => setActiveManga(null)}
-      />
-    );
-  }
+  const handleOpenManga = (manga: MangaBookWithCover) => {
+    setSettingsOpen(false);
+    setActiveManga(manga);
+  };
 
   return (
     <>
-      {activePage === 'library' ? (
-        <LibraryPage
-          onOpenManga={setActiveManga}
-          onOpenSettings={() => setSettingsOpen(true)}
-          onOpenOrganizer={() => setActivePage('organizer')}
+      <div className={cn('h-full w-full', activeManga ? 'pointer-events-none invisible' : '')}>
+        {activePage === 'library' ? (
+          <LibraryPage
+            onOpenManga={handleOpenManga}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onOpenOrganizer={() => setActivePage('organizer')}
+          />
+        ) : (
+          <OrganizerPage
+            onBack={() => setActivePage('library')}
+            onOpenManga={handleOpenManga}
+          />
+        )}
+        <SettingsPage
+          open={settingsOpen}
+          readerMode={readerMode}
+          widthMode={widthMode}
+          fixedWidthPercent={fixedWidthPercent}
+          pageAnimationEnabled={pageAnimationEnabled}
+          onSave={applySettings}
+          onClose={() => setSettingsOpen(false)}
         />
-      ) : (
-        <OrganizerPage
-          onBack={() => setActivePage('library')}
-          onOpenManga={setActiveManga}
-        />
-      )}
-      <SettingsPage
-        open={settingsOpen}
-        readerMode={readerMode}
-        widthMode={widthMode}
-        fixedWidthPercent={fixedWidthPercent}
-        pageAnimationEnabled={pageAnimationEnabled}
-        onSave={applySettings}
-        onClose={() => setSettingsOpen(false)}
-      />
+      </div>
+
+      {activeManga ? (
+        <div className="fixed inset-0 z-[140]">
+          <ReaderPage
+            manga={activeManga}
+            readerMode={readerMode}
+            widthMode={widthMode}
+            fixedWidthPercent={fixedWidthPercent}
+            pageAnimationEnabled={pageAnimationEnabled}
+            onReaderModeChange={setReaderMode}
+            onWidthModeChange={setWidthMode}
+            onFixedWidthPercentChange={setFixedWidthPercent}
+            onBack={() => setActiveManga(null)}
+          />
+        </div>
+      ) : null}
     </>
   );
 }

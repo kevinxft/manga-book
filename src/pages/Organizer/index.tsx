@@ -31,6 +31,14 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
   const [aliasRemoving, setAliasRemoving] = useState<string | null>(null);
   const [aliasError, setAliasError] = useState<string | null>(null);
   const [aliases, setAliases] = useState<DirectoryAlias[]>([]);
+  const [authorDirectories, setAuthorDirectories] = useState<string[]>([]);
+  const [createAuthorDialogOpen, setCreateAuthorDialogOpen] = useState(false);
+  const [newAuthorName, setNewAuthorName] = useState('');
+  const [creatingAuthor, setCreatingAuthor] = useState(false);
+  const [createAuthorError, setCreateAuthorError] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MangaBookWithCover | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { mangas, loading, error, fetchMangas } = useLibraryStore();
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
@@ -47,14 +55,26 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     }
   }, [hasIpcBridge]);
 
+  const fetchAuthorDirectories = useCallback(async () => {
+    if (!hasIpcBridge) {
+      return;
+    }
+    try {
+      const items = await ipcInvoke('organizer.listAuthorDirectories', undefined);
+      setAuthorDirectories(items.map((item) => item.directory));
+    } catch {
+      // ignore author directory load errors to avoid blocking page
+    }
+  }, [hasIpcBridge]);
+
   useEffect(() => {
     if (!hasIpcBridge) {
       return;
     }
     void (async () => {
-      await Promise.all([fetchMangas({ sortBy: 'addedAt' }), fetchAliases()]);
+      await Promise.all([fetchMangas({ sortBy: 'addedAt' }), fetchAliases(), fetchAuthorDirectories()]);
     })();
-  }, [fetchAliases, fetchMangas, hasIpcBridge]);
+  }, [fetchAliases, fetchAuthorDirectories, fetchMangas, hasIpcBridge]);
 
   const categories = useMemo(() => {
     const aliasMap = new Map<string, string[]>();
@@ -67,11 +87,11 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
       }
     }
 
-    return buildOrganizerCategories(mangas).map((category) => ({
+    return buildOrganizerCategories(mangas, authorDirectories).map((category) => ({
       ...category,
       aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? []
     }));
-  }, [aliases, mangas]);
+  }, [aliases, authorDirectories, mangas]);
   const organizerItems = useMemo(() => buildOrganizerItems(mangas, aliases), [aliases, mangas]);
   const aliasTargetItems = useMemo(() => {
     if (!aliasTargetCategory) {
@@ -208,6 +228,43 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     }
   };
 
+  const handleRequestDeleteManga = (item: MangaBookWithCover) => {
+    setMoveError(null);
+    setDeleteTarget(item);
+    setDeleteDialogOpen(true);
+  };
+
+  const closeDeleteDialog = (force = false) => {
+    if (deleting && !force) {
+      return;
+    }
+    setDeleteDialogOpen(false);
+    setDeleteTarget(null);
+  };
+
+  const handleConfirmDeleteManga = async () => {
+    if (!deleteTarget || deleting) {
+      return;
+    }
+
+    setDeleting(true);
+    setMoveError(null);
+    try {
+      await ipcInvoke('organizer.deleteManga', { mangaId: deleteTarget.id, withFiles: true });
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(deleteTarget.id);
+        return next;
+      });
+      await fetchMangas({ sortBy: 'addedAt' });
+      closeDeleteDialog(true);
+    } catch (error) {
+      setMoveError(error instanceof Error ? error.message : '删除漫画失败');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const closeAliasDialog = (force = false) => {
     if (aliasSaving && !force) {
       return;
@@ -225,6 +282,61 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     setAliasInput('');
     setAliasTargetCategory(canonicalCategory);
     setAliasDialogOpen(true);
+  };
+
+  const closeCreateAuthorDialog = (force = false) => {
+    if (creatingAuthor && !force) {
+      return;
+    }
+    setCreateAuthorDialogOpen(false);
+    setNewAuthorName('');
+    setCreateAuthorError(null);
+  };
+
+  const handleRequestCreateAuthor = () => {
+    setMoveError(null);
+    setCreateAuthorError(null);
+    setNewAuthorName('');
+    setCreateAuthorDialogOpen(true);
+  };
+
+  const handleConfirmCreateAuthor = async () => {
+    if (!hasIpcBridge || creatingAuthor) {
+      return;
+    }
+
+    const trimmed = newAuthorName.trim();
+    if (!trimmed) {
+      setCreateAuthorError('请输入作者名称');
+      return;
+    }
+
+    setCreatingAuthor(true);
+    setCreateAuthorError(null);
+    setMoveError(null);
+    try {
+      const selectedCategory = categories.find((item) => item.key === selectedCategoryKey) ?? null;
+      const result = await ipcInvoke('organizer.createAuthorDirectory', {
+        name: trimmed,
+        basePath: selectedCategory?.path
+      });
+      setAuthorDirectories((prev) => {
+        const next = new Set(prev);
+        next.add(result.path);
+        return Array.from(next);
+      });
+      setSelectedCategoryKey(`artists:${result.path}`);
+      closeCreateAuthorDialog(true);
+      if (!result.created) {
+        setMoveError('作者目录已存在，已自动定位。');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '新建作者失败';
+      setCreateAuthorError(message);
+      setMoveError(message);
+    } finally {
+      setCreatingAuthor(false);
+    }
   };
 
   const handleConfirmAddAlias = async () => {
@@ -329,6 +441,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               onQuickMoveManga={handleQuickMoveSingle}
               onRenameManga={handleRenameSingle}
               onOpenInFolder={handleOpenInFolder}
+              onDeleteManga={handleRequestDeleteManga}
             />
 
             <OrganizerCategoryPanel
@@ -336,12 +449,14 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               selectedCategoryKey={selectedCategoryKey}
               selectedCount={selectedIds.size}
               moving={moving}
+              creatingAuthor={creatingAuthor}
               hasIpcBridge={hasIpcBridge}
               moveError={moveError}
               onClearMoveError={() => setMoveError(null)}
               onSelectCategory={setSelectedCategoryKey}
               onMoveSelected={() => void handleMoveSelected()}
               onRequestAddAlias={handleRequestAddAlias}
+              onRequestCreateAuthor={handleRequestCreateAuthor}
             />
           </div>
         </div>
@@ -430,6 +545,87 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      ) : null}
+
+      {createAuthorDialogOpen ? (
+        <div className="fixed inset-0 z-[125] flex items-center justify-center bg-black/35 p-4">
+          <div className="w-full max-w-[420px] rounded-xl border border-[#d3dced] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
+            <p className="text-[15px] font-semibold text-[#1f2f48]">新建作者</p>
+            <p className="mt-1 text-[12px] text-[#647792]">创建后会出现在右侧整理目录，可直接用于快速移动。</p>
+
+            <form
+              className="mt-3 space-y-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void handleConfirmCreateAuthor();
+              }}
+            >
+              <Input
+                value={newAuthorName}
+                onChange={(event) => setNewAuthorName(event.target.value)}
+                className="h-9 rounded-lg border-[#d5deea] bg-white text-[13px]"
+                placeholder="输入作者名"
+                autoFocus
+              />
+
+              {createAuthorError ? (
+                <p className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1.5 text-[12px] text-red-700">
+                  {createAuthorError}
+                </p>
+              ) : null}
+
+              <div className="flex justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  className="h-8 rounded-lg border border-[#d2dbe8] bg-white px-3 text-[12px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
+                  onClick={() => closeCreateAuthorDialog()}
+                  disabled={creatingAuthor}
+                >
+                  取消
+                </Button>
+                <Button
+                  type="submit"
+                  className="h-8 rounded-lg bg-[#2f7fe6] px-3 text-[12px] font-semibold text-white hover:bg-[#236ecc]"
+                  disabled={creatingAuthor}
+                >
+                  {creatingAuthor ? '创建中...' : '创建作者'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteDialogOpen && deleteTarget ? (
+        <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-[420px] rounded-xl border border-[#d4dceb] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
+            <p className="text-[15px] font-semibold text-[#1f2f48]">确认删除漫画？</p>
+            <p className="mt-2 text-[12px] leading-5 text-[#5f7088]">
+              将永久删除整个漫画目录及全部图片文件，无法恢复。
+            </p>
+            <p className="mt-2 rounded-md bg-[#eef3fb] px-2.5 py-2 text-[12px] font-semibold text-[#2e4360]">
+              {deleteTarget.title}
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <Button
+                type="button"
+                className="h-8 rounded-lg border border-[#d2dbe8] bg-white px-3 text-[12px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
+                onClick={() => closeDeleteDialog()}
+                disabled={deleting}
+              >
+                取消
+              </Button>
+              <Button
+                type="button"
+                className="h-8 rounded-lg bg-[#c73a3a] px-3 text-[12px] font-semibold text-white hover:bg-[#a83131]"
+                onClick={() => void handleConfirmDeleteManga()}
+                disabled={deleting}
+              >
+                {deleting ? '删除中...' : '确认删除'}
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
