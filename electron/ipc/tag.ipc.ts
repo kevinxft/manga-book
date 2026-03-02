@@ -66,4 +66,9 @@ export function registerTagIpc(context: IpcContext): void {
     const removed = tag.removeFromManga(request.mangaId, name);
     return ok({ removed });
   });
+
+  registerHandler('tag.clearAll', async () => {
+    const deleted = tag.clearAll();
+    return ok({ deleted });
+  });
 }

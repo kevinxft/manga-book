@@ -51,6 +51,7 @@ export function createTagQueries(db: Database.Database) {
       )`
   );
   const deleteByIdStatement = db.prepare('DELETE FROM manga_tags WHERE id = ?');
+  const clearAllStatement = db.prepare('DELETE FROM manga_tags');
 
   function upsert(name: string): MangaTag {
     const nameKey = toKey(name);
@@ -131,6 +132,11 @@ export function createTagQueries(db: Database.Database) {
     return result.changes > 0;
   }
 
+  function clearAll(): number {
+    const result = clearAllStatement.run();
+    return result.changes;
+  }
+
   return {
     upsert,
     list,
@@ -139,6 +145,7 @@ export function createTagQueries(db: Database.Database) {
     setForManga,
     removeFromManga,
     deleteOrphan,
-    removeById
+    removeById,
+    clearAll
   };
 }

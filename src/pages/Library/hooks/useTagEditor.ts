@@ -171,9 +171,7 @@ export function useTagEditor(hasIpcBridge: boolean) {
       }
 
       try {
-        for (const id of targetIds) {
-          await ipcInvoke('tag.delete', { id });
-        }
+        await ipcInvoke('tag.clearAll', undefined);
         setTags([]);
         setSelectedTags([]);
 

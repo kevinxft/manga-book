@@ -1,10 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useState } from 'react';
 import type { DirectoryAlias } from '@shared/types';
 import type { OrganizerCategory } from '../types';
 import { useAliasMutations } from './useAliasMutations';
 import { useCreateAuthorMutation } from './useCreateAuthorMutation';
 import { useMangaMutations } from './useMangaMutations';
+import { useOrganizerMutationErrors } from './useOrganizerMutationErrors';
 
 interface UseOrganizerMutationsArgs {
   hasIpcBridge: boolean;
@@ -33,7 +33,7 @@ export function useOrganizerMutations({
   removeAliasLocal,
   addAuthorDirectoryLocal
 }: UseOrganizerMutationsArgs) {
-  const [moveError, setMoveError] = useState<string | null>(null);
+  const { moveError, setMoveError } = useOrganizerMutationErrors();
 
   const mangaMutations = useMangaMutations({
     hasIpcBridge,
@@ -66,6 +66,6 @@ export function useOrganizerMutations({
     ...aliasMutations,
     ...createAuthorMutation,
     moveError,
-    setMoveError,
+    setMoveError
   };
 }

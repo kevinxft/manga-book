@@ -203,6 +203,10 @@ export interface TagRemoveFromMangaRequest {
   tagName: string;
 }
 
+export interface TagClearAllResult {
+  deleted: number;
+}
+
 export interface IpcChannels {
   'library.addSource': { req: LibraryAddSourceRequest; res: LibraryFolder };
   'library.addSources': { req: LibraryAddSourcesRequest; res: LibraryAddSourcesResult };
@@ -231,6 +235,7 @@ export interface IpcChannels {
   'tag.addToManga': { req: TagAddToMangaRequest; res: TagAddToMangaResult };
   'tag.setForManga': { req: TagSetForMangaRequest; res: MangaTag[] };
   'tag.removeFromManga': { req: TagRemoveFromMangaRequest; res: { removed: boolean } };
+  'tag.clearAll': { req: void; res: TagClearAllResult };
 
   'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
   'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };
