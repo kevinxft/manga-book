@@ -165,7 +165,8 @@ export function buildOrganizerCategories(mangas: MangaBookWithCover[], directory
       path: location.path,
       count: 1,
       kind: 'artists',
-      latestAddedAt: manga.addedAt
+      latestAddedAt: manga.addedAt,
+      lastMovedAt: null
     });
   }
 
@@ -186,7 +187,8 @@ export function buildOrganizerCategories(mangas: MangaBookWithCover[], directory
       path: normalizedPath,
       count: 0,
       kind: 'artists',
-      latestAddedAt: '1970-01-01T00:00:00.000Z'
+      latestAddedAt: '1970-01-01T00:00:00.000Z',
+      lastMovedAt: null
     });
   }
 

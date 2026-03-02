@@ -11,6 +11,7 @@ export interface OrganizerCategory {
   count: number;
   kind: 'artists' | 'series' | 'other';
   latestAddedAt: string;
+  lastMovedAt: string | null;
 }
 
 export interface OrganizerItem extends MangaBookWithCover {

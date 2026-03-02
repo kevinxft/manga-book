@@ -2,7 +2,7 @@ import { ArrowDownUp, FolderInput, Search } from 'lucide-react';
 import { Input } from '@renderer/components/ui/input';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
 
-type MoveSortKey = 'recentDesc' | 'recentAsc' | 'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc';
+type MoveSortKey = 'recentDesc' | 'recentAsc' | 'movedDesc' | 'movedAsc' | 'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc';
 
 interface CoverMoveSectionProps {
   moveSearch: string;
@@ -48,6 +48,8 @@ export function CoverMoveSection({
           >
             <option value="recentDesc">最近(新-旧)</option>
             <option value="recentAsc">最近(旧-新)</option>
+            <option value="movedDesc">最近移入(新-旧)</option>
+            <option value="movedAsc">最近移入(旧-新)</option>
             <option value="countDesc">本数(多-少)</option>
             <option value="countAsc">本数(少-多)</option>
             <option value="nameAsc">名称(A-Z)</option>

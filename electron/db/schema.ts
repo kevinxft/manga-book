@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 const DDL = [
   `CREATE TABLE IF NOT EXISTS manga_books (
@@ -60,11 +60,17 @@ const DDL = [
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS organizer_directory_usage (
+    directory_path TEXT PRIMARY KEY,
+    last_moved_at TEXT NOT NULL,
+    move_count INTEGER NOT NULL DEFAULT 0
+  )`,
   'CREATE INDEX IF NOT EXISTS idx_books_source ON manga_books(source_folder_path)',
   'CREATE INDEX IF NOT EXISTS idx_books_title ON manga_books(title)',
   'CREATE INDEX IF NOT EXISTS idx_books_last_read ON manga_books(last_read_at)',
   'CREATE INDEX IF NOT EXISTS idx_bookmarks_manga ON bookmarks(manga_id)',
-  'CREATE INDEX IF NOT EXISTS idx_aliases_canonical_key ON directory_aliases(canonical_key)'
+  'CREATE INDEX IF NOT EXISTS idx_aliases_canonical_key ON directory_aliases(canonical_key)',
+  'CREATE INDEX IF NOT EXISTS idx_directory_usage_last_moved ON organizer_directory_usage(last_moved_at)'
 ];
 
 export function initializeSchema(db: Database.Database): void {

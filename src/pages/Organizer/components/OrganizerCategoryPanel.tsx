@@ -45,8 +45,8 @@ export function OrganizerCategoryPanel({
 }: OrganizerCategoryPanelProps) {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<
-    'recentDesc' | 'recentAsc' | 'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc'
-  >('recentDesc');
+    'movedDesc' | 'movedAsc' | 'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc'
+  >('movedDesc');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<CategoryContextMenuState | null>(null);
   const [contextMenuPosition, setContextMenuPosition] = useState({ left: 0, top: 0 });
@@ -66,6 +66,27 @@ export function OrganizerCategoryPanel({
     );
 
     return [...searched].sort((a, b) => {
+      const compareByMovedAt = (asc: boolean) => {
+        const aMoved = a.lastMovedAt;
+        const bMoved = b.lastMovedAt;
+        const aHas = Boolean(aMoved);
+        const bHas = Boolean(bMoved);
+
+        if (aHas !== bHas) {
+          return aHas ? -1 : 1;
+        }
+        if (aMoved && bMoved) {
+          return asc ? aMoved.localeCompare(bMoved) : bMoved.localeCompare(aMoved);
+        }
+        return b.latestAddedAt.localeCompare(a.latestAddedAt) || b.count - a.count;
+      };
+
+      if (sortBy === 'movedDesc') {
+        return compareByMovedAt(false);
+      }
+      if (sortBy === 'movedAsc') {
+        return compareByMovedAt(true);
+      }
       if (sortBy === 'countDesc') {
         return b.count - a.count || b.latestAddedAt.localeCompare(a.latestAddedAt);
       }
@@ -78,10 +99,7 @@ export function OrganizerCategoryPanel({
       if (sortBy === 'nameDesc') {
         return b.label.localeCompare(a.label, 'zh-Hans-CN');
       }
-      if (sortBy === 'recentAsc') {
-        return a.latestAddedAt.localeCompare(b.latestAddedAt) || a.count - b.count;
-      }
-      return b.latestAddedAt.localeCompare(a.latestAddedAt) || b.count - a.count;
+      return compareByMovedAt(false);
     });
   }, [categories, search, sortBy]);
 
@@ -250,8 +268,8 @@ export function OrganizerCategoryPanel({
             {sortMenuOpen ? (
               <div className="absolute right-0 top-10 z-30 w-44 rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_28px_rgba(48,68,99,0.18)]">
                 {[
-                  { key: 'recentDesc' as const, label: '最近导入(新-旧)' },
-                  { key: 'recentAsc' as const, label: '最近导入(旧-新)' },
+                  { key: 'movedDesc' as const, label: '最近移入(新-旧)' },
+                  { key: 'movedAsc' as const, label: '最近移入(旧-新)' },
                   { key: 'countDesc' as const, label: '漫画本数(多-少)' },
                   { key: 'countAsc' as const, label: '漫画本数(少-多)' },
                   { key: 'nameAsc' as const, label: '名称(A-Z)' },

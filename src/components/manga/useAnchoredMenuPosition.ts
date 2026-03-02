@@ -18,9 +18,11 @@ export function useAnchoredMenuPosition({
   const ref = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const [ready, setReady] = useState(false);
+  const anchorX = anchor?.x ?? null;
+  const anchorY = anchor?.y ?? null;
 
   useLayoutEffect(() => {
-    if (!open || !anchor) {
+    if (!open || anchorX === null || anchorY === null) {
       setReady(false);
       return;
     }
@@ -31,8 +33,8 @@ export function useAnchoredMenuPosition({
       }
 
       const rect = ref.current.getBoundingClientRect();
-      const desiredLeft = anchor.x + offset;
-      const desiredTop = anchor.y + offset;
+      const desiredLeft = anchorX + offset;
+      const desiredTop = anchorY + offset;
       const maxLeft = Math.max(padding, window.innerWidth - rect.width - padding);
       const maxTop = Math.max(padding, window.innerHeight - rect.height - padding);
 
@@ -48,7 +50,7 @@ export function useAnchoredMenuPosition({
     return () => {
       window.cancelAnimationFrame(frame);
     };
-  }, [open, anchor, contentDependency, offset, padding]);
+  }, [anchorX, anchorY, contentDependency, offset, open, padding]);
 
   return {
     ref,

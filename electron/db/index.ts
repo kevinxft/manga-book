@@ -7,6 +7,7 @@ import { createLibraryQueries } from './queries/library';
 import { createBookmarkQueries } from './queries/bookmark';
 import { createTagQueries } from './queries/tag';
 import { createAliasQueries } from './queries/alias';
+import { createDirectoryUsageQueries } from './queries/directoryUsage';
 
 let dbInstance: Database.Database | null = null;
 
@@ -32,6 +33,7 @@ export function createRepositories() {
   const bookmark = createBookmarkQueries(db);
   const tag = createTagQueries(db);
   const alias = createAliasQueries(db);
+  const directoryUsage = createDirectoryUsageQueries(db);
 
   return {
     db,
@@ -39,7 +41,8 @@ export function createRepositories() {
     library,
     bookmark,
     tag,
-    alias
+    alias,
+    directoryUsage
   };
 }
 

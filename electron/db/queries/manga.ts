@@ -71,8 +71,11 @@ export function createMangaQueries(db: Database.Database) {
   const deleteByFolderPathStatement = db.prepare('DELETE FROM manga_books WHERE folder_path = ?');
   const deleteBySourceStatement = db.prepare('DELETE FROM manga_books WHERE source_folder_path = ?');
   const deleteByIdStatement = db.prepare('DELETE FROM manga_books WHERE id = ?');
-  const updatePathStatement = db.prepare(
+  const renamePathStatement = db.prepare(
     'UPDATE manga_books SET title = @title, folder_path = @folder_path, source_folder_path = @source_folder_path WHERE id = @id'
+  );
+  const movePathStatement = db.prepare(
+    'UPDATE manga_books SET title = @title, folder_path = @folder_path, source_folder_path = @source_folder_path, added_at = @added_at WHERE id = @id'
   );
   const updateProgressStatement = db.prepare(
     `UPDATE manga_books SET
@@ -170,8 +173,27 @@ export function createMangaQueries(db: Database.Database) {
     return rows.map(mapRow);
   }
 
-  function updatePath(id: string, title: string, folderPath: string, sourceFolderPath: string): MangaBook {
-    updatePathStatement.run({ id, title, folder_path: folderPath, source_folder_path: sourceFolderPath });
+  function updatePath(
+    id: string,
+    title: string,
+    folderPath: string,
+    sourceFolderPath: string,
+    options?: {
+      touchAddedAt?: boolean;
+    }
+  ): MangaBook {
+    if (options?.touchAddedAt) {
+      movePathStatement.run({
+        id,
+        title,
+        folder_path: folderPath,
+        source_folder_path: sourceFolderPath,
+        added_at: new Date().toISOString()
+      });
+    } else {
+      renamePathStatement.run({ id, title, folder_path: folderPath, source_folder_path: sourceFolderPath });
+    }
+
     const row = byIdStatement.get(id) as MangaBookRow | undefined;
     if (!row) {
       throw new Error('Manga not found after update');

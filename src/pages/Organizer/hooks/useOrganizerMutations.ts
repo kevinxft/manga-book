@@ -15,6 +15,7 @@ interface UseOrganizerMutationsArgs {
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   setSelectedCategoryKey: (value: string | null) => void;
   refreshMangas: () => Promise<void>;
+  refreshAuthorDirectories: () => Promise<void>;
   upsertAlias: (alias: DirectoryAlias) => void;
   removeAliasLocal: (aliasName: string) => void;
   addAuthorDirectoryLocal: (directoryPath: string) => void;
@@ -29,6 +30,7 @@ export function useOrganizerMutations({
   setSelectedIds,
   setSelectedCategoryKey,
   refreshMangas,
+  refreshAuthorDirectories,
   upsertAlias,
   removeAliasLocal,
   addAuthorDirectoryLocal
@@ -42,6 +44,7 @@ export function useOrganizerMutations({
     selectedIds,
     setSelectedIds,
     refreshMangas,
+    refreshAuthorDirectories,
     setMoveError
   });
 

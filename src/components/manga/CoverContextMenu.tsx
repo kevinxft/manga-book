@@ -41,6 +41,27 @@ function getParentPath(folderPath: string): string {
 }
 
 function sortMoveTargets(a: OrganizerCategory, b: OrganizerCategory, sortBy: MoveSortKey): number {
+  const compareByMovedAt = (asc: boolean) => {
+    const aMoved = a.lastMovedAt;
+    const bMoved = b.lastMovedAt;
+    const aHas = Boolean(aMoved);
+    const bHas = Boolean(bMoved);
+
+    if (aHas !== bHas) {
+      return aHas ? -1 : 1;
+    }
+    if (aMoved && bMoved) {
+      return asc ? aMoved.localeCompare(bMoved) : bMoved.localeCompare(aMoved);
+    }
+    return b.latestAddedAt.localeCompare(a.latestAddedAt) || b.count - a.count;
+  };
+
+  if (sortBy === 'movedDesc') {
+    return compareByMovedAt(false);
+  }
+  if (sortBy === 'movedAsc') {
+    return compareByMovedAt(true);
+  }
   if (sortBy === 'countDesc') {
     return b.count - a.count || b.latestAddedAt.localeCompare(a.latestAddedAt);
   }

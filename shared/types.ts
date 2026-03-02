@@ -59,6 +59,7 @@ export interface DirectoryAlias {
 export interface TargetDirectorySummary {
   directory: string;
   mangaCount: number;
+  lastMovedAt: string | null;
 }
 
 export interface MangaFilter {

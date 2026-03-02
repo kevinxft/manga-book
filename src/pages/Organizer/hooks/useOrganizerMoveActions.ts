@@ -12,6 +12,7 @@ interface UseOrganizerMoveActionsInput {
   selectedIds: Set<string>;
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   refreshMangas: () => Promise<void>;
+  refreshAuthorDirectories: () => Promise<void>;
   setMoveError: (message: string | null) => void;
 }
 
@@ -22,6 +23,7 @@ export function useOrganizerMoveActions({
   selectedIds,
   setSelectedIds,
   refreshMangas,
+  refreshAuthorDirectories,
   setMoveError
 }: UseOrganizerMoveActionsInput) {
   const [moving, setMoving] = useState(false);
@@ -63,7 +65,7 @@ export function useOrganizerMoveActions({
           movedIds.forEach((id) => next.delete(id));
           return next;
         });
-        await refreshMangas();
+        await Promise.all([refreshMangas(), refreshAuthorDirectories()]);
       }
 
       if (firstErrorMessage) {
@@ -94,7 +96,7 @@ export function useOrganizerMoveActions({
         next.delete(mangaId);
         return next;
       });
-      await refreshMangas();
+      await Promise.all([refreshMangas(), refreshAuthorDirectories()]);
     } catch (error) {
       setMoveError(getErrorMessage(error, '快速移动失败'));
     }

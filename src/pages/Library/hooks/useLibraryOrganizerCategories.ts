@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
+import type { DirectoryAlias, MangaBookWithCover, TargetDirectorySummary } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { buildOrganizerCategories } from '@renderer/pages/Organizer/utils';
 
@@ -10,7 +10,7 @@ interface UseLibraryOrganizerCategoriesInput {
 
 export function useLibraryOrganizerCategories({ hasIpcBridge, mangas }: UseLibraryOrganizerCategoriesInput) {
   const [aliases, setAliases] = useState<DirectoryAlias[]>([]);
-  const [authorDirectories, setAuthorDirectories] = useState<string[]>([]);
+  const [authorDirectories, setAuthorDirectories] = useState<TargetDirectorySummary[]>([]);
 
   useEffect(() => {
     if (!hasIpcBridge) {
@@ -24,7 +24,7 @@ export function useLibraryOrganizerCategories({ hasIpcBridge, mangas }: UseLibra
           ipcInvoke('organizer.listAuthorDirectories', undefined)
         ]);
         setAliases(aliasItems);
-        setAuthorDirectories(directoryItems.map((item) => item.directory));
+        setAuthorDirectories(directoryItems);
       } catch {
         // ignore organizer helper data load failure
       }
@@ -42,9 +42,15 @@ export function useLibraryOrganizerCategories({ hasIpcBridge, mangas }: UseLibra
       }
     }
 
-    return buildOrganizerCategories(mangas, authorDirectories).map((category) => ({
+    const movedAtByPath = new Map(authorDirectories.map((item) => [item.directory, item.lastMovedAt]));
+
+    return buildOrganizerCategories(
+      mangas,
+      authorDirectories.map((item) => item.directory)
+    ).map((category) => ({
       ...category,
-      aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? []
+      aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? [],
+      lastMovedAt: movedAtByPath.get(category.path) ?? null
     }));
   }, [aliases, authorDirectories, mangas]);
 

@@ -28,6 +28,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     organizerItems,
     selectedCategoryKey,
     setSelectedCategoryKey,
+    refreshAuthorDirectories,
     upsertAlias,
     removeAliasLocal,
     addAuthorDirectoryLocal
@@ -101,6 +102,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     setSelectedIds,
     setSelectedCategoryKey,
     refreshMangas,
+    refreshAuthorDirectories,
     upsertAlias,
     removeAliasLocal,
     addAuthorDirectoryLocal

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
+import type { DirectoryAlias, MangaBookWithCover, TargetDirectorySummary } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import type { OrganizerCategory } from '../types';
 import { buildOrganizerCategories, buildOrganizerItems } from '../utils';
@@ -16,6 +16,7 @@ interface UseOrganizerDataResult {
   organizerItems: ReturnType<typeof buildOrganizerItems>;
   selectedCategoryKey: string | null;
   setSelectedCategoryKey: (value: string | null) => void;
+  refreshAuthorDirectories: () => Promise<void>;
   upsertAlias: (alias: DirectoryAlias) => void;
   removeAliasLocal: (aliasName: string) => void;
   addAuthorDirectoryLocal: (directoryPath: string) => void;
@@ -23,7 +24,7 @@ interface UseOrganizerDataResult {
 
 export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrganizerDataArgs): UseOrganizerDataResult {
   const [aliases, setAliases] = useState<DirectoryAlias[]>([]);
-  const [authorDirectories, setAuthorDirectories] = useState<string[]>([]);
+  const [authorDirectories, setAuthorDirectories] = useState<TargetDirectorySummary[]>([]);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
 
   const fetchAliases = useCallback(async () => {
@@ -44,7 +45,7 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
     }
     try {
       const items = await ipcInvoke('organizer.listAuthorDirectories', undefined);
-      setAuthorDirectories(items.map((item) => item.directory));
+      setAuthorDirectories(items);
     } catch {
       // ignore author directory load errors to avoid blocking page
     }
@@ -70,9 +71,15 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
       }
     }
 
-    return buildOrganizerCategories(mangas, authorDirectories).map((category) => ({
+    const movedAtByPath = new Map(authorDirectories.map((item) => [item.directory, item.lastMovedAt]));
+
+    return buildOrganizerCategories(
+      mangas,
+      authorDirectories.map((item) => item.directory)
+    ).map((category) => ({
       ...category,
-      aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? []
+      aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? [],
+      lastMovedAt: movedAtByPath.get(category.path) ?? null
     }));
   }, [aliases, authorDirectories, mangas]);
 
@@ -108,9 +115,14 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
 
   const addAuthorDirectoryLocal = useCallback((directoryPath: string) => {
     setAuthorDirectories((prev) => {
-      const next = new Set(prev);
-      next.add(directoryPath);
-      return Array.from(next);
+      const normalized = directoryPath.trim();
+      if (!normalized) {
+        return prev;
+      }
+      if (prev.some((item) => item.directory === normalized)) {
+        return prev;
+      }
+      return [...prev, { directory: normalized, mangaCount: 0, lastMovedAt: null }];
     });
   }, []);
 
@@ -120,6 +132,7 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
     organizerItems,
     selectedCategoryKey,
     setSelectedCategoryKey,
+    refreshAuthorDirectories: fetchAuthorDirectories,
     upsertAlias,
     removeAliasLocal,
     addAuthorDirectoryLocal

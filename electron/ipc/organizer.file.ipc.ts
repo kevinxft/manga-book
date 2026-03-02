@@ -9,7 +9,7 @@ import { normalizeAbsolutePath } from '@main/utils/pathUtils';
 import { invalidateCoverPath } from '@main/scanner/coverFinder';
 
 export function registerOrganizerFileIpc(context: IpcContext): void {
-  const { manga, library } = context.repositories;
+  const { manga, library, directoryUsage } = context.repositories;
 
   registerHandler('organizer.moveManga', async (request) => {
     const book = manga.getById(request.mangaId);
@@ -27,7 +27,10 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     const nextSourceFolderPath = resolveSourceFolderPath(nextFolderPath, sourcePaths, book.sourceFolderPath);
 
     invalidateCoverPath(book.folderPath);
-    const updated = manga.updatePath(book.id, path.basename(nextFolderPath), nextFolderPath, nextSourceFolderPath);
+    const updated = manga.updatePath(book.id, path.basename(nextFolderPath), nextFolderPath, nextSourceFolderPath, {
+      touchAddedAt: true
+    });
+    directoryUsage.touch(destinationRoot);
 
     return ok(updated);
   });
@@ -78,13 +81,17 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
 
     const mangaBooks = manga.list();
     const uniqueDirectories = Array.from(new Set(directories)).sort((a, b) => a.localeCompare(b));
+    const usageByPath = new Map(
+      directoryUsage.listByPaths(uniqueDirectories).map((item) => [normalizeAbsolutePath(item.directoryPath), item.lastMovedAt])
+    );
     const summaries = uniqueDirectories.map((directory) => {
       const normalizedDirectory = normalizeAbsolutePath(directory);
       const prefix = `${normalizedDirectory}${path.sep}`;
       const mangaCount = mangaBooks.filter((book) => book.folderPath.startsWith(prefix)).length;
       return {
         directory: normalizedDirectory,
-        mangaCount
+        mangaCount,
+        lastMovedAt: usageByPath.get(normalizedDirectory) ?? null
       };
     });
 

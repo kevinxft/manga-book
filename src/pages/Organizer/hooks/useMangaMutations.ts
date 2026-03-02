@@ -12,6 +12,7 @@ interface UseMangaMutationsArgs {
   selectedIds: Set<string>;
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   refreshMangas: () => Promise<void>;
+  refreshAuthorDirectories: () => Promise<void>;
   setMoveError: (message: string | null) => void;
 }
 
@@ -22,6 +23,7 @@ export function useMangaMutations({
   selectedIds,
   setSelectedIds,
   refreshMangas,
+  refreshAuthorDirectories,
   setMoveError
 }: UseMangaMutationsArgs) {
   const moveActions = useOrganizerMoveActions({
@@ -31,6 +33,7 @@ export function useMangaMutations({
     selectedIds,
     setSelectedIds,
     refreshMangas,
+    refreshAuthorDirectories,
     setMoveError
   });
 
