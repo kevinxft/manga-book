@@ -219,4 +219,34 @@ export function registerOrganizerIpc(context: IpcContext): void {
 
     return ok({ deleted });
   });
+
+  registerHandler('organizer.searchGoogle', async (request) => {
+    const query = request.query?.trim();
+    if (!query) {
+      return fail('VALIDATION', 'Search query is required');
+    }
+    const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    await shell.openExternal(url);
+    return ok({ opened: true });
+  });
+
+  registerHandler('organizer.searchWeb', async (request) => {
+    const query = request.query?.trim();
+    if (!query) {
+      return fail('VALIDATION', 'Search query is required');
+    }
+
+    const provider = request.provider;
+    let url: string;
+    if (provider === 'hitomi') {
+      url = `https://hitomi.la/search.html?${encodeURIComponent(query)}`;
+    } else if (provider === 'exhentai') {
+      url = `https://exhentai.org/?f_search=${encodeURIComponent(query)}`;
+    } else {
+      url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    }
+
+    await shell.openExternal(url);
+    return ok({ opened: true });
+  });
 }

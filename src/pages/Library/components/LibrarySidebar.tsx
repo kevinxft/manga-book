@@ -13,7 +13,6 @@ import type { LibraryFolder } from '@shared/types';
 import { Button } from '@renderer/components/ui/button';
 import { cn } from '@renderer/lib/utils';
 import type { TagItem } from '../types';
-import { getTagTextColor, toRgba } from '../utils';
 import { SourceManagerDialog } from './SourceManagerDialog';
 
 interface LibrarySidebarProps {
@@ -27,6 +26,7 @@ interface LibrarySidebarProps {
   onActiveMenuChange: (value: string) => void;
   onSidebarCollapsedChange: (value: boolean) => void;
   onToggleTag: (id: string) => void;
+  onClearSelectedTags: () => void;
   onOpenTagDialog: () => void;
   onPickAndAddSources: () => void;
   onRemoveSource: (sourceId: string) => void;
@@ -45,6 +45,7 @@ export function LibrarySidebar({
   onActiveMenuChange,
   onSidebarCollapsedChange,
   onToggleTag,
+  onClearSelectedTags,
   onOpenTagDialog,
   onPickAndAddSources,
   onRemoveSource,
@@ -140,12 +141,22 @@ export function LibrarySidebar({
             <section>
               <div className="mb-3 flex items-center justify-between px-2">
                 <p className="text-xs font-semibold text-[#8893a4]">标签过滤</p>
-                <button
-                  className="rounded-md px-2 py-1 text-[11px] font-semibold text-[#2f6cf6] hover:bg-[#e7efff]"
-                  onClick={onOpenTagDialog}
-                >
-                  管理
-                </button>
+                <div className="flex items-center gap-1">
+                  {selectedTags.length > 0 ? (
+                    <button
+                      className="rounded-md px-2 py-1 text-[11px] font-semibold text-[#7a869b] hover:bg-[#edf2f9]"
+                      onClick={onClearSelectedTags}
+                    >
+                      清空
+                    </button>
+                  ) : null}
+                  <button
+                    className="rounded-md px-2 py-1 text-[11px] font-semibold text-[#2f6cf6] hover:bg-[#e7efff]"
+                    onClick={onOpenTagDialog}
+                  >
+                    管理
+                  </button>
+                </div>
               </div>
               {tags.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-[#d4dbe7] bg-[#f8fafd] px-3 py-2 text-xs text-[#8c97aa]">
@@ -159,13 +170,12 @@ export function LibrarySidebar({
                       <button
                         key={tag.id}
                         onClick={() => onToggleTag(tag.id)}
-                        className="inline-flex max-w-full items-center justify-center rounded-md border px-2 py-1.5 text-xs font-semibold transition"
-                        style={{
-                          backgroundColor: active ? tag.color : toRgba(tag.color, 0.8),
-                          borderColor: active ? toRgba(tag.color, 0.95) : toRgba(tag.color, 0.6),
-                          color: getTagTextColor(tag.color),
-                          opacity: active ? 1 : 0.82
-                        }}
+                        className={cn(
+                          'inline-flex max-w-full items-center justify-center rounded-md border px-2 py-1.5 text-xs font-semibold transition',
+                          active
+                            ? 'border-[#2f6cf6] bg-[#2f6cf6] text-white'
+                            : 'border-[#d4dce8] bg-white text-[#51627c] hover:bg-[#edf2f9]'
+                        )}
                       >
                         <span className="break-words text-left">{tag.label}</span>
                       </button>

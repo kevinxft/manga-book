@@ -16,6 +16,7 @@ export interface MangaBook {
 
 export interface MangaBookWithCover extends MangaBook {
   coverPath: string | null;
+  tags: MangaTag[];
 }
 
 export interface LibraryFolder {
@@ -165,6 +166,15 @@ export interface OrganizerDeleteMangaRequest {
   withFiles: boolean;
 }
 
+export interface OrganizerSearchGoogleRequest {
+  query: string;
+}
+
+export interface OrganizerSearchWebRequest {
+  provider: 'hitomi' | 'exhentai' | 'google';
+  query: string;
+}
+
 export interface TagAddToMangaRequest {
   mangaId: string;
   tagName: string;
@@ -181,6 +191,16 @@ export interface TagUpsertRequest {
 
 export interface TagDeleteRequest {
   id: string;
+}
+
+export interface TagSetForMangaRequest {
+  mangaId: string;
+  tagNames: string[];
+}
+
+export interface TagRemoveFromMangaRequest {
+  mangaId: string;
+  tagName: string;
 }
 
 export interface IpcChannels {
@@ -202,11 +222,15 @@ export interface IpcChannels {
   'organizer.listAuthorDirectories': { req: void; res: TargetDirectorySummary[] };
   'organizer.createAuthorDirectory': { req: OrganizerCreateAuthorDirectoryRequest; res: { path: string; created: boolean } };
   'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
+  'organizer.searchGoogle': { req: OrganizerSearchGoogleRequest; res: { opened: boolean } };
+  'organizer.searchWeb': { req: OrganizerSearchWebRequest; res: { opened: boolean } };
 
   'tag.list': { req: void; res: MangaTag[] };
   'tag.upsert': { req: TagUpsertRequest; res: MangaTag };
   'tag.delete': { req: TagDeleteRequest; res: { deleted: boolean } };
   'tag.addToManga': { req: TagAddToMangaRequest; res: TagAddToMangaResult };
+  'tag.setForManga': { req: TagSetForMangaRequest; res: MangaTag[] };
+  'tag.removeFromManga': { req: TagRemoveFromMangaRequest; res: { removed: boolean } };
 
   'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
   'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };

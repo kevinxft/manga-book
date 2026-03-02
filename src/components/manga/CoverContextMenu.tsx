@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownUp, FolderInput, FolderOpen, Search, Tag, Trash2 } from 'lucide-react';
+import { ArrowDownUp, ExternalLink, FolderInput, FolderOpen, Search, Tag, Trash2 } from 'lucide-react';
 import { Input } from '@renderer/components/ui/input';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
 
@@ -19,8 +19,9 @@ interface CoverContextMenuProps<T extends CoverContextMenuItem> {
   categories: OrganizerCategory[];
   onClose: () => void;
   onQuickMove: (mangaId: string, destinationPath: string) => void;
-  onAddTag: (item: T) => void;
+  onAddTag: (item: T, anchor: { x: number; y: number }) => void;
   onRename: (item: T) => void;
+  onSearchWeb: (item: T, provider: 'hitomi' | 'exhentai' | 'google') => void;
   onOpenInFolder: (mangaId: string) => void;
   onDelete: (item: T) => void;
 }
@@ -49,6 +50,7 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
   onQuickMove,
   onAddTag,
   onRename,
+  onSearchWeb,
   onOpenInFolder,
   onDelete
 }: CoverContextMenuProps<T>) {
@@ -242,12 +244,12 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
       <button
         className="mt-2 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
         onClick={() => {
-          onAddTag(menu.item);
+          onAddTag(menu.item, { x: menuPosition.left, y: menuPosition.top });
           onClose();
         }}
       >
         <Tag className="h-3.5 w-3.5 text-[#5f708a]" />
-        添加标签
+        编辑标签
       </button>
 
       <button
@@ -259,6 +261,39 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
       >
         <FolderInput className="h-3.5 w-3.5 text-[#5f708a]" />
         重命名
+      </button>
+
+      <button
+        className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+        onClick={() => {
+          onSearchWeb(menu.item, 'hitomi');
+          onClose();
+        }}
+      >
+        <ExternalLink className="h-3.5 w-3.5 text-[#5f708a]" />
+        Hitomi 搜索
+      </button>
+
+      <button
+        className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+        onClick={() => {
+          onSearchWeb(menu.item, 'exhentai');
+          onClose();
+        }}
+      >
+        <ExternalLink className="h-3.5 w-3.5 text-[#5f708a]" />
+        ExHentai 搜索
+      </button>
+
+      <button
+        className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+        onClick={() => {
+          onSearchWeb(menu.item, 'google');
+          onClose();
+        }}
+      >
+        <ExternalLink className="h-3.5 w-3.5 text-[#5f708a]" />
+        Google 搜索
       </button>
 
       <button

@@ -15,7 +15,7 @@ function normalizeDirectoryName(name: string): string {
 
 export function registerLibraryIpc(context: IpcContext): void {
   const { repositories, scanner, scanQueue } = context;
-  const { library, manga } = repositories;
+  const { library, manga, tag } = repositories;
 
   const isOrganizerRootDirectory = async (candidatePath: string): Promise<boolean> => {
     try {
@@ -180,7 +180,8 @@ export function registerLibraryIpc(context: IpcContext): void {
     const booksWithCover = await Promise.all(
       books.map(async (book) => {
         const coverPath = await resolveCoverPath(book.folderPath);
-        return { ...book, coverPath };
+        const tags = tag.listByManga(book.id);
+        return { ...book, coverPath, tags };
       })
     );
 

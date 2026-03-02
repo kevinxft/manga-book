@@ -10,10 +10,11 @@ import { LibrarySidebar } from './components/LibrarySidebar';
 import { MangaGrid } from './components/MangaGrid';
 import { TagManagementDialog } from './components/TagManagementDialog';
 import { DeleteMangaDialog } from '@renderer/pages/Organizer/components/DeleteMangaDialog';
-import { TAG_COLOR_OPTIONS, useTagEditor } from './hooks/useTagEditor';
+import { useTagEditor } from './hooks/useTagEditor';
 import type { LibraryStatusFilter, MangaCategoryFilter, SortKey } from './types';
 import { getMangaPathCategory } from './utils';
 import { buildOrganizerCategories } from '@renderer/pages/Organizer/utils';
+import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 
 interface LibraryPageProps {
   onOpenManga?: (manga: MangaBookWithCover) => void;
@@ -34,23 +35,28 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MangaBookWithCover | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
+  const [addTagTarget, setAddTagTarget] = useState<MangaBookWithCover | null>(null);
+  const [addTagInput, setAddTagInput] = useState('');
+  const [addTagDraft, setAddTagDraft] = useState<string[]>([]);
+  const [addTagSaving, setAddTagSaving] = useState(false);
+  const [addTagError, setAddTagError] = useState<string | null>(null);
+  const [addTagAnchor, setAddTagAnchor] = useState<{ x: number; y: number } | null>(null);
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
 
   const {
     tags,
     selectedTags,
     tagDialogOpen,
-    draftTags,
     newTagLabel,
-    newTagColor,
     openTagDialog,
     closeTagDialog,
     toggleTagSelection,
+    clearSelectedTags,
     setNewTagLabel,
-    setNewTagColor,
     upsertDraftTag,
     removeDraftTag,
-    saveTags
+    clearAllTags
   } = useTagEditor(hasIpcBridge);
 
   const {
@@ -127,12 +133,19 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       const organized = category !== 'other';
       return statusFilter === 'organized' ? organized : !organized;
     });
+    const byTags =
+      selectedTags.length === 0
+        ? byStatus
+        : byStatus.filter((manga) => {
+            const mangaTagIds = new Set((manga.tags ?? []).map((tag) => tag.id));
+            return selectedTags.every((tagId) => mangaTagIds.has(tagId));
+          });
 
     if (categoryFilter === 'all') {
-      return byStatus;
+      return byTags;
     }
-    return byStatus.filter((manga) => getMangaPathCategory(manga.folderPath, manga.sourceFolderPath) === categoryFilter);
-  }, [activeMenu, categoryFilter, mangas, sources, statusFilter]);
+    return byTags.filter((manga) => getMangaPathCategory(manga.folderPath, manga.sourceFolderPath) === categoryFilter);
+  }, [activeMenu, categoryFilter, mangas, selectedTags, sources, statusFilter]);
 
   const sourceMangaCountByPath = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -189,30 +202,115 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     }
   };
 
-  const handleAddTagManga = async (item: MangaBookWithCover) => {
+  const handleAddTagManga = (item: MangaBookWithCover, anchor: { x: number; y: number }) => {
     if (!hasIpcBridge) {
       setOperationError('当前运行在普通浏览器环境，无法添加标签。请使用 bun run dev 启动 Electron 窗口。');
       return;
     }
-    const tagName = window.prompt('请输入标签名称', '');
-    const trimmed = tagName?.trim();
+    setOperationError(null);
+    setAddTagTarget(item);
+    setAddTagAnchor(anchor);
+    setAddTagInput('');
+    setAddTagDraft(
+      Array.from(new Set(item.tags.map((tag) => tag.name.trim()).filter((name) => name.length > 0)))
+    );
+    setAddTagError(null);
+    setAddTagDialogOpen(true);
+  };
+
+  const closeAddTagDialog = (force = false) => {
+    if (addTagSaving && !force) {
+      return;
+    }
+    setAddTagDialogOpen(false);
+    setAddTagTarget(null);
+    setAddTagAnchor(null);
+    setAddTagInput('');
+    setAddTagDraft([]);
+    setAddTagError(null);
+  };
+
+  const appendDraftTag = (name: string) => {
+    const trimmed = name.trim();
     if (!trimmed) {
       return;
     }
+    setAddTagDraft((prev) => {
+      if (prev.some((item) => item.toLocaleLowerCase() === trimmed.toLocaleLowerCase())) {
+        return prev;
+      }
+      return [...prev, trimmed];
+    });
+  };
+
+  const removeDraftTagFromManga = (name: string) => {
+    const target = name.trim().toLocaleLowerCase();
+    setAddTagDraft((prev) => prev.filter((item) => item.toLocaleLowerCase() !== target));
+  };
+
+  const appendInputTag = () => {
+    const trimmed = addTagInput.trim();
+    if (!trimmed) {
+      return;
+    }
+    appendDraftTag(trimmed);
+    setAddTagInput('');
+  };
+
+  const handleConfirmAddTag = async () => {
+    if (!addTagTarget || addTagSaving) {
+      return;
+    }
+
+    const pendingInput = addTagInput.trim();
+    const finalTagNames =
+      pendingInput.length > 0
+        ? Array.from(
+            new Map(
+              [...addTagDraft, pendingInput]
+                .map((name) => name.trim())
+                .filter((name) => name.length > 0)
+                .map((name) => [name.toLocaleLowerCase(), name] as const)
+            ).values()
+          )
+        : addTagDraft;
+    const currentTagNames = Array.from(
+      new Map(
+        (addTagTarget.tags ?? [])
+          .map((tag) => tag.name.trim())
+          .filter((name) => name.length > 0)
+          .map((name) => [name.toLocaleLowerCase(), name] as const)
+      ).values()
+    );
+    const currentSet = new Set(currentTagNames.map((name) => name.toLocaleLowerCase()));
+    const finalSet = new Set(finalTagNames.map((name) => name.toLocaleLowerCase()));
+    const tagsToAdd = finalTagNames.filter((name) => !currentSet.has(name.toLocaleLowerCase()));
+    const tagsToRemove = currentTagNames.filter((name) => !finalSet.has(name.toLocaleLowerCase()));
+
     setOperationError(null);
+    setAddTagError(null);
+    setAddTagSaving(true);
     try {
-      const result = await ipcInvoke('tag.addToManga', { mangaId: item.id, tagName: trimmed });
+      for (const tagName of tagsToAdd) {
+        await ipcInvoke('tag.addToManga', { mangaId: addTagTarget.id, tagName });
+      }
+      for (const tagName of tagsToRemove) {
+        await ipcInvoke('tag.removeFromManga', { mangaId: addTagTarget.id, tagName });
+      }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('manga-book-tags-updated'));
-        window.alert(result.linked ? `已添加标签：${result.tag.name}` : `该漫画已存在标签：${result.tag.name}`);
       }
+      await refreshCurrentList();
+      closeAddTagDialog(true);
     } catch (error) {
-      const message = error instanceof Error ? error.message : '添加标签失败';
+      const message = error instanceof Error ? error.message : '保存标签失败';
       if (message.includes('No handler registered for') && message.includes('tag.')) {
-        setOperationError('当前 Electron 主进程尚未加载标签功能，请重启 bun run dev 后再试。');
+        setAddTagError('当前 Electron 主进程尚未加载标签功能，请重启 bun run dev 后再试。');
         return;
       }
-      setOperationError(message);
+      setAddTagError(message);
+    } finally {
+      setAddTagSaving(false);
     }
   };
 
@@ -222,6 +320,26 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       await ipcInvoke('organizer.openMangaFolder', { mangaId });
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : '打开文件夹失败');
+    }
+  };
+
+  const handleSearchWeb = async (item: MangaBookWithCover, provider: 'hitomi' | 'exhentai' | 'google') => {
+    if (!hasIpcBridge) {
+      setOperationError('当前运行在普通浏览器环境，无法发起搜索。请使用 bun run dev 启动 Electron 窗口。');
+      return;
+    }
+
+    const query = item.title.trim();
+    if (!query) {
+      setOperationError('当前漫画标题为空，无法发起搜索。');
+      return;
+    }
+
+    setOperationError(null);
+    try {
+      await ipcInvoke('organizer.searchWeb', { provider, query });
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : '打开搜索失败');
     }
   };
 
@@ -276,6 +394,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
             onActiveMenuChange={setActiveMenu}
             onSidebarCollapsedChange={setSidebarCollapsed}
             onToggleTag={toggleTagSelection}
+            onClearSelectedTags={clearSelectedTags}
             onOpenTagDialog={openTagDialog}
             onPickAndAddSources={() => void pickAndAddSources()}
             onRemoveSource={(sourceId) => {
@@ -332,8 +451,9 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
               loading={loading}
               quickMoveCategories={quickMoveCategories}
               onQuickMoveManga={(mangaId, destinationPath) => void handleQuickMoveManga(mangaId, destinationPath)}
-              onAddTagManga={(item) => void handleAddTagManga(item)}
+              onAddTagManga={(item, anchor) => void handleAddTagManga(item, anchor)}
               onRenameManga={(item) => void handleRenameManga(item)}
+              onSearchWeb={(item, provider) => void handleSearchWeb(item, provider)}
               onOpenInFolder={(mangaId) => void handleOpenInFolder(mangaId)}
               onDeleteManga={handleRequestDeleteManga}
               onOpenManga={onOpenManga}
@@ -344,16 +464,13 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
 
       <TagManagementDialog
         open={tagDialogOpen}
-        draftTags={draftTags}
+        tags={tags}
         newTagLabel={newTagLabel}
-        newTagColor={newTagColor}
-        colorOptions={[...TAG_COLOR_OPTIONS]}
         onClose={closeTagDialog}
-        onSave={saveTags}
         onSetNewTagLabel={setNewTagLabel}
-        onSetNewTagColor={setNewTagColor}
         onUpsertTag={upsertDraftTag}
         onRemoveTag={removeDraftTag}
+        onClearAllTags={clearAllTags}
       />
 
       <DeleteMangaDialog
@@ -362,6 +479,23 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
         deleting={deleting}
         onClose={() => closeDeleteDialog()}
         onConfirm={() => void handleConfirmDeleteManga()}
+      />
+
+      <AddTagPopover
+        open={addTagDialogOpen}
+        anchor={addTagAnchor}
+        mangaTitle={addTagTarget?.title ?? null}
+        draftTags={addTagDraft}
+        inputTagName={addTagInput}
+        availableTags={tags.map((tag) => tag.label)}
+        saving={addTagSaving}
+        error={addTagError}
+        onInputTagNameChange={setAddTagInput}
+        onAppendInputTag={appendInputTag}
+        onAppendTag={appendDraftTag}
+        onRemoveTag={removeDraftTagFromManga}
+        onClose={() => closeAddTagDialog()}
+        onSubmit={() => void handleConfirmAddTag()}
       />
     </main>
   );

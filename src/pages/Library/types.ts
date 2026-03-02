@@ -11,7 +11,6 @@ export type LibraryMenuItem = {
 export type TagItem = {
   id: string;
   label: string;
-  color: string;
 };
 
 export type MangaPathCategory = 'artists' | 'series' | 'other';

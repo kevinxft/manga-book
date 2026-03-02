@@ -11,8 +11,9 @@ interface MangaGridProps {
   loading: boolean;
   quickMoveCategories: OrganizerCategory[];
   onQuickMoveManga: (mangaId: string, destinationPath: string) => void;
-  onAddTagManga: (item: MangaBookWithCover) => void;
+  onAddTagManga: (item: MangaBookWithCover, anchor: { x: number; y: number }) => void;
   onRenameManga: (item: MangaBookWithCover) => void;
+  onSearchWeb: (item: MangaBookWithCover, provider: 'hitomi' | 'exhentai' | 'google') => void;
   onOpenInFolder: (mangaId: string) => void;
   onDeleteManga: (item: MangaBookWithCover) => void;
   onOpenManga?: (manga: MangaBookWithCover) => void;
@@ -26,6 +27,7 @@ export function MangaGrid({
   onQuickMoveManga,
   onAddTagManga,
   onRenameManga,
+  onSearchWeb,
   onOpenInFolder,
   onDeleteManga,
   onOpenManga
@@ -38,6 +40,9 @@ export function MangaGrid({
         {mangas.map((manga) => {
           const artistName = getArtistNameFromMangaPath(manga.folderPath);
           const fullDisplayPath = getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath);
+          const tagNames = manga.tags.map((tag) => tag.name).filter((name) => name.trim().length > 0);
+          const visibleTagNames = tagNames.slice(0, 2);
+          const hiddenTagCount = Math.max(0, tagNames.length - visibleTagNames.length);
 
           return (
             <article key={manga.id} title={fullDisplayPath} className="group">
@@ -69,9 +74,25 @@ export function MangaGrid({
                     {artistName}
                   </span>
                 ) : null}
-                <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
-                  {manga.totalPages} 页
-                </span>
+                <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 overflow-hidden">
+                  <span className="shrink-0 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
+                    {manga.totalPages} 页
+                  </span>
+                  {visibleTagNames.map((name) => (
+                    <span
+                      key={`${manga.id}-${name}`}
+                      className="min-w-0 truncate rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/95"
+                      title={name}
+                    >
+                      {name}
+                    </span>
+                  ))}
+                  {hiddenTagCount > 0 ? (
+                    <span className="shrink-0 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white/90">
+                      +{hiddenTagCount}
+                    </span>
+                  ) : null}
+                </div>
               </div>
 
               <div className="mt-2">
@@ -88,7 +109,7 @@ export function MangaGrid({
         <div className="mt-8 rounded-xl border border-dashed border-[#cfd7e4] bg-[#f7f9fc] px-6 py-10 text-center">
           <p className="text-sm font-semibold text-[#46546a]">{totalMangaCount === 0 ? '当前没有漫画数据' : '当前筛选下没有漫画'}</p>
           <p className="mt-2 text-xs text-[#7d889c]">
-            {totalMangaCount === 0 ? '点击左下角“导入目录”添加来源后会自动显示。' : '切换到“全部”或调整筛选条件。'}
+            {totalMangaCount === 0 ? '点击左下角“导入目录”添加来源后会自动显示。' : '请调整目录、状态或标签筛选条件。'}
           </p>
         </div>
       ) : null}
@@ -100,6 +121,7 @@ export function MangaGrid({
         onQuickMove={onQuickMoveManga}
         onAddTag={onAddTagManga}
         onRename={onRenameManga}
+        onSearchWeb={onSearchWeb}
         onOpenInFolder={onOpenInFolder}
         onDelete={onDeleteManga}
       />

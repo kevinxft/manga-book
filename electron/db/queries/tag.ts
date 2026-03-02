@@ -37,6 +37,8 @@ export function createTagQueries(db: Database.Database) {
     `INSERT OR IGNORE INTO manga_book_tags (manga_id, tag_id, created_at)
       VALUES (@manga_id, @tag_id, @created_at)`
   );
+  const unlinkAllByMangaStatement = db.prepare('DELETE FROM manga_book_tags WHERE manga_id = ?');
+  const unlinkFromMangaStatement = db.prepare('DELETE FROM manga_book_tags WHERE manga_id = ? AND tag_id = ?');
 
   const deleteOrphanStatement = db.prepare(
     `DELETE FROM manga_tags
@@ -84,6 +86,41 @@ export function createTagQueries(db: Database.Database) {
     };
   }
 
+  function setForManga(mangaId: string, tagNames: string[]): MangaTag[] {
+    const uniqueTagNames = Array.from(
+      new Map(
+        tagNames
+          .map((name) => name.trim())
+          .filter((name) => name.length > 0)
+          .map((name) => [toKey(name), name] as const)
+      ).values()
+    );
+
+    const save = db.transaction(() => {
+      unlinkAllByMangaStatement.run(mangaId);
+      for (const tagName of uniqueTagNames) {
+        const createdTag = upsert(tagName);
+        linkToMangaStatement.run({
+          manga_id: mangaId,
+          tag_id: createdTag.id,
+          created_at: new Date().toISOString()
+        });
+      }
+      return listByManga(mangaId);
+    });
+
+    return save();
+  }
+
+  function removeFromManga(mangaId: string, tagName: string): boolean {
+    const target = selectByKeyStatement.get(toKey(tagName)) as MangaTagRow | undefined;
+    if (!target) {
+      return false;
+    }
+    const result = unlinkFromMangaStatement.run(mangaId, target.id);
+    return result.changes > 0;
+  }
+
   function deleteOrphan(): number {
     const result = deleteOrphanStatement.run();
     return result.changes;
@@ -99,6 +136,8 @@ export function createTagQueries(db: Database.Database) {
     list,
     listByManga,
     addToManga,
+    setForManga,
+    removeFromManga,
     deleteOrphan,
     removeById
   };

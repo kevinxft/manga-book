@@ -11,6 +11,7 @@ import { useOrganizerData } from './hooks/useOrganizerData';
 import { useOrganizerFilters } from './hooks/useOrganizerFilters';
 import { useOrganizerMutations } from './hooks/useOrganizerMutations';
 import { useOrganizerSelection } from './hooks/useOrganizerSelection';
+import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 
 interface OrganizerPageProps {
   onBack?: () => void;
@@ -48,7 +49,22 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     handleMoveSelected,
     handleQuickMoveSingle,
     handleAddTagManga,
+    addTagDialogOpen,
+    addTagTarget,
+    addTagAnchor,
+    addTagInput,
+    setAddTagInput,
+    addTagDraft,
+    appendInputTag,
+    appendDraftTag,
+    removeDraftTag,
+    addTagSaving,
+    addTagError,
+    availableTagNames,
+    closeAddTagDialog,
+    handleConfirmAddTag,
     handleRenameSingle,
+    handleSearchWeb,
     handleOpenInFolder,
     deleteDialogOpen,
     deleteTarget,
@@ -122,8 +138,9 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               onToggleItem={toggleItem}
               onOpenManga={(item) => onOpenManga?.(item)}
               onQuickMoveManga={handleQuickMoveSingle}
-              onAddTagManga={(item) => void handleAddTagManga(item)}
+              onAddTagManga={(item, anchor) => void handleAddTagManga(item, anchor)}
               onRenameManga={handleRenameSingle}
+              onSearchWeb={handleSearchWeb}
               onOpenInFolder={handleOpenInFolder}
               onDeleteManga={handleRequestDeleteManga}
             />
@@ -183,6 +200,23 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
         deleting={deleting}
         onClose={() => closeDeleteDialog()}
         onConfirm={() => void handleConfirmDeleteManga()}
+      />
+
+      <AddTagPopover
+        open={addTagDialogOpen}
+        anchor={addTagAnchor}
+        mangaTitle={addTagTarget?.title ?? null}
+        draftTags={addTagDraft}
+        inputTagName={addTagInput}
+        availableTags={availableTagNames}
+        saving={addTagSaving}
+        error={addTagError}
+        onInputTagNameChange={setAddTagInput}
+        onAppendInputTag={appendInputTag}
+        onAppendTag={appendDraftTag}
+        onRemoveTag={removeDraftTag}
+        onClose={() => closeAddTagDialog()}
+        onSubmit={() => void handleConfirmAddTag()}
       />
     </main>
   );

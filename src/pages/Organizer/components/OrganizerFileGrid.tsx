@@ -13,8 +13,9 @@ interface OrganizerFileGridProps {
   categories: OrganizerCategory[];
   onToggleItem: (id: string) => void;
   onQuickMoveManga: (mangaId: string, destinationPath: string) => void;
-  onAddTagManga: (item: OrganizerItem) => void;
+  onAddTagManga: (item: OrganizerItem, anchor: { x: number; y: number }) => void;
   onRenameManga: (item: OrganizerItem) => void;
+  onSearchWeb: (item: OrganizerItem, provider: 'hitomi' | 'exhentai' | 'google') => void;
   onOpenInFolder: (mangaId: string) => void;
   onDeleteManga: (item: OrganizerItem) => void;
   onOpenManga?: (item: OrganizerItem) => void;
@@ -30,6 +31,7 @@ export function OrganizerFileGrid({
   onQuickMoveManga,
   onAddTagManga,
   onRenameManga,
+  onSearchWeb,
   onOpenInFolder,
   onDeleteManga,
   onOpenManga
@@ -49,6 +51,9 @@ export function OrganizerFileGrid({
           <div className="grid grid-cols-[repeat(auto-fill,minmax(164px,1fr))] gap-x-4 gap-y-6">
             {visibleItems.map((item) => {
               const isSelected = selectedIds.has(item.id);
+              const tagNames = item.tags.map((tag) => tag.name).filter((name) => name.trim().length > 0);
+              const visibleTagNames = tagNames.slice(0, 2);
+              const hiddenTagCount = Math.max(0, tagNames.length - visibleTagNames.length);
 
               return (
                 <article key={item.id} className="group" title={item.displayPath}>
@@ -93,9 +98,25 @@ export function OrganizerFileGrid({
                       </span>
                     ) : null}
 
-                    <span className="absolute bottom-2 left-2 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                      {item.totalPages} 页
-                    </span>
+                    <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 overflow-hidden">
+                      <span className="shrink-0 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        {item.totalPages} 页
+                      </span>
+                      {visibleTagNames.map((name) => (
+                        <span
+                          key={`${item.id}-${name}`}
+                          className="min-w-0 truncate rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white/95"
+                          title={name}
+                        >
+                          {name}
+                        </span>
+                      ))}
+                      {hiddenTagCount > 0 ? (
+                        <span className="shrink-0 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white/90">
+                          +{hiddenTagCount}
+                        </span>
+                      ) : null}
+                    </div>
 
                     {onOpenManga ? (
                       <button
@@ -132,6 +153,7 @@ export function OrganizerFileGrid({
         onQuickMove={onQuickMoveManga}
         onAddTag={onAddTagManga}
         onRename={onRenameManga}
+        onSearchWeb={onSearchWeb}
         onOpenInFolder={onOpenInFolder}
         onDelete={onDeleteManga}
       />

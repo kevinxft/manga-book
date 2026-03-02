@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDownUp, Folder, Loader2, Search, Tags, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
@@ -26,6 +26,9 @@ interface CategoryContextMenuState {
   category: OrganizerCategory;
 }
 
+const CONTEXT_MENU_OFFSET = 6;
+const CONTEXT_MENU_PADDING = 8;
+
 export function OrganizerCategoryPanel({
   categories,
   selectedCategoryKey,
@@ -46,6 +49,8 @@ export function OrganizerCategoryPanel({
   >('recentDesc');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<CategoryContextMenuState | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ left: 0, top: 0 });
+  const [contextMenuReady, setContextMenuReady] = useState(false);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
   const contextMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -186,6 +191,37 @@ export function OrganizerCategoryPanel({
     };
   }, [contextMenu]);
 
+  useLayoutEffect(() => {
+    if (!contextMenu) {
+      setContextMenuReady(false);
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!contextMenuRef.current) {
+        return;
+      }
+
+      const rect = contextMenuRef.current.getBoundingClientRect();
+      const desiredLeft = contextMenu.x + CONTEXT_MENU_OFFSET;
+      const desiredTop = contextMenu.y + CONTEXT_MENU_OFFSET;
+      const maxLeft = Math.max(CONTEXT_MENU_PADDING, window.innerWidth - rect.width - CONTEXT_MENU_PADDING);
+      const maxTop = Math.max(CONTEXT_MENU_PADDING, window.innerHeight - rect.height - CONTEXT_MENU_PADDING);
+
+      setContextMenuPosition({
+        left: Math.min(Math.max(desiredLeft, CONTEXT_MENU_PADDING), maxLeft),
+        top: Math.min(Math.max(desiredTop, CONTEXT_MENU_PADDING), maxTop)
+      });
+      setContextMenuReady(true);
+    };
+
+    setContextMenuReady(false);
+    const frame = window.requestAnimationFrame(updatePosition);
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [contextMenu]);
+
   return (
     <aside className="flex h-full w-[340px] flex-col bg-[#f1f3f7]">
       <div className="flex min-h-0 flex-1 flex-col border-b border-[#dbe1eb] px-5 pb-4 pt-5">
@@ -302,7 +338,11 @@ export function OrganizerCategoryPanel({
         <div
           ref={contextMenuRef}
           className="fixed z-[90] w-[172px] rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_30px_rgba(36,54,86,0.24)]"
-          style={{ left: contextMenu.x + 6, top: contextMenu.y + 6 }}
+          style={{
+            left: contextMenuPosition.left,
+            top: contextMenuPosition.top,
+            visibility: contextMenuReady ? 'visible' : 'hidden'
+          }}
         >
           <button
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
