@@ -1,16 +1,17 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ArrowDownUp,
   BookOpen,
   FolderCog,
   FolderClosed,
   FolderTree,
   Import,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Search,
   Settings
 } from 'lucide-react';
 import type { LibraryFolder } from '@shared/types';
 import { Button } from '@renderer/components/ui/button';
+import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
 import type { TagItem } from '../types';
@@ -26,7 +27,6 @@ interface LibrarySidebarProps {
   sourceMangaCountByPath: Record<string, number>;
   hasIpcBridge: boolean;
   onActiveMenuChange: (value: string) => void;
-  onSidebarCollapsedChange: (value: boolean) => void;
   onToggleTag: (id: string) => void;
   onClearSelectedTags: () => void;
   onOpenTagDialog: () => void;
@@ -46,7 +46,6 @@ export function LibrarySidebar({
   sourceMangaCountByPath,
   hasIpcBridge,
   onActiveMenuChange,
-  onSidebarCollapsedChange,
   onToggleTag,
   onClearSelectedTags,
   onOpenTagDialog,
@@ -56,6 +55,52 @@ export function LibrarySidebar({
   onOpenOrganizer
 }: LibrarySidebarProps) {
   const [sourceManagerOpen, setSourceManagerOpen] = useState(false);
+  const [artistSearch, setArtistSearch] = useState('');
+  const [artistSortBy, setArtistSortBy] = useState<'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc'>('countDesc');
+  const [artistSortMenuOpen, setArtistSortMenuOpen] = useState(false);
+  const artistSortMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!artistSortMenuOpen) {
+      return;
+    }
+
+    const handleDocumentClick = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (artistSortMenuRef.current && !artistSortMenuRef.current.contains(target)) {
+        setArtistSortMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleDocumentClick);
+    return () => document.removeEventListener('mousedown', handleDocumentClick);
+  }, [artistSortMenuOpen]);
+
+  const sortedArtistDirectories = useMemo(() => {
+    const keyword = artistSearch.trim().toLowerCase();
+    const items = artistDirectories.filter(
+      (directory) =>
+        keyword.length === 0 ||
+        directory.label.toLowerCase().includes(keyword) ||
+        directory.path.toLowerCase().includes(keyword) ||
+        directory.aliases.some((alias) => alias.toLowerCase().includes(keyword))
+    );
+
+    items.sort((a, b) => {
+      if (artistSortBy === 'countDesc') {
+        return b.count - a.count || a.label.localeCompare(b.label, 'zh-Hans-CN');
+      }
+      if (artistSortBy === 'countAsc') {
+        return a.count - b.count || a.label.localeCompare(b.label, 'zh-Hans-CN');
+      }
+      if (artistSortBy === 'nameAsc') {
+        return a.label.localeCompare(b.label, 'zh-Hans-CN');
+      }
+      return b.label.localeCompare(a.label, 'zh-Hans-CN');
+    });
+
+    return items;
+  }, [artistDirectories, artistSearch, artistSortBy]);
 
   return (
     <>
@@ -63,7 +108,7 @@ export function LibrarySidebar({
         <div
           className={cn(
             'flex h-16 items-center border-b border-[#e2e6ee]',
-            sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-4'
+            sidebarCollapsed ? 'justify-center px-2' : 'px-4'
           )}
         >
           <div className={cn('flex items-center', sidebarCollapsed ? 'justify-center' : 'gap-2')}>
@@ -75,20 +120,60 @@ export function LibrarySidebar({
               </div>
             ) : null}
           </div>
-          {!sidebarCollapsed ? (
-            <button
-              className="rounded-md p-1.5 text-[#7b889c] transition hover:bg-[#e8edf5] hover:text-[#51617a]"
-              onClick={() => onSidebarCollapsedChange(true)}
-              title="收起侧栏"
-            >
-              <PanelLeftClose className="h-4 w-4" />
-            </button>
-          ) : null}
         </div>
 
         <div className={cn('flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-4 py-5', sidebarCollapsed && 'px-2')}>
           <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {!sidebarCollapsed ? <p className="mb-3 px-2 text-xs font-semibold text-[#8893a4]">常规</p> : null}
+            {!sidebarCollapsed ? (
+              <div className="mb-3 flex items-center gap-2">
+                <div className="relative min-w-0 flex-1">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b98ac]" />
+                  <Input
+                    value={artistSearch}
+                    onChange={(event) => setArtistSearch(event.target.value)}
+                    className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 text-[12px]"
+                    placeholder="搜索目录..."
+                  />
+                </div>
+
+                {artistDirectories.length > 0 ? (
+                  <div className="relative" ref={artistSortMenuRef}>
+                    <button
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-[#dce2ec] bg-[#eceff4] text-[#5f6c80] hover:bg-[#e2e7f0]"
+                      onClick={() => setArtistSortMenuOpen((prev) => !prev)}
+                      title="排序"
+                    >
+                      <ArrowDownUp className="h-4 w-4 text-[#5e6c80]" />
+                    </button>
+
+                    {artistSortMenuOpen ? (
+                      <div className="absolute right-0 top-10 z-20 w-36 rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_28px_rgba(48,68,99,0.18)]">
+                        {[
+                          { key: 'countDesc' as const, label: '漫画本数(多-少)' },
+                          { key: 'countAsc' as const, label: '漫画本数(少-多)' },
+                          { key: 'nameAsc' as const, label: '名称(A-Z)' },
+                          { key: 'nameDesc' as const, label: '名称(Z-A)' }
+                        ].map((item) => (
+                          <button
+                            key={item.key}
+                            onClick={() => {
+                              setArtistSortBy(item.key);
+                              setArtistSortMenuOpen(false);
+                            }}
+                            className={cn(
+                              'flex w-full items-center rounded-md px-2.5 py-2 text-left text-xs font-semibold transition',
+                              artistSortBy === item.key ? 'bg-[#e7efff] text-[#2f6cf6]' : 'text-[#4f5d73] hover:bg-[#edf2f9]'
+                            )}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <button
                 onClick={() => onActiveMenuChange('all')}
@@ -108,9 +193,10 @@ export function LibrarySidebar({
               {!sidebarCollapsed && artistDirectories.length > 0 ? (
                 <div className="library-sidebar-scroll mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
                   <div className="space-y-1.5 pb-1">
-                    {artistDirectories.map((directory) => {
+                    {sortedArtistDirectories.map((directory) => {
                       const itemKey = `artist:${directory.path}`;
                       const active = activeMenu === itemKey;
+                      const aliasText = directory.aliases.length > 0 ? `(${directory.aliases.join(' / ')})` : null;
 
                       return (
                         <button
@@ -122,9 +208,16 @@ export function LibrarySidebar({
                               ? 'bg-[#2f6cf6] text-white shadow-[0_6px_18px_rgba(47,108,246,0.2)]'
                               : 'text-[#3a4a62] hover:bg-[#e7ebf2]'
                           )}
-                          title={directory.path}
+                          title={aliasText ? `${directory.path}\n${directory.aliases.join(' / ')}` : directory.path}
                         >
-                          <span className="min-w-0 truncate">{directory.label}</span>
+                          <span className="inline-flex min-w-0 items-baseline gap-1">
+                            <span className="min-w-0 truncate">{directory.label}</span>
+                            {aliasText ? (
+                              <span className={cn('min-w-0 truncate text-xs', active ? 'text-white/80' : 'text-[#6f7f98]')}>
+                                {aliasText}
+                              </span>
+                            ) : null}
+                          </span>
                           <span className={cn('ml-2 shrink-0 text-xs', active ? 'text-white/85' : 'text-[#6f7f98]')}>
                             {directory.count}
                           </span>
@@ -190,35 +283,30 @@ export function LibrarySidebar({
         </div>
 
         <div className={cn('mt-auto shrink-0 space-y-3 border-t border-[#dce1ea] p-4', sidebarCollapsed && 'px-2')}>
-          {sidebarCollapsed ? (
-            <button
-              className="flex w-full items-center justify-center rounded-lg border border-[#d7deea] bg-white py-2 text-[#5a6880] transition hover:bg-[#e7ebf2]"
-              onClick={() => onSidebarCollapsedChange(false)}
-              title="展开侧栏"
-            >
-              <PanelLeftOpen className="h-4 w-4" />
-            </button>
-          ) : null}
-
-          <div className={cn('grid items-center gap-2', sources.length > 0 ? 'grid-cols-[1fr_auto]' : 'grid-cols-1')}>
+          <div
+            className={cn(
+              'grid items-center gap-2',
+              sidebarCollapsed ? 'grid-cols-1' : sources.length > 0 ? 'grid-cols-2' : 'grid-cols-1'
+            )}
+          >
             <Button
               className={cn(
                 'h-11 rounded-lg bg-[#2f6cf6] text-sm font-semibold text-white hover:bg-[#255de0]',
-                sidebarCollapsed && 'h-10 px-0'
+                sidebarCollapsed && 'h-10 w-full px-0'
               )}
               onClick={onPickAndAddSources}
               disabled={!hasIpcBridge}
               title="导入目录"
             >
               <Import className={cn('h-4 w-4', !sidebarCollapsed && 'mr-2')} />
-              {!sidebarCollapsed ? '导入目录' : null}
+              {!sidebarCollapsed ? '导入' : null}
             </Button>
 
             {sources.length > 0 ? (
               <button
                 className={cn(
-                  'inline-flex h-11 items-center justify-center rounded-lg border border-[#d7deea] bg-white px-3 text-[#5a6880] transition hover:bg-[#e7ebf2]',
-                  sidebarCollapsed && 'h-10 px-2'
+                  'inline-flex h-11 w-full items-center justify-center rounded-lg border border-[#d7deea] bg-white px-3 text-[#5a6880] transition hover:bg-[#e7ebf2]',
+                  sidebarCollapsed && 'h-10 w-full px-0'
                 )}
                 title="管理已导入目录"
                 onClick={() => setSourceManagerOpen(true)}
@@ -239,7 +327,7 @@ export function LibrarySidebar({
               onClick={onOpenOrganizer}
             >
               <FolderTree className="h-4 w-4" />
-              {!sidebarCollapsed ? '漫画整理' : null}
+              {!sidebarCollapsed ? '整理' : null}
             </button>
 
             <button

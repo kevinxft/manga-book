@@ -4,9 +4,32 @@ import { shell } from 'electron';
 import type { IpcContext } from './context';
 import { fail, ok, registerHandler } from './helpers';
 import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
-import { directoryExists, ensureDirectory, listDirectories, movePath } from '@main/utils/fsUtils';
+import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath } from '@main/utils/pathUtils';
 import { invalidateCoverPath } from '@main/scanner/coverFinder';
+
+async function getAvailableDirectoryPath(
+  destinationRoot: string,
+  preferredName: string,
+  currentPath?: string
+): Promise<{ path: string; renamedDueToConflict: boolean }> {
+  const normalizedCurrentPath = currentPath ? normalizeAbsolutePath(currentPath) : null;
+
+  for (let index = 0; index < 10_000; index += 1) {
+    const candidateName = index === 0 ? preferredName : `${preferredName}（${index}）`;
+    const candidatePath = normalizeAbsolutePath(path.join(destinationRoot, candidateName));
+
+    if (normalizedCurrentPath && candidatePath === normalizedCurrentPath) {
+      return { path: candidatePath, renamedDueToConflict: false };
+    }
+
+    if (!(await pathExists(candidatePath))) {
+      return { path: candidatePath, renamedDueToConflict: index > 0 };
+    }
+  }
+
+  throw new Error(`Unable to find available directory name for ${preferredName}`);
+}
 
 export function registerOrganizerFileIpc(context: IpcContext): void {
   const { manga, library, directoryUsage } = context.repositories;
@@ -20,19 +43,21 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     const destinationRoot = normalizeAbsolutePath(request.destinationPath);
     await ensureDirectory(destinationRoot);
 
-    const nextFolderPath = path.join(destinationRoot, path.basename(book.folderPath));
+    const moveTarget = await getAvailableDirectoryPath(destinationRoot, path.basename(book.folderPath), book.folderPath);
+    const nextFolderPath = moveTarget.path;
     await movePath(book.folderPath, nextFolderPath);
 
     const sourcePaths = library.list().map((source) => source.path);
     const nextSourceFolderPath = resolveSourceFolderPath(nextFolderPath, sourcePaths, book.sourceFolderPath);
 
     invalidateCoverPath(book.folderPath);
-    const updated = manga.updatePath(book.id, path.basename(nextFolderPath), nextFolderPath, nextSourceFolderPath, {
-      touchAddedAt: true
-    });
+    const updated = manga.updatePath(book.id, path.basename(nextFolderPath), nextFolderPath, nextSourceFolderPath);
     directoryUsage.touch(destinationRoot);
 
-    return ok(updated);
+    return ok({
+      manga: updated,
+      renamedDueToConflict: moveTarget.renamedDueToConflict
+    });
   });
 
   registerHandler('organizer.renameManga', async (request) => {

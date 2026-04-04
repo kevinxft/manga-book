@@ -40,7 +40,7 @@ export function OrganizerFileGrid({
 
   return (
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-[#dbe1eb] bg-[#f6f8fc]">
-      <div className="min-h-0 flex-1 overflow-auto px-7 py-5">
+      <div className="min-h-0 flex-1 overflow-auto px-7 py-5" data-scroll-region="organizer-file-grid">
         {loading ? <p className="text-sm font-semibold text-[#5f6f89]">加载中...</p> : null}
 
         {!loading && error ? (
@@ -131,8 +131,15 @@ export function OrganizerFileGrid({
                       </button>
                     ) : null}
                   </div>
-                  <p className="mt-2 truncate text-[14px] font-semibold leading-tight text-[#1a2840]" title={item.title}>
-                    {item.title}
+                  <p className="mt-2 flex items-center gap-1.5 text-[14px] font-semibold leading-tight text-[#1a2840]" title={item.title}>
+                    {item.organizeStatus === 'unorganized' ? (
+                      <span
+                        className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#f59e0b]"
+                        title="未分配作者目录"
+                        aria-label="未分配作者目录"
+                      />
+                    ) : null}
+                    <span className="min-w-0 truncate">{item.title}</span>
                   </p>
                 </article>
               );

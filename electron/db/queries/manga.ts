@@ -74,9 +74,6 @@ export function createMangaQueries(db: Database.Database) {
   const renamePathStatement = db.prepare(
     'UPDATE manga_books SET title = @title, folder_path = @folder_path, source_folder_path = @source_folder_path WHERE id = @id'
   );
-  const movePathStatement = db.prepare(
-    'UPDATE manga_books SET title = @title, folder_path = @folder_path, source_folder_path = @source_folder_path, added_at = @added_at WHERE id = @id'
-  );
   const updateProgressStatement = db.prepare(
     `UPDATE manga_books SET
       last_chapter_index = @chapterIndex,
@@ -155,11 +152,15 @@ export function createMangaQueries(db: Database.Database) {
     }
 
     const orderBy =
-      filter?.sortBy === 'title'
-        ? 'title COLLATE NOCASE ASC'
-        : filter?.sortBy === 'lastReadAt'
-          ? 'COALESCE(last_read_at, added_at) DESC'
-          : 'added_at DESC';
+      filter?.sortBy === 'lastReadAtDesc'
+        ? 'COALESCE(last_read_at, added_at) DESC'
+        : filter?.sortBy === 'addedAtAsc'
+        ? 'added_at ASC'
+        : filter?.sortBy === 'titleAsc'
+          ? 'title COLLATE NOCASE ASC'
+          : filter?.sortBy === 'titleDesc'
+            ? 'title COLLATE NOCASE DESC'
+            : 'added_at DESC';
 
     const sql = [
       baseListSql,
@@ -173,27 +174,8 @@ export function createMangaQueries(db: Database.Database) {
     return rows.map(mapRow);
   }
 
-  function updatePath(
-    id: string,
-    title: string,
-    folderPath: string,
-    sourceFolderPath: string,
-    options?: {
-      touchAddedAt?: boolean;
-    }
-  ): MangaBook {
-    if (options?.touchAddedAt) {
-      movePathStatement.run({
-        id,
-        title,
-        folder_path: folderPath,
-        source_folder_path: sourceFolderPath,
-        added_at: new Date().toISOString()
-      });
-    } else {
-      renamePathStatement.run({ id, title, folder_path: folderPath, source_folder_path: sourceFolderPath });
-    }
-
+  function updatePath(id: string, title: string, folderPath: string, sourceFolderPath: string): MangaBook {
+    renamePathStatement.run({ id, title, folder_path: folderPath, source_folder_path: sourceFolderPath });
     const row = byIdStatement.get(id) as MangaBookRow | undefined;
     if (!row) {
       throw new Error('Manga not found after update');

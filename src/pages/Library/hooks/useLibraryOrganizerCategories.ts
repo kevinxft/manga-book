@@ -55,6 +55,7 @@ export function useLibraryOrganizerCategories({ hasIpcBridge, mangas }: UseLibra
   }, [aliases, authorDirectories, mangas]);
 
   return {
+    artistDirectories: quickMoveCategories,
     quickMoveCategories
   };
 }

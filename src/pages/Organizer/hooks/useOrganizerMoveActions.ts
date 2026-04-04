@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import { useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
+import { mergeMangaWithBase } from '@renderer/lib/manga';
 import type { OrganizerCategory } from '../types';
 import { getErrorMessage } from './error';
 
@@ -11,7 +12,7 @@ interface UseOrganizerMoveActionsInput {
   selectedCategoryKey: string | null;
   selectedIds: Set<string>;
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
-  refreshMangas: () => Promise<void>;
+  updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
   refreshAuthorDirectories: () => Promise<void>;
   setMoveError: (message: string | null) => void;
 }
@@ -22,7 +23,7 @@ export function useOrganizerMoveActions({
   selectedCategoryKey,
   selectedIds,
   setSelectedIds,
-  refreshMangas,
+  updateMangaLocal,
   refreshAuthorDirectories,
   setMoveError
 }: UseOrganizerMoveActionsInput) {
@@ -43,14 +44,19 @@ export function useOrganizerMoveActions({
     try {
       const targets = Array.from(selectedIds);
       const movedIds: string[] = [];
+      const renamedTitles: string[] = [];
       let firstErrorMessage: string | null = null;
 
       for (const mangaId of targets) {
         try {
-          await ipcInvoke('organizer.moveManga', {
+          const result = await ipcInvoke('organizer.moveManga', {
             mangaId,
             destinationPath: selectedCategory.path
           });
+          updateMangaLocal(mangaId, (current) => mergeMangaWithBase(current, result.manga));
+          if (result.renamedDueToConflict) {
+            renamedTitles.push(result.manga.title);
+          }
           movedIds.push(mangaId);
         } catch (error) {
           if (!firstErrorMessage) {
@@ -65,7 +71,7 @@ export function useOrganizerMoveActions({
           movedIds.forEach((id) => next.delete(id));
           return next;
         });
-        await Promise.all([refreshMangas(), refreshAuthorDirectories()]);
+        await refreshAuthorDirectories();
       }
 
       if (firstErrorMessage) {
@@ -75,6 +81,10 @@ export function useOrganizerMoveActions({
         } else {
           setMoveError(firstErrorMessage);
         }
+      } else if (renamedTitles.length > 0) {
+        const preview = renamedTitles.slice(0, 2).join('、');
+        const suffix = renamedTitles.length > 2 ? ` 等 ${renamedTitles.length} 本` : '';
+        setMoveError(`检测到同名漫画，已自动重命名后移动：${preview}${suffix}`);
       }
     } catch (error) {
       setMoveError(getErrorMessage(error, '移动失败，请稍后重试'));
@@ -90,13 +100,17 @@ export function useOrganizerMoveActions({
 
     setMoveError(null);
     try {
-      await ipcInvoke('organizer.moveManga', { mangaId, destinationPath });
+      const result = await ipcInvoke('organizer.moveManga', { mangaId, destinationPath });
+      updateMangaLocal(mangaId, (current) => mergeMangaWithBase(current, result.manga));
       setSelectedIds((prev) => {
         const next = new Set(prev);
         next.delete(mangaId);
         return next;
       });
-      await Promise.all([refreshMangas(), refreshAuthorDirectories()]);
+      await refreshAuthorDirectories();
+      if (result.renamedDueToConflict) {
+        setMoveError(`检测到同名漫画，已自动重命名为「${result.manga.title}」后移动。`);
+      }
     } catch (error) {
       setMoveError(getErrorMessage(error, '快速移动失败'));
     }
@@ -111,11 +125,11 @@ export function useOrganizerMoveActions({
 
     setMoveError(null);
     try {
-      await ipcInvoke('organizer.renameManga', {
+      const updated = await ipcInvoke('organizer.renameManga', {
         mangaId: item.id,
         newTitle: trimmed
       });
-      await refreshMangas();
+      updateMangaLocal(item.id, (current) => mergeMangaWithBase(current, updated));
     } catch (error) {
       setMoveError(getErrorMessage(error, '重命名失败'));
     }

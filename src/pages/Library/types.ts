@@ -1,6 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 
-export type SortKey = 'title' | 'addedAt' | 'lastReadAt';
+export type SortKey = 'addedAtDesc' | 'addedAtAsc' | 'titleAsc' | 'titleDesc' | 'lastReadAtDesc';
 
 export type LibraryMenuItem = {
   key: string;
@@ -14,5 +14,3 @@ export type TagItem = {
 };
 
 export type MangaPathCategory = 'artists' | 'series' | 'other';
-export type MangaCategoryFilter = 'all' | MangaPathCategory;
-export type LibraryStatusFilter = 'all' | 'organized' | 'unorganized';

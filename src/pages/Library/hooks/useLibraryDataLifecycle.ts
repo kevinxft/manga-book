@@ -1,12 +1,13 @@
 import { useEffect } from 'react';
 import type { ScanProgress } from '@shared/types';
+import type { SortKey } from '../types';
 
 interface UseLibraryDataLifecycleInput {
   hasIpcBridge: boolean;
   search: string;
-  sortBy: 'title' | 'addedAt' | 'lastReadAt';
+  sortBy: SortKey;
   fetchSources: () => Promise<void>;
-  fetchMangas: (options?: { query?: string; sourceFolderPaths?: string[]; sortBy?: 'title' | 'addedAt' | 'lastReadAt' }) => Promise<void>;
+  fetchMangas: (options?: { query?: string; sourceFolderPaths?: string[]; sortBy?: SortKey }) => Promise<void>;
   refreshScanProgress: () => Promise<void>;
   progress: ScanProgress;
 }

@@ -5,13 +5,13 @@ import { ipcInvoke } from '@renderer/ipc/client';
 import { getErrorMessage } from './error';
 
 interface UseOrganizerDeleteActionsInput {
-  refreshMangas: () => Promise<void>;
+  removeMangaLocal: (mangaId: string) => void;
   setMoveError: (message: string | null) => void;
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
 }
 
 export function useOrganizerDeleteActions({
-  refreshMangas,
+  removeMangaLocal,
   setMoveError,
   setSelectedIds
 }: UseOrganizerDeleteActionsInput) {
@@ -47,7 +47,7 @@ export function useOrganizerDeleteActions({
         next.delete(deleteTarget.id);
         return next;
       });
-      await refreshMangas();
+      removeMangaLocal(deleteTarget.id);
       closeDeleteDialog(true);
     } catch (error) {
       setMoveError(getErrorMessage(error, '删除漫画失败'));

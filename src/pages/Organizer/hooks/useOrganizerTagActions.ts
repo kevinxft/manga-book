@@ -1,15 +1,15 @@
 import { useState } from 'react';
-import type { MangaBookWithCover } from '@shared/types';
+import type { MangaBookWithCover, MangaTag } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { getErrorMessage } from './error';
 
 interface UseOrganizerTagActionsInput {
   hasIpcBridge: boolean;
-  refreshMangas: () => Promise<void>;
+  updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
   setMoveError: (message: string | null) => void;
 }
 
-export function useOrganizerTagActions({ hasIpcBridge, refreshMangas, setMoveError }: UseOrganizerTagActionsInput) {
+export function useOrganizerTagActions({ hasIpcBridge, updateMangaLocal, setMoveError }: UseOrganizerTagActionsInput) {
   const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
   const [addTagTarget, setAddTagTarget] = useState<MangaBookWithCover | null>(null);
   const [addTagAnchor, setAddTagAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -121,16 +121,43 @@ export function useOrganizerTagActions({ hasIpcBridge, refreshMangas, setMoveErr
     setAddTagSaving(true);
     setAddTagError(null);
     try {
+      const tagByNameKey = new Map<string, MangaTag>();
+      for (const tag of addTagTarget.tags ?? []) {
+        const key = tag.name.trim().toLocaleLowerCase();
+        if (!key) {
+          continue;
+        }
+        tagByNameKey.set(key, tag);
+      }
+
       for (const tagName of tagsToAdd) {
-        await ipcInvoke('tag.addToManga', { mangaId: addTagTarget.id, tagName });
+        const added = await ipcInvoke('tag.addToManga', { mangaId: addTagTarget.id, tagName });
+        tagByNameKey.set(tagName.toLocaleLowerCase(), added.tag);
       }
       for (const tagName of tagsToRemove) {
         await ipcInvoke('tag.removeFromManga', { mangaId: addTagTarget.id, tagName });
       }
+
+      const fallbackCreatedAt = new Date().toISOString();
+      const nextTags = finalTagNames.map((name) => {
+        const key = name.toLocaleLowerCase();
+        return (
+          tagByNameKey.get(key) ?? {
+            id: `tag:${key}`,
+            name,
+            createdAt: fallbackCreatedAt
+          }
+        );
+      });
+
+      updateMangaLocal(addTagTarget.id, (current) => ({
+        ...current,
+        tags: nextTags
+      }));
+
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event('manga-book-tags-updated'));
       }
-      await refreshMangas();
       closeAddTagDialog(true);
     } catch (error) {
       const message = getErrorMessage(error, '添加标签失败');

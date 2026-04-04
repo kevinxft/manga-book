@@ -53,4 +53,29 @@
   .page-grid {
     @apply grid gap-4 lg:grid-cols-[330px_1fr];
   }
+
+  .library-sidebar-scroll {
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: #c1cada #eef2f7;
+  }
+
+  .library-sidebar-scroll::-webkit-scrollbar {
+    width: 10px;
+  }
+
+  .library-sidebar-scroll::-webkit-scrollbar-track {
+    background: #eef2f7;
+    border-radius: 999px;
+  }
+
+  .library-sidebar-scroll::-webkit-scrollbar-thumb {
+    background: #c1cada;
+    border: 2px solid #eef2f7;
+    border-radius: 999px;
+  }
+
+  .library-sidebar-scroll::-webkit-scrollbar-thumb:hover {
+    background: #aeb9cc;
+  }
 }

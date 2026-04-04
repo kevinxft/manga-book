@@ -3,7 +3,7 @@ import { ImageOff } from 'lucide-react';
 import type { MangaBookWithCover } from '@shared/types';
 import { CoverContextMenu, type CoverContextMenuState } from '@renderer/components/manga/CoverContextMenu';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
-import { getArtistNameFromMangaPath, getMangaDisplayPath, toCoverSrc } from '../utils';
+import { getArtistNameFromMangaPath, getMangaDisplayPath, getMangaPathCategory, toCoverSrc } from '../utils';
 
 interface MangaGridProps {
   mangas: MangaBookWithCover[];
@@ -35,10 +35,11 @@ export function MangaGrid({
   const [contextMenu, setContextMenu] = useState<CoverContextMenuState<MangaBookWithCover> | null>(null);
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
+    <div className="min-h-0 flex-1 overflow-auto px-6 py-5" data-scroll-region="library-manga-grid">
       <div className="grid grid-cols-[repeat(auto-fill,minmax(128px,1fr))] gap-x-5 gap-y-8">
         {mangas.map((manga) => {
           const artistName = getArtistNameFromMangaPath(manga.folderPath);
+          const missingArtistDirectory = getMangaPathCategory(manga.folderPath, manga.sourceFolderPath) !== 'artists';
           const fullDisplayPath = getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath);
           const tagNames = manga.tags.map((tag) => tag.name).filter((name) => name.trim().length > 0);
           const visibleTagNames = tagNames.slice(0, 2);
@@ -96,8 +97,15 @@ export function MangaGrid({
               </div>
 
               <div className="mt-2">
-                <p className="truncate text-xs font-semibold leading-tight text-[#1f2b3d]" title={fullDisplayPath}>
-                  {manga.title}
+                <p className="flex items-center gap-1.5 text-xs font-semibold leading-tight text-[#1f2b3d]" title={fullDisplayPath}>
+                  {missingArtistDirectory ? (
+                    <span
+                      className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#f59e0b]"
+                      title="未分配作者目录"
+                      aria-label="未分配作者目录"
+                    />
+                  ) : null}
+                  <span className="min-w-0 truncate">{manga.title}</span>
                 </p>
               </div>
             </article>
@@ -109,7 +117,7 @@ export function MangaGrid({
         <div className="mt-8 rounded-xl border border-dashed border-[#cfd7e4] bg-[#f7f9fc] px-6 py-10 text-center">
           <p className="text-sm font-semibold text-[#46546a]">{totalMangaCount === 0 ? '当前没有漫画数据' : '当前筛选下没有漫画'}</p>
           <p className="mt-2 text-xs text-[#7d889c]">
-            {totalMangaCount === 0 ? '点击左下角“导入目录”添加来源后会自动显示。' : '请调整目录、状态或标签筛选条件。'}
+            {totalMangaCount === 0 ? '点击左下角“导入目录”添加来源后会自动显示。' : '请调整分类或标签筛选条件。'}
           </p>
         </div>
       ) : null}

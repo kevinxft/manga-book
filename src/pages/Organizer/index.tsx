@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { useLibraryStore } from '@renderer/stores/libraryStore';
 import { AliasManagerDialog } from './components/AliasManagerDialog';
@@ -19,9 +18,8 @@ interface OrganizerPageProps {
 }
 
 export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
-  const { mangas, loading, error, fetchMangas } = useLibraryStore();
+  const { mangas, loading, error, fetchMangas, updateMangaLocal, removeMangaLocal } = useLibraryStore();
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
-  const refreshMangas = useCallback(() => fetchMangas({ sortBy: 'addedAt' }), [fetchMangas]);
   const {
     aliases,
     categories,
@@ -101,8 +99,9 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     selectedIds,
     setSelectedIds,
     setSelectedCategoryKey,
-    refreshMangas,
+    removeMangaLocal,
     refreshAuthorDirectories,
+    updateMangaLocal,
     upsertAlias,
     removeAliasLocal,
     addAuthorDirectoryLocal

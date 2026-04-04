@@ -1,58 +1,48 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { LibraryFolder, MangaBookWithCover } from '@shared/types';
-import type { LibraryStatusFilter, MangaCategoryFilter, SortKey } from '../types';
-import { getMangaPathCategory } from '../utils';
+import type { MangaBookWithCover } from '@shared/types';
+import type { SortKey } from '../types';
+import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
 
 interface UseLibraryFiltersInput {
   mangas: MangaBookWithCover[];
-  sources: LibraryFolder[];
+  artistDirectories: OrganizerCategory[];
   selectedTags: string[];
 }
 
-export function useLibraryFilters({ mangas, sources, selectedTags }: UseLibraryFiltersInput) {
+export function useLibraryFilters({ mangas, artistDirectories, selectedTags }: UseLibraryFiltersInput) {
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState<SortKey>('addedAt');
-  const [activeMenu, setActiveMenu] = useState('all');
+  const [sortBy, setSortBy] = useState<SortKey>('addedAtDesc');
+  const [activeMenu, setActiveMenu] = useState<string>('all');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [categoryFilter, setCategoryFilter] = useState<MangaCategoryFilter>('all');
-  const [statusFilter, setStatusFilter] = useState<LibraryStatusFilter>('all');
 
   useEffect(() => {
     if (activeMenu === 'all') {
       return;
     }
-    const sourceId = activeMenu.startsWith('source:') ? activeMenu.slice('source:'.length) : '';
-    if (!sourceId || !sources.some((source) => source.id === sourceId)) {
+
+    const activeArtistPath = activeMenu.startsWith('artist:') ? activeMenu.slice('artist:'.length) : '';
+    if (!activeArtistPath || !artistDirectories.some((item) => item.path === activeArtistPath)) {
       setActiveMenu('all');
     }
-  }, [activeMenu, sources]);
+  }, [activeMenu, artistDirectories]);
 
   const visibleMangas = useMemo(() => {
-    const selectedSourcePath =
-      activeMenu.startsWith('source:') ? sources.find((source) => source.id === activeMenu.slice('source:'.length))?.path : null;
+    const activeArtistPath = activeMenu.startsWith('artist:') ? activeMenu.slice('artist:'.length) : null;
+    const byArtist =
+      activeArtistPath && activeArtistPath.length > 0
+        ? mangas.filter((manga) => manga.folderPath.startsWith(`${activeArtistPath}/`) || manga.folderPath.startsWith(`${activeArtistPath}\\`))
+        : mangas;
 
-    const bySource = selectedSourcePath ? mangas.filter((manga) => manga.sourceFolderPath === selectedSourcePath) : mangas;
-    const byStatus = bySource.filter((manga) => {
-      if (statusFilter === 'all') {
-        return true;
-      }
-      const category = getMangaPathCategory(manga.folderPath, manga.sourceFolderPath);
-      const organized = category !== 'other';
-      return statusFilter === 'organized' ? organized : !organized;
-    });
     const byTags =
       selectedTags.length === 0
-        ? byStatus
-        : byStatus.filter((manga) => {
+        ? byArtist
+        : byArtist.filter((manga) => {
             const mangaTagIds = new Set((manga.tags ?? []).map((tag) => tag.id));
             return selectedTags.every((tagId) => mangaTagIds.has(tagId));
           });
 
-    if (categoryFilter === 'all') {
-      return byTags;
-    }
-    return byTags.filter((manga) => getMangaPathCategory(manga.folderPath, manga.sourceFolderPath) === categoryFilter);
-  }, [activeMenu, categoryFilter, mangas, selectedTags, sources, statusFilter]);
+    return byTags;
+  }, [activeMenu, mangas, selectedTags]);
 
   const sourceMangaCountByPath = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -67,15 +57,11 @@ export function useLibraryFilters({ mangas, sources, selectedTags }: UseLibraryF
     sortBy,
     activeMenu,
     sidebarCollapsed,
-    categoryFilter,
-    statusFilter,
     visibleMangas,
     sourceMangaCountByPath,
     setSearch,
     setSortBy,
     setActiveMenu,
-    setSidebarCollapsed,
-    setCategoryFilter,
-    setStatusFilter
+    setSidebarCollapsed
   };
 }

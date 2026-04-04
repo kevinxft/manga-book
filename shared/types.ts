@@ -65,7 +65,7 @@ export interface TargetDirectorySummary {
 export interface MangaFilter {
   query?: string;
   sourceFolderPaths?: string[];
-  sortBy?: 'title' | 'addedAt' | 'lastReadAt';
+  sortBy?: 'addedAtDesc' | 'addedAtAsc' | 'titleAsc' | 'titleDesc' | 'lastReadAtDesc';
 }
 
 export interface ScanProgress {
@@ -137,6 +137,11 @@ export interface BookmarkUpdateRequest {
 export interface OrganizerMoveMangaRequest {
   mangaId: string;
   destinationPath: string;
+}
+
+export interface OrganizerMoveMangaResult {
+  manga: MangaBook;
+  renamedDueToConflict: boolean;
 }
 
 export interface OrganizerOpenMangaFolderRequest {
@@ -218,7 +223,7 @@ export interface IpcChannels {
   'library.listMangas': { req: MangaFilter | void; res: MangaBookWithCover[] };
   'library.getScanProgress': { req: void; res: ScanProgress };
 
-  'organizer.moveManga': { req: OrganizerMoveMangaRequest; res: MangaBook };
+  'organizer.moveManga': { req: OrganizerMoveMangaRequest; res: OrganizerMoveMangaResult };
   'organizer.openMangaFolder': { req: OrganizerOpenMangaFolderRequest; res: { opened: boolean } };
   'organizer.renameManga': { req: OrganizerRenameMangaRequest; res: MangaBook };
   'organizer.addAlias': { req: OrganizerAddAliasRequest; res: DirectoryAlias };

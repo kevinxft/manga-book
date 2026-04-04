@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
+import { mergeMangaWithBase } from '@renderer/lib/manga';
 
 interface UseLibraryMangaActionsInput {
   hasIpcBridge: boolean;
-  refreshCurrentList: () => Promise<void>;
+  updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
+  removeMangaLocal: (mangaId: string) => void;
 }
 
-export function useLibraryMangaActions({ hasIpcBridge, refreshCurrentList }: UseLibraryMangaActionsInput) {
+export function useLibraryMangaActions({ hasIpcBridge, updateMangaLocal, removeMangaLocal }: UseLibraryMangaActionsInput) {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MangaBookWithCover | null>(null);
@@ -19,8 +21,11 @@ export function useLibraryMangaActions({ hasIpcBridge, refreshCurrentList }: Use
     }
     setOperationError(null);
     try {
-      await ipcInvoke('organizer.moveManga', { mangaId, destinationPath });
-      await refreshCurrentList();
+      const result = await ipcInvoke('organizer.moveManga', { mangaId, destinationPath });
+      updateMangaLocal(mangaId, (current) => mergeMangaWithBase(current, result.manga));
+      if (result.renamedDueToConflict) {
+        setOperationError(`检测到同名漫画，已自动重命名为「${result.manga.title}」后移动。`);
+      }
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : '快速移动失败');
     }
@@ -34,8 +39,8 @@ export function useLibraryMangaActions({ hasIpcBridge, refreshCurrentList }: Use
     }
     setOperationError(null);
     try {
-      await ipcInvoke('organizer.renameManga', { mangaId: item.id, newTitle: trimmed });
-      await refreshCurrentList();
+      const updated = await ipcInvoke('organizer.renameManga', { mangaId: item.id, newTitle: trimmed });
+      updateMangaLocal(item.id, (current) => mergeMangaWithBase(current, updated));
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : '重命名失败');
     }
@@ -92,7 +97,7 @@ export function useLibraryMangaActions({ hasIpcBridge, refreshCurrentList }: Use
     setOperationError(null);
     try {
       await ipcInvoke('organizer.deleteManga', { mangaId: deleteTarget.id, withFiles: true });
-      await refreshCurrentList();
+      removeMangaLocal(deleteTarget.id);
       closeDeleteDialog(true);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : '删除漫画失败');

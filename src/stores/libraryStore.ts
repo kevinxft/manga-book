@@ -1,6 +1,13 @@
 import { create } from 'zustand';
 import type { LibraryFolder, MangaBookWithCover, ScanProgress } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
+import type { SortKey } from '@renderer/pages/Library/types';
+
+type LibraryFetchOptions = {
+  query?: string;
+  sourceFolderPaths?: string[];
+  sortBy?: SortKey;
+};
 
 interface LibraryState {
   sources: LibraryFolder[];
@@ -8,14 +15,17 @@ interface LibraryState {
   progress: ScanProgress;
   loading: boolean;
   error: string | null;
+  lastFetchOptions: LibraryFetchOptions;
   fetchSources: () => Promise<void>;
-  fetchMangas: (options?: { query?: string; sourceFolderPaths?: string[]; sortBy?: 'title' | 'addedAt' | 'lastReadAt' }) => Promise<void>;
+  fetchMangas: (options?: LibraryFetchOptions) => Promise<void>;
   addSource: (sourcePath: string) => Promise<void>;
   addSources: (sourcePaths: string[]) => Promise<void>;
   pickAndAddSources: () => Promise<void>;
   removeSource: (id: string) => Promise<void>;
   syncSources: () => Promise<void>;
   refreshScanProgress: () => Promise<void>;
+  updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
+  removeMangaLocal: (mangaId: string) => void;
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
@@ -30,6 +40,9 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
   loading: false,
   error: null,
+  lastFetchOptions: {
+    sortBy: 'addedAtDesc'
+  },
 
   async fetchSources() {
     try {
@@ -41,14 +54,19 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   async fetchMangas(options) {
+    const effectiveOptions = options ?? get().lastFetchOptions;
     set({ loading: true, error: null });
     try {
       const mangas = await ipcInvoke('library.listMangas', {
-        query: options?.query,
-        sourceFolderPaths: options?.sourceFolderPaths,
-        sortBy: options?.sortBy
+        query: effectiveOptions.query,
+        sourceFolderPaths: effectiveOptions.sourceFolderPaths,
+        sortBy: effectiveOptions.sortBy
       });
-      set({ mangas, loading: false });
+      set({
+        mangas,
+        loading: false,
+        lastFetchOptions: effectiveOptions
+      });
     } catch (error) {
       set({ loading: false, error: error instanceof Error ? error.message : 'Failed to load mangas' });
     }
@@ -74,6 +92,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       const result = await ipcInvoke('library.addSources', { paths: sourcePaths });
       await Promise.all([get().fetchSources(), get().fetchMangas()]);
       if (result.taskId) {
+        set({
+          progress: {
+            taskId: result.taskId,
+            status: 'running',
+            current: 0,
+            total: 0,
+            message: 'Queued'
+          }
+        });
         await get().refreshScanProgress();
       }
       if (result.added.length === 0 && result.skipped.length > 0) {
@@ -123,7 +150,16 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   async syncSources() {
     set({ error: null });
     try {
-      await ipcInvoke('library.syncSources', { forceRescan: true });
+      const result = await ipcInvoke('library.syncSources', { forceRescan: true });
+      set({
+        progress: {
+          taskId: result.taskId,
+          status: 'running',
+          current: 0,
+          total: 0,
+          message: 'Queued'
+        }
+      });
       await get().refreshScanProgress();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to sync sources' });
@@ -137,7 +173,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       set({ progress });
 
       const scanJustFinished =
-        previousProgress.status === 'running' && progress.status === 'idle';
+        previousProgress.taskId !== null && progress.status === 'idle';
 
       if (scanJustFinished) {
         await get().fetchMangas();
@@ -145,5 +181,37 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to fetch scan progress' });
     }
+  },
+
+  updateMangaLocal(mangaId, updater) {
+    set((state) => {
+      const index = state.mangas.findIndex((item) => item.id === mangaId);
+      if (index < 0) {
+        return state;
+      }
+
+      const current = state.mangas[index] as MangaBookWithCover;
+      const next = updater(current);
+
+      if (!next) {
+        return {
+          mangas: state.mangas.filter((item) => item.id !== mangaId)
+        };
+      }
+
+      if (next === current) {
+        return state;
+      }
+
+      const mangas = [...state.mangas];
+      mangas[index] = next;
+      return { mangas };
+    });
+  },
+
+  removeMangaLocal(mangaId) {
+    set((state) => ({
+      mangas: state.mangas.filter((item) => item.id !== mangaId)
+    }));
   }
 }));

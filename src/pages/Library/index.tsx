@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { MangaBookWithCover } from '@shared/types';
 import { cn } from '@renderer/lib/utils';
@@ -23,8 +23,33 @@ interface LibraryPageProps {
   onOpenOrganizer?: () => void;
 }
 
+const LIBRARY_SIDEBAR_DEFAULT_WIDTH = 270;
+const LIBRARY_SIDEBAR_MIN_WIDTH = 220;
+const LIBRARY_SIDEBAR_MAX_WIDTH = 420;
+const LIBRARY_SIDEBAR_COLLAPSED_WIDTH = 72;
+const LIBRARY_SIDEBAR_RESIZER_WIDTH = 8;
+const LIBRARY_SIDEBAR_STORAGE_KEY = 'manga-book.library-sidebar-width';
+const LIBRARY_MAIN_CONTENT_MIN_WIDTH = 480;
+
+function clampSidebarWidth(width: number, containerWidth?: number): number {
+  const containerMaxWidth =
+    typeof containerWidth === 'number'
+      ? Math.max(LIBRARY_SIDEBAR_MIN_WIDTH, containerWidth - LIBRARY_MAIN_CONTENT_MIN_WIDTH)
+      : LIBRARY_SIDEBAR_MAX_WIDTH;
+  return Math.min(Math.max(width, LIBRARY_SIDEBAR_MIN_WIDTH), Math.min(LIBRARY_SIDEBAR_MAX_WIDTH, containerMaxWidth));
+}
+
 export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: LibraryPageProps) {
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    if (typeof window === 'undefined') {
+      return LIBRARY_SIDEBAR_DEFAULT_WIDTH;
+    }
+    const raw = window.localStorage.getItem(LIBRARY_SIDEBAR_STORAGE_KEY);
+    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+    return Number.isFinite(parsed) ? clampSidebarWidth(parsed) : LIBRARY_SIDEBAR_DEFAULT_WIDTH;
+  });
 
   const {
     tags,
@@ -52,27 +77,30 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     pickAndAddSources,
     removeSource,
     syncSources,
-    refreshScanProgress
+    refreshScanProgress,
+    updateMangaLocal,
+    removeMangaLocal
   } = useLibraryStore();
+
+  const { artistDirectories, quickMoveCategories } = useLibraryOrganizerCategories({
+    hasIpcBridge,
+    mangas
+  });
 
   const {
     search,
     sortBy,
     activeMenu,
     sidebarCollapsed,
-    categoryFilter,
-    statusFilter,
     visibleMangas,
     sourceMangaCountByPath,
     setSearch,
     setSortBy,
     setActiveMenu,
-    setSidebarCollapsed,
-    setCategoryFilter,
-    setStatusFilter
+    setSidebarCollapsed
   } = useLibraryFilters({
     mangas,
-    sources,
+    artistDirectories,
     selectedTags
   });
 
@@ -85,15 +113,6 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     refreshScanProgress,
     progress
   });
-
-  const { quickMoveCategories } = useLibraryOrganizerCategories({
-    hasIpcBridge,
-    mangas
-  });
-
-  const refreshCurrentList = useCallback(async () => {
-    await fetchMangas({ query: search, sortBy });
-  }, [fetchMangas, search, sortBy]);
 
   const {
     operationError,
@@ -110,7 +129,8 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     handleConfirmDeleteManga
   } = useLibraryMangaActions({
     hasIpcBridge,
-    refreshCurrentList
+    updateMangaLocal,
+    removeMangaLocal
   });
 
   const {
@@ -131,29 +151,93 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
   } = useLibraryMangaTagEditor({
     hasIpcBridge,
     availableTags: tags.map((tag) => tag.label),
-    refreshCurrentList,
+    updateMangaLocal,
     setOperationError
   });
 
+  const handleSidebarCollapsedChange = useCallback((value: boolean) => {
+    setSidebarCollapsed(value);
+  }, [setSidebarCollapsed]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    window.localStorage.setItem(LIBRARY_SIDEBAR_STORAGE_KEY, String(sidebarWidth));
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) {
+        return;
+      }
+      const nextWidth = clampSidebarWidth(sidebarWidth, entry.contentRect.width);
+      if (nextWidth !== sidebarWidth) {
+        setSidebarWidth(nextWidth);
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [sidebarWidth]);
+
+  const handleSidebarResizeStart = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (sidebarCollapsed) {
+      return;
+    }
+
+    event.preventDefault();
+    const container = containerRef.current;
+    const startX = event.clientX;
+    const startWidth = sidebarWidth;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      const containerWidth = container?.getBoundingClientRect().width;
+      const delta = moveEvent.clientX - startX;
+      setSidebarWidth(clampSidebarWidth(startWidth + delta, containerWidth));
+    };
+
+    const handleMouseUp = () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [sidebarCollapsed, sidebarWidth]);
+
+  const libraryLayoutStyle = useMemo(
+    () => ({
+      gridTemplateColumns: sidebarCollapsed
+        ? `${LIBRARY_SIDEBAR_COLLAPSED_WIDTH}px 1fr`
+        : `${sidebarWidth}px ${LIBRARY_SIDEBAR_RESIZER_WIDTH}px 1fr`
+    }),
+    [sidebarCollapsed, sidebarWidth]
+  );
+
   return (
     <main className="h-full w-full bg-[#eceef2] p-1">
-      <div className="h-full overflow-hidden rounded-[8px] border border-[#d8dee9] bg-[#f1f2f5]">
-        <div
-          className={cn(
-            'grid h-full overflow-hidden transition-[grid-template-columns] duration-200',
-            sidebarCollapsed ? 'grid-cols-[72px_1fr]' : 'grid-cols-[270px_1fr]'
-          )}
-        >
+      <div ref={containerRef} className="h-full overflow-hidden rounded-[8px] border border-[#d8dee9] bg-[#f1f2f5]">
+        <div className="grid h-full overflow-hidden transition-[grid-template-columns] duration-200" style={libraryLayoutStyle}>
           <LibrarySidebar
             sidebarCollapsed={sidebarCollapsed}
             activeMenu={activeMenu}
+            artistDirectories={artistDirectories}
             tags={tags}
             selectedTags={selectedTags}
             sources={sources}
             sourceMangaCountByPath={sourceMangaCountByPath}
             hasIpcBridge={hasIpcBridge}
             onActiveMenuChange={setActiveMenu}
-            onSidebarCollapsedChange={setSidebarCollapsed}
             onToggleTag={toggleTagSelection}
             onClearSelectedTags={clearSelectedTags}
             onOpenTagDialog={openTagDialog}
@@ -165,20 +249,31 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
             onOpenOrganizer={onOpenOrganizer}
           />
 
+          {!sidebarCollapsed ? (
+            <div
+              className="group relative h-full cursor-col-resize bg-transparent"
+              onMouseDown={handleSidebarResizeStart}
+              role="separator"
+              aria-orientation="vertical"
+              aria-label="调整侧边栏宽度"
+            >
+              <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#d7deea] transition group-hover:bg-[#2f6cf6]" />
+              <div className="absolute inset-y-0 left-1/2 w-2 -translate-x-1/2" />
+            </div>
+          ) : null}
+
           <section className="relative flex min-h-0 flex-col bg-[#f3f5f9]">
             <LibraryHeader
+              sidebarCollapsed={sidebarCollapsed}
               sortBy={sortBy}
               loading={loading}
               hasIpcBridge={hasIpcBridge}
               scanRunning={scanRunning}
               search={search}
-              categoryFilter={categoryFilter}
-              statusFilter={statusFilter}
+              onSidebarCollapsedChange={handleSidebarCollapsedChange}
               onSortByChange={setSortBy}
               onSearchChange={setSearch}
               onSyncSources={() => void syncSources()}
-              onCategoryFilterChange={setCategoryFilter}
-              onStatusFilterChange={setStatusFilter}
             />
 
             {!hasIpcBridge ? (

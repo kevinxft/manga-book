@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { DirectoryAlias, MangaBookWithCover, TargetDirectorySummary } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
+import type { SortKey } from '@renderer/pages/Library/types';
 import type { OrganizerCategory } from '../types';
 import { buildOrganizerCategories, buildOrganizerItems } from '../utils';
 
 interface UseOrganizerDataArgs {
   mangas: MangaBookWithCover[];
   hasIpcBridge: boolean;
-  fetchMangas: (options?: { sortBy?: 'title' | 'addedAt' | 'lastReadAt' }) => Promise<void>;
+  fetchMangas: (options?: { sortBy?: SortKey }) => Promise<void>;
 }
 
 interface UseOrganizerDataResult {
@@ -56,9 +57,9 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
       return;
     }
     void (async () => {
-      await Promise.all([fetchMangas({ sortBy: 'addedAt' }), fetchAliases(), fetchAuthorDirectories()]);
+      await Promise.all([mangas.length === 0 ? fetchMangas() : Promise.resolve(), fetchAliases(), fetchAuthorDirectories()]);
     })();
-  }, [fetchAliases, fetchAuthorDirectories, fetchMangas, hasIpcBridge]);
+  }, [fetchAliases, fetchAuthorDirectories, fetchMangas, hasIpcBridge, mangas.length]);
 
   const categories = useMemo(() => {
     const aliasMap = new Map<string, string[]>();
