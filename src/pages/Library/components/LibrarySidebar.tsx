@@ -7,13 +7,15 @@ import {
   FolderTree,
   Import,
   Search,
-  Settings
+  Settings,
+  X
 } from 'lucide-react';
 import type { LibraryFolder } from '@shared/types';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
+import { APP_NAME, APP_VERSION } from '@renderer/constants/appInfo';
 import type { TagItem } from '../types';
 import { SourceManagerDialog } from './SourceManagerDialog';
 
@@ -115,8 +117,13 @@ export function LibrarySidebar({
             <BookOpen className="h-6 w-6 text-[#2563eb]" />
             {!sidebarCollapsed ? (
               <div>
-                <p className="text-[28px] font-bold leading-none tracking-tight text-[#1e2a3a]">漫画库</p>
-                <p className="mt-1 text-[10px] font-semibold tracking-[0.1em] text-[#7e8a9a]">MANGA LIBRARY</p>
+                <div className="flex items-end gap-2">
+                  <p className="text-[28px] font-bold leading-none tracking-tight text-[#1e2a3a]">{APP_NAME}</p>
+                  <span className="mb-0.5 rounded-md bg-[#e7edf8] px-1.5 py-0.5 text-[10px] font-semibold text-[#6b7d98]">
+                    v{APP_VERSION}
+                  </span>
+                </div>
+                <p className="mt-1 text-[10px] font-semibold tracking-[0.1em] text-[#7e8a9a]">MANGA BOOK</p>
               </div>
             ) : null}
           </div>
@@ -131,9 +138,18 @@ export function LibrarySidebar({
                   <Input
                     value={artistSearch}
                     onChange={(event) => setArtistSearch(event.target.value)}
-                    className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 text-[12px]"
+                    className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 pr-9 text-[12px]"
                     placeholder="搜索目录..."
                   />
+                  {artistSearch.trim().length > 0 ? (
+                    <button
+                      className="absolute right-2 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
+                      onClick={() => setArtistSearch('')}
+                      title="清空搜索"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  ) : null}
                 </div>
 
                 {artistDirectories.length > 0 ? (

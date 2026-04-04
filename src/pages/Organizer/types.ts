@@ -3,6 +3,11 @@ import type { MangaBookWithCover } from '@shared/types';
 export type OrganizerSortKey = 'addedAt' | 'title' | 'pages';
 export type OrganizerStatusFilter = 'all' | 'organized' | 'unorganized';
 
+export interface OrganizerSourceFilterOption {
+  path: string;
+  label: string;
+}
+
 export interface OrganizerCategory {
   key: string;
   label: string;

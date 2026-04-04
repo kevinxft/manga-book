@@ -4,6 +4,8 @@ function normalizePath(value: string): string {
   return value.replace(/\\/g, '/').replace(/\/+$/, '');
 }
 
+const CONFLICT_TITLE_SUFFIX_PATTERN = /^(.*?)(?:\s*[（(](\d+)[)）])$/;
+
 export function toCoverSrc(filePath: string): string {
   return `manga-cover://local-image?path=${encodeURIComponent(filePath)}`;
 }
@@ -111,4 +113,31 @@ export function getArtistNameFromMangaPath(folderPath: string): string | null {
   }
 
   return segments[artistIndex] ?? null;
+}
+
+export function getParentDirectoryPath(folderPath: string): string {
+  const normalized = normalizePath(folderPath);
+  const segments = normalized.split('/').filter(Boolean);
+  if (segments.length <= 1) {
+    return normalized;
+  }
+
+  const parentSegments = segments.slice(0, -1);
+  return `${normalized.startsWith('/') ? '/' : ''}${parentSegments.join('/')}`;
+}
+
+export function getConflictBaseTitle(title: string): { baseTitle: string; hasConflictSuffix: boolean } {
+  const trimmed = title.trim();
+  const match = trimmed.match(CONFLICT_TITLE_SUFFIX_PATTERN);
+  if (!match) {
+    return {
+      baseTitle: trimmed,
+      hasConflictSuffix: false
+    };
+  }
+
+  return {
+    baseTitle: (match[1] ?? trimmed).trim(),
+    hasConflictSuffix: true
+  };
 }

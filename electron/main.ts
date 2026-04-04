@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, protocol, net } from 'electron';
@@ -7,6 +8,58 @@ import { TaskQueue } from './tasks/taskQueue';
 import { registerIpcHandlers } from './ipc';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const STABLE_USER_DATA_DIRNAME = 'MangaBook';
+const LEGACY_USER_DATA_DIRNAMES = ['manga-book-electron', '漫书'];
+
+function getLatestLegacyUserDataPath(appDataPath: string): string | null {
+  let latestLegacyPath: string | null = null;
+  let latestModifiedTime = 0;
+
+  for (const legacyDirName of LEGACY_USER_DATA_DIRNAMES) {
+    const legacyPath = path.join(appDataPath, legacyDirName);
+    const legacyDatabasePath = path.join(legacyPath, 'mangabook.db');
+
+    if (!fs.existsSync(legacyDatabasePath)) {
+      continue;
+    }
+
+    const modifiedTime = fs.statSync(legacyDatabasePath).mtimeMs;
+    if (modifiedTime > latestModifiedTime) {
+      latestModifiedTime = modifiedTime;
+      latestLegacyPath = legacyPath;
+    }
+  }
+
+  return latestLegacyPath;
+}
+
+function configurePersistentAppPaths(): void {
+  const appDataPath = app.getPath('appData');
+  const stableUserDataPath = path.join(appDataPath, STABLE_USER_DATA_DIRNAME);
+
+  fs.mkdirSync(stableUserDataPath, { recursive: true });
+
+  const stableDatabasePath = path.join(stableUserDataPath, 'mangabook.db');
+  if (!fs.existsSync(stableDatabasePath)) {
+    const latestLegacyPath = getLatestLegacyUserDataPath(appDataPath);
+    if (latestLegacyPath && latestLegacyPath !== stableUserDataPath) {
+      fs.cpSync(latestLegacyPath, stableUserDataPath, {
+        recursive: true,
+        force: false,
+        errorOnExist: false
+      });
+    }
+  }
+
+  app.setPath('userData', stableUserDataPath);
+  app.setPath('sessionData', stableUserDataPath);
+}
+
+function getAppIconPath(): string {
+  return app.isPackaged ? path.join(app.getAppPath(), 'icon.png') : path.join(__dirname, '../../icon.png');
+}
+
+configurePersistentAppPaths();
 
 protocol.registerSchemesAsPrivileged([
   {
@@ -26,6 +79,7 @@ function createMainWindow(): BrowserWindow {
     height: 860,
     minWidth: 1100,
     minHeight: 720,
+    icon: getAppIconPath(),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -46,6 +100,10 @@ async function bootstrap(): Promise<void> {
   const repositories = createRepositories();
   const scanner = createSourceScanner(repositories);
   const scanQueue = new TaskQueue(4);
+
+  if (process.platform === 'darwin' && app.dock) {
+    app.dock.setIcon(getAppIconPath());
+  }
 
   protocol.handle('manga-cover', (request) => {
     const url = new URL(request.url);

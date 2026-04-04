@@ -215,9 +215,11 @@ export function filterAndSortOrganizerItems(
   mangas: OrganizerItem[],
   query: string,
   statusFilter: OrganizerStatusFilter,
-  sortBy: OrganizerSortKey
+  sortBy: OrganizerSortKey,
+  sourceFolderPath?: string | null
 ): OrganizerItem[] {
   const keyword = query.trim().toLowerCase();
+  const normalizedSourceFilter = sourceFolderPath?.trim();
 
   const filtered = mangas.filter((manga) => {
     if (statusFilter === 'organized' && manga.organizeStatus !== 'organized') {
@@ -225,6 +227,10 @@ export function filterAndSortOrganizerItems(
     }
 
     if (statusFilter === 'unorganized' && manga.organizeStatus !== 'unorganized') {
+      return false;
+    }
+
+    if (normalizedSourceFilter && manga.sourceFolderPath !== normalizedSourceFilter) {
       return false;
     }
 

@@ -35,7 +35,18 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     hasIpcBridge,
     fetchMangas
   });
-  const { query, setQuery, statusFilter, setStatusFilter, sortBy, setSortBy, visibleItems } = useOrganizerFilters({
+  const {
+    query,
+    setQuery,
+    statusFilter,
+    setStatusFilter,
+    sourceFilter,
+    setSourceFilter,
+    sourceOptions,
+    sortBy,
+    setSortBy,
+    visibleItems
+  } = useOrganizerFilters({
     organizerItems
   });
   const { selectedIds, setSelectedIds, allVisibleSelected, toggleSelectAllVisible, toggleItem } = useOrganizerSelection({
@@ -113,11 +124,14 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
         <OrganizerHeader
           query={query}
           statusFilter={statusFilter}
+          sourceFilter={sourceFilter}
+          sourceOptions={sourceOptions}
           sortBy={sortBy}
           allVisibleSelected={allVisibleSelected}
           onBack={onBack}
           onQueryChange={setQuery}
           onStatusFilterChange={setStatusFilter}
+          onSourceFilterChange={setSourceFilter}
           onSortByChange={setSortBy}
           onToggleSelectAllVisible={toggleSelectAllVisible}
         />

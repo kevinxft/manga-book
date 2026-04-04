@@ -1,16 +1,28 @@
 {
   "name": "manga-book-electron",
-  "version": "0.1.0",
+  "productName": "漫书",
+  "version": "0.2.0",
   "description": "MangaBook Electron rewrite",
   "main": "./out/main/main.js",
   "author": "",
   "license": "MIT",
+  "build": {
+    "appId": "com.kevin.mangabook",
+    "directories": {
+      "buildResources": "build"
+    },
+    "mac": {
+      "icon": "build/icon.icns"
+    }
+  },
   "type": "module",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "verify:core": "bun run typecheck && bun run build",
+    "package:mac": "bun run verify:core && electron-builder --mac dir",
+    "package:dmg": "bun run verify:core && electron-builder --mac dmg",
     "rebuild:native": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
     "typecheck": "tsc --noEmit",

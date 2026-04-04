@@ -1,16 +1,19 @@
 import { ArrowLeft, BookOpen, CheckSquare2, Search, Square, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
-import type { OrganizerSortKey, OrganizerStatusFilter } from '../types';
+import type { OrganizerSortKey, OrganizerSourceFilterOption, OrganizerStatusFilter } from '../types';
 
 interface OrganizerHeaderProps {
   query: string;
   statusFilter: OrganizerStatusFilter;
+  sourceFilter: string;
+  sourceOptions: OrganizerSourceFilterOption[];
   sortBy: OrganizerSortKey;
   allVisibleSelected: boolean;
   onBack?: () => void;
   onQueryChange: (value: string) => void;
   onStatusFilterChange: (value: OrganizerStatusFilter) => void;
+  onSourceFilterChange: (value: string) => void;
   onSortByChange: (value: OrganizerSortKey) => void;
   onToggleSelectAllVisible: () => void;
 }
@@ -18,11 +21,14 @@ interface OrganizerHeaderProps {
 export function OrganizerHeader({
   query,
   statusFilter,
+  sourceFilter,
+  sourceOptions,
   sortBy,
   allVisibleSelected,
   onBack,
   onQueryChange,
   onStatusFilterChange,
+  onSourceFilterChange,
   onSortByChange,
   onToggleSelectAllVisible
 }: OrganizerHeaderProps) {
@@ -65,6 +71,20 @@ export function OrganizerHeader({
           <option value="all">状态: 全部</option>
           <option value="organized">状态: 已整理</option>
           <option value="unorganized">状态: 未整理</option>
+        </select>
+
+        <select
+          value={sourceFilter}
+          onChange={(event) => onSourceFilterChange(event.target.value)}
+          className="h-10 min-w-[150px] shrink-0 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[12px] font-semibold text-[#3d4d67] outline-none"
+          title={sourceFilter === 'all' ? '目录: 全部' : sourceOptions.find((option) => option.path === sourceFilter)?.path ?? sourceFilter}
+        >
+          <option value="all">目录: 全部</option>
+          {sourceOptions.map((option) => (
+            <option key={option.path} value={option.path}>
+              目录: {option.label}
+            </option>
+          ))}
         </select>
 
         <select

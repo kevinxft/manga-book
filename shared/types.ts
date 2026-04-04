@@ -156,10 +156,12 @@ export interface OrganizerRenameMangaRequest {
 export interface OrganizerAddAliasRequest {
   alias: string;
   canonicalName: string;
+  canonicalPath?: string;
 }
 
 export interface OrganizerRemoveAliasRequest {
   alias: string;
+  canonicalPath?: string;
 }
 
 export interface OrganizerCreateAuthorDirectoryRequest {

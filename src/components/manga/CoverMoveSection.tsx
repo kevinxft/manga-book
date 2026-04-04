@@ -1,4 +1,4 @@
-import { ArrowDownUp, FolderInput, Search } from 'lucide-react';
+import { ArrowDownUp, FolderInput, Search, X } from 'lucide-react';
 import { Input } from '@renderer/components/ui/input';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
 
@@ -35,9 +35,18 @@ export function CoverMoveSection({
           <Input
             value={moveSearch}
             onChange={(event) => onMoveSearchChange(event.target.value)}
-            className="h-7 rounded-md border-[#d7deeb] bg-[#f3f6fb] pl-7 text-[11px]"
+            className="h-7 rounded-md border-[#d7deeb] bg-[#f3f6fb] pl-7 pr-7 text-[11px]"
             placeholder="搜索作者/别名"
           />
+          {moveSearch.trim().length > 0 ? (
+            <button
+              className="absolute right-1.5 top-1/2 inline-flex h-4.5 w-4.5 -translate-y-1/2 items-center justify-center rounded text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
+              onClick={() => onMoveSearchChange('')}
+              title="清空搜索"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          ) : null}
         </div>
         <label className="relative flex items-center">
           <ArrowDownUp className="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[#7f8da1]" />

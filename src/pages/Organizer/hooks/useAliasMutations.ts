@@ -63,7 +63,8 @@ export function useAliasMutations({ aliases, upsertAlias, removeAliasLocal, setM
     try {
       const storedAlias = await ipcInvoke('organizer.addAlias', {
         alias: trimmed,
-        canonicalName: aliasTargetCategory.label
+        canonicalName: aliasTargetCategory.label,
+        canonicalPath: aliasTargetCategory.path
       });
       upsertAlias(storedAlias);
       closeAliasDialog(true);
@@ -86,13 +87,17 @@ export function useAliasMutations({ aliases, upsertAlias, removeAliasLocal, setM
     setMoveError(null);
     try {
       try {
-        await ipcInvoke('organizer.removeAlias', { alias: aliasName });
+        await ipcInvoke('organizer.removeAlias', {
+          alias: aliasName,
+          canonicalPath: aliasTargetCategory.path
+        });
       } catch (error) {
         const message = error instanceof Error ? error.message : '';
         if (message.includes("No handler registered for 'organizer.removeAlias'")) {
           await ipcInvoke('organizer.addAlias', {
             alias: aliasName,
-            canonicalName: aliasName
+            canonicalName: aliasName,
+            canonicalPath: aliasTargetCategory.path
           });
         } else {
           throw error;

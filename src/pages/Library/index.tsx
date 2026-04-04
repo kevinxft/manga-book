@@ -31,6 +31,16 @@ const LIBRARY_SIDEBAR_RESIZER_WIDTH = 8;
 const LIBRARY_SIDEBAR_STORAGE_KEY = 'manga-book.library-sidebar-width';
 const LIBRARY_MAIN_CONTENT_MIN_WIDTH = 480;
 
+function readStoredSidebarWidth(): number | null {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const raw = window.localStorage.getItem(LIBRARY_SIDEBAR_STORAGE_KEY);
+  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function clampSidebarWidth(width: number, containerWidth?: number): number {
   const containerMaxWidth =
     typeof containerWidth === 'number'
@@ -42,14 +52,8 @@ function clampSidebarWidth(width: number, containerWidth?: number): number {
 export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: LibraryPageProps) {
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const [sidebarWidth, setSidebarWidth] = useState(() => {
-    if (typeof window === 'undefined') {
-      return LIBRARY_SIDEBAR_DEFAULT_WIDTH;
-    }
-    const raw = window.localStorage.getItem(LIBRARY_SIDEBAR_STORAGE_KEY);
-    const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
-    return Number.isFinite(parsed) ? clampSidebarWidth(parsed) : LIBRARY_SIDEBAR_DEFAULT_WIDTH;
-  });
+  const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebarWidth(readStoredSidebarWidth() ?? LIBRARY_SIDEBAR_DEFAULT_WIDTH));
+  const [sidebarWidthHydrated, setSidebarWidthHydrated] = useState(false);
 
   const {
     tags,
@@ -160,11 +164,23 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
   }, [setSidebarCollapsed]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') {
+    const storedWidth = readStoredSidebarWidth();
+    if (storedWidth !== null) {
+      setSidebarWidth((current) => {
+        const containerWidth = containerRef.current?.getBoundingClientRect().width;
+        const nextWidth = clampSidebarWidth(storedWidth, containerWidth);
+        return nextWidth === current ? current : nextWidth;
+      });
+    }
+    setSidebarWidthHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !sidebarWidthHydrated) {
       return;
     }
     window.localStorage.setItem(LIBRARY_SIDEBAR_STORAGE_KEY, String(sidebarWidth));
-  }, [sidebarWidth]);
+  }, [sidebarWidth, sidebarWidthHydrated]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -174,6 +190,9 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
 
     const observer = new ResizeObserver(([entry]) => {
       if (!entry) {
+        return;
+      }
+      if (entry.contentRect.width <= 0) {
         return;
       }
       const nextWidth = clampSidebarWidth(sidebarWidth, entry.contentRect.width);
@@ -267,6 +286,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
               sidebarCollapsed={sidebarCollapsed}
               sortBy={sortBy}
               loading={loading}
+              mangaCount={visibleMangas.length}
               hasIpcBridge={hasIpcBridge}
               scanRunning={scanRunning}
               search={search}

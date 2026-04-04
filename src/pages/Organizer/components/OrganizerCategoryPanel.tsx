@@ -61,7 +61,6 @@ export function OrganizerCategoryPanel({
       (category) =>
         keyword.length === 0 ||
         category.label.toLowerCase().includes(keyword) ||
-        category.path.toLowerCase().includes(keyword) ||
         category.aliases.some((alias) => alias.toLowerCase().includes(keyword))
     );
 
@@ -251,9 +250,18 @@ export function OrganizerCategoryPanel({
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 text-[12px]"
+              className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 pr-9 text-[12px]"
               placeholder="搜索目录..."
             />
+            {search.trim().length > 0 ? (
+              <button
+                className="absolute right-2 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
+                onClick={() => setSearch('')}
+                title="清空搜索"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
           </div>
 
           <div className="relative" ref={sortMenuRef}>
