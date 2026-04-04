@@ -12,12 +12,14 @@ import {
 import type { LibraryFolder } from '@shared/types';
 import { Button } from '@renderer/components/ui/button';
 import { cn } from '@renderer/lib/utils';
+import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
 import type { TagItem } from '../types';
 import { SourceManagerDialog } from './SourceManagerDialog';
 
 interface LibrarySidebarProps {
   sidebarCollapsed: boolean;
   activeMenu: string;
+  artistDirectories: OrganizerCategory[];
   tags: TagItem[];
   selectedTags: string[];
   sources: LibraryFolder[];
@@ -37,6 +39,7 @@ interface LibrarySidebarProps {
 export function LibrarySidebar({
   sidebarCollapsed,
   activeMenu,
+  artistDirectories,
   tags,
   selectedTags,
   sources,
@@ -56,7 +59,7 @@ export function LibrarySidebar({
 
   return (
     <>
-      <aside className="flex h-full flex-col border-r border-[#dce1ea] bg-[#f6f7f9]">
+      <aside className="flex h-full min-h-0 flex-col border-r border-[#dce1ea] bg-[#f6f7f9]">
         <div
           className={cn(
             'flex h-16 items-center border-b border-[#e2e6ee]',
@@ -84,14 +87,14 @@ export function LibrarySidebar({
         </div>
 
         <div className={cn('flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-4 py-5', sidebarCollapsed && 'px-2')}>
-          <section>
+          <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {!sidebarCollapsed ? <p className="mb-3 px-2 text-xs font-semibold text-[#8893a4]">常规</p> : null}
-            <div className="space-y-1.5">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <button
                 onClick={() => onActiveMenuChange('all')}
                 title={sidebarCollapsed ? '所有漫画' : undefined}
                 className={cn(
-                  'flex w-full items-center rounded-lg py-2 text-sm font-semibold transition',
+                  'shrink-0 flex w-full items-center rounded-lg py-2 text-sm font-semibold transition',
                   sidebarCollapsed ? 'justify-center px-0' : 'gap-2 px-3',
                   activeMenu === 'all'
                     ? 'bg-[#2f6cf6] text-white shadow-[0_6px_18px_rgba(47,108,246,0.25)]'
@@ -101,44 +104,41 @@ export function LibrarySidebar({
                 <FolderClosed className="h-4 w-4" />
                 {!sidebarCollapsed ? '所有漫画' : null}
               </button>
-            </div>
 
-            {!sidebarCollapsed ? (
-              <div className="mt-3 space-y-1.5">
-                <p className="px-2 text-[11px] font-semibold text-[#98a5b9]">导入目录 ({sources.length})</p>
-                <div className="max-h-[180px] space-y-1 overflow-auto pr-1">
-                  {sources.length === 0 ? (
-                    <div className="rounded-md border border-dashed border-[#d4dbe7] bg-[#f8fafd] px-2.5 py-2 text-[11px] text-[#8c97aa]">
-                      暂无导入目录
-                    </div>
-                  ) : (
-                    sources.map((source) => {
-                      const active = activeMenu === `source:${source.id}`;
+              {!sidebarCollapsed && artistDirectories.length > 0 ? (
+                <div className="library-sidebar-scroll mt-2 min-h-0 flex-1 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 pb-1">
+                    {artistDirectories.map((directory) => {
+                      const itemKey = `artist:${directory.path}`;
+                      const active = activeMenu === itemKey;
+
                       return (
                         <button
-                          key={source.id}
-                          onClick={() => onActiveMenuChange(`source:${source.id}`)}
+                          key={directory.key}
+                          onClick={() => onActiveMenuChange(itemKey)}
                           className={cn(
-                            'flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-[12px] font-semibold transition',
-                            active ? 'bg-[#2f6cf6] text-white' : 'text-[#3a4a62] hover:bg-[#e7ebf2]'
+                            'flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm font-semibold transition',
+                            active
+                              ? 'bg-[#2f6cf6] text-white shadow-[0_6px_18px_rgba(47,108,246,0.2)]'
+                              : 'text-[#3a4a62] hover:bg-[#e7ebf2]'
                           )}
-                          title={source.path}
+                          title={directory.path}
                         >
-                          <span className="min-w-0 truncate">{source.displayName}</span>
-                          <span className={cn('ml-2 shrink-0 text-[11px]', active ? 'text-white/85' : 'text-[#6f7f98]')}>
-                            {sourceMangaCountByPath[source.path] ?? 0}
+                          <span className="min-w-0 truncate">{directory.label}</span>
+                          <span className={cn('ml-2 shrink-0 text-xs', active ? 'text-white/85' : 'text-[#6f7f98]')}>
+                            {directory.count}
                           </span>
                         </button>
                       );
-                    })
-                  )}
+                    })}
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </section>
 
           {!sidebarCollapsed ? (
-            <section>
+            <section className="flex shrink-0 flex-col overflow-hidden">
               <div className="mb-3 flex items-center justify-between px-2">
                 <p className="text-xs font-semibold text-[#8893a4]">标签过滤</p>
                 <div className="flex items-center gap-1">
@@ -163,7 +163,8 @@ export function LibrarySidebar({
                   暂无标签数据
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
+                <div className="library-sidebar-scroll max-h-[140px] overflow-y-auto pr-1">
+                  <div className="flex flex-wrap gap-2">
                   {tags.map((tag) => {
                     const active = selectedTags.includes(tag.id);
                     return (
@@ -181,13 +182,14 @@ export function LibrarySidebar({
                       </button>
                     );
                   })}
+                  </div>
                 </div>
               )}
             </section>
           ) : null}
         </div>
 
-        <div className={cn('mt-auto space-y-3 border-t border-[#dce1ea] p-4', sidebarCollapsed && 'px-2')}>
+        <div className={cn('mt-auto shrink-0 space-y-3 border-t border-[#dce1ea] p-4', sidebarCollapsed && 'px-2')}>
           {sidebarCollapsed ? (
             <button
               className="flex w-full items-center justify-center rounded-lg border border-[#d7deea] bg-white py-2 text-[#5a6880] transition hover:bg-[#e7ebf2]"
