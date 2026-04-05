@@ -28,11 +28,13 @@ interface LibrarySidebarProps {
   sources: LibraryFolder[];
   sourceMangaCountByPath: Record<string, number>;
   hasIpcBridge: boolean;
+  scanRunning: boolean;
   onActiveMenuChange: (value: string) => void;
   onToggleTag: (id: string) => void;
   onClearSelectedTags: () => void;
   onOpenTagDialog: () => void;
   onPickAndAddSources: () => void;
+  onSyncSource: (sourcePath: string) => void;
   onRemoveSource: (sourceId: string) => void;
   onOpenSettings?: () => void;
   onOpenOrganizer?: () => void;
@@ -47,11 +49,13 @@ export function LibrarySidebar({
   sources,
   sourceMangaCountByPath,
   hasIpcBridge,
+  scanRunning,
   onActiveMenuChange,
   onToggleTag,
   onClearSelectedTags,
   onOpenTagDialog,
   onPickAndAddSources,
+  onSyncSource,
   onRemoveSource,
   onOpenSettings,
   onOpenOrganizer
@@ -366,7 +370,9 @@ export function LibrarySidebar({
         sources={sources}
         sourceMangaCountByPath={sourceMangaCountByPath}
         hasIpcBridge={hasIpcBridge}
+        scanRunning={scanRunning}
         onClose={() => setSourceManagerOpen(false)}
+        onSyncSource={onSyncSource}
         onRemoveSource={onRemoveSource}
       />
     </>

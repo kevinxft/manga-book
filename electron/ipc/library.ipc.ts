@@ -209,4 +209,20 @@ export function registerLibraryIpc(context: IpcContext): void {
       message: runningTask.progress.message
     });
   });
+
+  registerHandler('library.getScanTaskStatus', (request) => {
+    const task = scanQueue.getTask(request.taskId);
+    if (!task) {
+      return fail('NOT_FOUND', 'Scan task not found');
+    }
+
+    return ok({
+      taskId: task.id,
+      status: task.status,
+      current: task.progress.current,
+      total: task.progress.total,
+      message: task.progress.message,
+      error: task.error
+    });
+  });
 }

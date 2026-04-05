@@ -1,4 +1,4 @@
-import { Trash2, X } from 'lucide-react';
+import { RefreshCw, Trash2, X } from 'lucide-react';
 import type { LibraryFolder } from '@shared/types';
 
 interface SourceManagerDialogProps {
@@ -6,7 +6,9 @@ interface SourceManagerDialogProps {
   sources: LibraryFolder[];
   sourceMangaCountByPath: Record<string, number>;
   hasIpcBridge: boolean;
+  scanRunning: boolean;
   onClose: () => void;
+  onSyncSource: (sourcePath: string) => void;
   onRemoveSource: (sourceId: string) => void;
 }
 
@@ -15,7 +17,9 @@ export function SourceManagerDialog({
   sources,
   sourceMangaCountByPath,
   hasIpcBridge,
+  scanRunning,
   onClose,
+  onSyncSource,
   onRemoveSource
 }: SourceManagerDialogProps) {
   if (!open) {
@@ -53,16 +57,27 @@ export function SourceManagerDialog({
                         {sourceMangaCountByPath[source.path] ?? 0} 本漫画
                       </p>
                     </div>
-                    <button
-                      className="rounded-md p-1 text-[#7a879a] transition hover:bg-[#e8eef9] hover:text-[#d23b3b] disabled:opacity-50"
-                      disabled={!hasIpcBridge}
-                      onClick={() => {
-                        if (!window.confirm(`确认移除目录？\\n${source.path}`)) return;
-                        onRemoveSource(source.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        className="rounded-md p-1 text-[#7a879a] transition hover:bg-[#e8eef9] hover:text-[#2f6cf6] disabled:opacity-50"
+                        disabled={!hasIpcBridge || scanRunning}
+                        onClick={() => onSyncSource(source.path)}
+                        title="同步这个目录"
+                      >
+                        <RefreshCw className={`h-4 w-4 ${scanRunning ? 'animate-spin' : ''}`} />
+                      </button>
+                      <button
+                        className="rounded-md p-1 text-[#7a879a] transition hover:bg-[#e8eef9] hover:text-[#d23b3b] disabled:opacity-50"
+                        disabled={!hasIpcBridge || scanRunning}
+                        onClick={() => {
+                          if (!window.confirm(`确认移除目录？\\n${source.path}`)) return;
+                          onRemoveSource(source.id);
+                        }}
+                        title="移除这个目录"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MangaBookWithCover, MangaTag } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
+import { useTagStore } from '@renderer/stores/tagStore';
 import { getErrorMessage } from './error';
 
 interface UseOrganizerTagActionsInput {
@@ -10,6 +11,9 @@ interface UseOrganizerTagActionsInput {
 }
 
 export function useOrganizerTagActions({ hasIpcBridge, updateMangaLocal, setMoveError }: UseOrganizerTagActionsInput) {
+  const tags = useTagStore((state) => state.tags);
+  const ensureLoaded = useTagStore((state) => state.ensureLoaded);
+  const upsertTagLocal = useTagStore((state) => state.upsertTagLocal);
   const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
   const [addTagTarget, setAddTagTarget] = useState<MangaBookWithCover | null>(null);
   const [addTagAnchor, setAddTagAnchor] = useState<{ x: number; y: number } | null>(null);
@@ -17,7 +21,10 @@ export function useOrganizerTagActions({ hasIpcBridge, updateMangaLocal, setMove
   const [addTagDraft, setAddTagDraft] = useState<string[]>([]);
   const [addTagSaving, setAddTagSaving] = useState(false);
   const [addTagError, setAddTagError] = useState<string | null>(null);
-  const [availableTagNames, setAvailableTagNames] = useState<string[]>([]);
+
+  useEffect(() => {
+    void ensureLoaded();
+  }, [ensureLoaded, hasIpcBridge]);
 
   const closeAddTagDialog = (force = false) => {
     if (addTagSaving && !force) {
@@ -58,19 +65,10 @@ export function useOrganizerTagActions({ hasIpcBridge, updateMangaLocal, setMove
     setAddTagInput('');
   };
 
-  const loadAvailableTagNames = async () => {
-    if (!hasIpcBridge) {
-      setAvailableTagNames([]);
-      return;
-    }
-    try {
-      const items = await ipcInvoke('tag.list', undefined);
-      const names = Array.from(new Set(items.map((item) => item.name.trim()).filter((name) => name.length > 0)));
-      setAvailableTagNames(names);
-    } catch {
-      setAvailableTagNames([]);
-    }
-  };
+  const availableTagNames = useMemo(
+    () => Array.from(new Set(tags.map((tag) => tag.label.trim()).filter((name) => name.length > 0))),
+    [tags]
+  );
 
   const handleAddTagManga = (item: MangaBookWithCover, anchor: { x: number; y: number }) => {
     if (!hasIpcBridge) {
@@ -85,7 +83,6 @@ export function useOrganizerTagActions({ hasIpcBridge, updateMangaLocal, setMove
     setAddTagDraft(Array.from(new Set(item.tags.map((tag) => tag.name.trim()).filter((name) => name.length > 0))));
     setAddTagError(null);
     setAddTagDialogOpen(true);
-    void loadAvailableTagNames();
   };
 
   const handleConfirmAddTag = async () => {
@@ -133,6 +130,10 @@ export function useOrganizerTagActions({ hasIpcBridge, updateMangaLocal, setMove
       for (const tagName of tagsToAdd) {
         const added = await ipcInvoke('tag.addToManga', { mangaId: addTagTarget.id, tagName });
         tagByNameKey.set(tagName.toLocaleLowerCase(), added.tag);
+        upsertTagLocal({
+          id: added.tag.id,
+          label: added.tag.name
+        });
       }
       for (const tagName of tagsToRemove) {
         await ipcInvoke('tag.removeFromManga', { mangaId: addTagTarget.id, tagName });
@@ -154,10 +155,6 @@ export function useOrganizerTagActions({ hasIpcBridge, updateMangaLocal, setMove
         ...current,
         tags: nextTags
       }));
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('manga-book-tags-updated'));
-      }
       closeAddTagDialog(true);
     } catch (error) {
       const message = getErrorMessage(error, '添加标签失败');

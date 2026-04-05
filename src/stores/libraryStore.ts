@@ -22,9 +22,11 @@ interface LibraryState {
   addSources: (sourcePaths: string[]) => Promise<void>;
   pickAndAddSources: () => Promise<void>;
   removeSource: (id: string) => Promise<void>;
-  syncSources: () => Promise<void>;
+  syncSources: (paths?: string[]) => Promise<void>;
+  monitorScanTask: (taskId: string) => Promise<void>;
   refreshScanProgress: () => Promise<void>;
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
+  updateAllMangasLocal: (updater: (manga: MangaBookWithCover) => MangaBookWithCover) => void;
   removeMangaLocal: (mangaId: string) => void;
 }
 
@@ -42,6 +44,48 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   error: null,
   lastFetchOptions: {
     sortBy: 'addedAtDesc'
+  },
+
+  async monitorScanTask(taskId: string) {
+    while (true) {
+      try {
+        const status = await ipcInvoke('library.getScanTaskStatus', { taskId });
+
+        if (status.status === 'queued' || status.status === 'running') {
+          set({
+            progress: {
+              taskId: status.taskId,
+              status: 'running',
+              current: status.current,
+              total: status.total,
+              message: status.message
+            }
+          });
+          await new Promise((resolve) => setTimeout(resolve, 500));
+          continue;
+        }
+
+        set({
+          progress: {
+            taskId: null,
+            status: 'idle',
+            current: 0,
+            total: 0,
+            message: status.status === 'completed' ? 'Idle' : status.message
+          }
+        });
+
+        if (status.status === 'completed') {
+          await Promise.all([get().fetchSources(), get().fetchMangas()]);
+        } else if (status.status === 'failed') {
+          set({ error: status.error ?? 'Library sync failed' });
+        }
+        return;
+      } catch (error) {
+        set({ error: error instanceof Error ? error.message : 'Failed to track scan task' });
+        return;
+      }
+    }
   },
 
   async fetchSources() {
@@ -101,6 +145,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             message: 'Queued'
           }
         });
+        void get().monitorScanTask(result.taskId);
         await get().refreshScanProgress();
       }
       if (result.added.length === 0 && result.skipped.length > 0) {
@@ -147,10 +192,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
   },
 
-  async syncSources() {
+  async syncSources(paths) {
     set({ error: null });
     try {
-      const result = await ipcInvoke('library.syncSources', { forceRescan: true });
+      const result = await ipcInvoke('library.syncSources', {
+        forceRescan: true,
+        ...(paths && paths.length > 0 ? { paths } : {})
+      });
       set({
         progress: {
           taskId: result.taskId,
@@ -160,6 +208,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           message: 'Queued'
         }
       });
+      void get().monitorScanTask(result.taskId);
       await get().refreshScanProgress();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to sync sources' });
@@ -206,6 +255,22 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       const mangas = [...state.mangas];
       mangas[index] = next;
       return { mangas };
+    });
+  },
+
+  updateAllMangasLocal(updater) {
+    set((state) => {
+      let changed = false;
+
+      const mangas = state.mangas.map((manga) => {
+        const next = updater(manga);
+        if (next !== manga) {
+          changed = true;
+        }
+        return next;
+      });
+
+      return changed ? { mangas } : state;
     });
   },
 

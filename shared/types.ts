@@ -76,6 +76,15 @@ export interface ScanProgress {
   message: string;
 }
 
+export interface ScanTaskStatus {
+  taskId: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  current: number;
+  total: number;
+  message: string;
+  error?: string;
+}
+
 export interface IpcError {
   code: string;
   message: string;
@@ -224,6 +233,7 @@ export interface IpcChannels {
   'library.syncSources': { req: LibrarySyncSourcesRequest | void; res: { taskId: string } };
   'library.listMangas': { req: MangaFilter | void; res: MangaBookWithCover[] };
   'library.getScanProgress': { req: void; res: ScanProgress };
+  'library.getScanTaskStatus': { req: { taskId: string }; res: ScanTaskStatus };
 
   'organizer.moveManga': { req: OrganizerMoveMangaRequest; res: OrganizerMoveMangaResult };
   'organizer.openMangaFolder': { req: OrganizerOpenMangaFolderRequest; res: { opened: boolean } };

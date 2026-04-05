@@ -256,11 +256,13 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
             sources={sources}
             sourceMangaCountByPath={sourceMangaCountByPath}
             hasIpcBridge={hasIpcBridge}
+            scanRunning={scanRunning}
             onActiveMenuChange={setActiveMenu}
             onToggleTag={toggleTagSelection}
             onClearSelectedTags={clearSelectedTags}
             onOpenTagDialog={openTagDialog}
             onPickAndAddSources={() => void pickAndAddSources()}
+            onSyncSource={(sourcePath) => void syncSources([sourcePath])}
             onRemoveSource={(sourceId) => {
               void removeSource(sourceId);
             }}

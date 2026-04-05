@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { MangaBookWithCover, MangaTag } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
+import { useTagStore } from '@renderer/stores/tagStore';
 
 interface UseLibraryMangaTagEditorInput {
   hasIpcBridge: boolean;
@@ -15,6 +16,7 @@ export function useLibraryMangaTagEditor({
   updateMangaLocal,
   setOperationError
 }: UseLibraryMangaTagEditorInput) {
+  const upsertTagLocal = useTagStore((state) => state.upsertTagLocal);
   const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
   const [addTagTarget, setAddTagTarget] = useState<MangaBookWithCover | null>(null);
   const [addTagInput, setAddTagInput] = useState('');
@@ -123,6 +125,10 @@ export function useLibraryMangaTagEditor({
       for (const tagName of tagsToAdd) {
         const added = await ipcInvoke('tag.addToManga', { mangaId: addTagTarget.id, tagName });
         tagByNameKey.set(tagName.toLocaleLowerCase(), added.tag);
+        upsertTagLocal({
+          id: added.tag.id,
+          label: added.tag.name
+        });
       }
       for (const tagName of tagsToRemove) {
         await ipcInvoke('tag.removeFromManga', { mangaId: addTagTarget.id, tagName });
@@ -144,10 +150,6 @@ export function useLibraryMangaTagEditor({
         ...current,
         tags: nextTags
       }));
-
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('manga-book-tags-updated'));
-      }
       closeAddTagDialog(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : '保存标签失败';
