@@ -56,7 +56,9 @@ function configurePersistentAppPaths(): void {
 }
 
 function getAppIconPath(): string {
-  return app.isPackaged ? path.join(app.getAppPath(), 'icon.png') : path.join(__dirname, '../../icon.png');
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'icon.png')
+    : path.join(__dirname, '../../build/icon.png');
 }
 
 configurePersistentAppPaths();
@@ -79,7 +81,7 @@ function createMainWindow(): BrowserWindow {
     height: 860,
     minWidth: 1100,
     minHeight: 720,
-    icon: getAppIconPath(),
+    ...(process.platform === 'darwin' ? {} : { icon: getAppIconPath() }),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -100,10 +102,6 @@ async function bootstrap(): Promise<void> {
   const repositories = createRepositories();
   const scanner = createSourceScanner(repositories);
   const scanQueue = new TaskQueue(4);
-
-  if (process.platform === 'darwin' && app.dock) {
-    app.dock.setIcon(getAppIconPath());
-  }
 
   protocol.handle('manga-cover', (request) => {
     const url = new URL(request.url);

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { DirectoryAlias, MangaBookWithCover, TargetDirectorySummary } from '@shared/types';
-import { ipcInvoke } from '@renderer/ipc/client';
+import { useEffect, useMemo, useState } from 'react';
+import type { MangaBookWithCover } from '@shared/types';
 import type { SortKey } from '@renderer/pages/Library/types';
+import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
 import type { OrganizerCategory } from '../types';
 import { buildOrganizerCategories, buildOrganizerItems } from '../utils';
 
@@ -12,54 +12,35 @@ interface UseOrganizerDataArgs {
 }
 
 interface UseOrganizerDataResult {
-  aliases: DirectoryAlias[];
+  aliases: ReturnType<typeof useOrganizerMetadataStore.getState>['aliases'];
   categories: OrganizerCategory[];
   organizerItems: ReturnType<typeof buildOrganizerItems>;
   selectedCategoryKey: string | null;
   setSelectedCategoryKey: (value: string | null) => void;
   refreshAuthorDirectories: () => Promise<void>;
-  upsertAlias: (alias: DirectoryAlias) => void;
+  upsertAlias: ReturnType<typeof useOrganizerMetadataStore.getState>['upsertAlias'];
   removeAliasLocal: (aliasName: string) => void;
   addAuthorDirectoryLocal: (directoryPath: string) => void;
 }
 
 export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrganizerDataArgs): UseOrganizerDataResult {
-  const [aliases, setAliases] = useState<DirectoryAlias[]>([]);
-  const [authorDirectories, setAuthorDirectories] = useState<TargetDirectorySummary[]>([]);
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
-
-  const fetchAliases = useCallback(async () => {
-    if (!hasIpcBridge) {
-      return;
-    }
-    try {
-      const records = await ipcInvoke('organizer.listAliases', undefined);
-      setAliases(records);
-    } catch {
-      // ignore alias load errors to avoid blocking page
-    }
-  }, [hasIpcBridge]);
-
-  const fetchAuthorDirectories = useCallback(async () => {
-    if (!hasIpcBridge) {
-      return;
-    }
-    try {
-      const items = await ipcInvoke('organizer.listAuthorDirectories', undefined);
-      setAuthorDirectories(items);
-    } catch {
-      // ignore author directory load errors to avoid blocking page
-    }
-  }, [hasIpcBridge]);
+  const aliases = useOrganizerMetadataStore((state) => state.aliases);
+  const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
+  const ensureLoaded = useOrganizerMetadataStore((state) => state.ensureLoaded);
+  const refreshAuthorDirectories = useOrganizerMetadataStore((state) => state.refreshAuthorDirectories);
+  const upsertAlias = useOrganizerMetadataStore((state) => state.upsertAlias);
+  const removeAliasLocal = useOrganizerMetadataStore((state) => state.removeAliasLocal);
+  const addAuthorDirectoryLocal = useOrganizerMetadataStore((state) => state.addAuthorDirectoryLocal);
 
   useEffect(() => {
     if (!hasIpcBridge) {
       return;
     }
     void (async () => {
-      await Promise.all([mangas.length === 0 ? fetchMangas() : Promise.resolve(), fetchAliases(), fetchAuthorDirectories()]);
+      await Promise.all([mangas.length === 0 ? fetchMangas() : Promise.resolve(), ensureLoaded()]);
     })();
-  }, [fetchAliases, fetchAuthorDirectories, fetchMangas, hasIpcBridge, mangas.length]);
+  }, [ensureLoaded, fetchMangas, hasIpcBridge, mangas.length]);
 
   const categories = useMemo(() => {
     const aliasMap = new Map<string, string[]>();
@@ -100,40 +81,13 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
     });
   }, [categories]);
 
-  const upsertAlias = useCallback((storedAlias: DirectoryAlias) => {
-    setAliases((prev) => {
-      const aliasKey = storedAlias.alias.trim().toLocaleLowerCase();
-      const next = prev.filter((item) => item.alias.trim().toLocaleLowerCase() !== aliasKey);
-      next.push(storedAlias);
-      next.sort((a, b) => a.alias.localeCompare(b.alias, 'zh-Hans-CN'));
-      return next;
-    });
-  }, []);
-
-  const removeAliasLocal = useCallback((aliasName: string) => {
-    setAliases((prev) => prev.filter((item) => item.alias.trim().toLocaleLowerCase() !== aliasName.trim().toLocaleLowerCase()));
-  }, []);
-
-  const addAuthorDirectoryLocal = useCallback((directoryPath: string) => {
-    setAuthorDirectories((prev) => {
-      const normalized = directoryPath.trim();
-      if (!normalized) {
-        return prev;
-      }
-      if (prev.some((item) => item.directory === normalized)) {
-        return prev;
-      }
-      return [...prev, { directory: normalized, mangaCount: 0, lastMovedAt: null }];
-    });
-  }, []);
-
   return {
     aliases,
     categories,
     organizerItems,
     selectedCategoryKey,
     setSelectedCategoryKey,
-    refreshAuthorDirectories: fetchAuthorDirectories,
+    refreshAuthorDirectories,
     upsertAlias,
     removeAliasLocal,
     addAuthorDirectoryLocal

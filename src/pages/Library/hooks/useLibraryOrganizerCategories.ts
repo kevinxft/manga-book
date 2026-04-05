@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
-import type { DirectoryAlias, MangaBookWithCover, TargetDirectorySummary } from '@shared/types';
-import { ipcInvoke } from '@renderer/ipc/client';
+import { useEffect, useMemo } from 'react';
+import type { MangaBookWithCover } from '@shared/types';
 import { buildOrganizerCategories } from '@renderer/pages/Organizer/utils';
+import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
 
 interface UseLibraryOrganizerCategoriesInput {
   hasIpcBridge: boolean;
@@ -9,27 +9,16 @@ interface UseLibraryOrganizerCategoriesInput {
 }
 
 export function useLibraryOrganizerCategories({ hasIpcBridge, mangas }: UseLibraryOrganizerCategoriesInput) {
-  const [aliases, setAliases] = useState<DirectoryAlias[]>([]);
-  const [authorDirectories, setAuthorDirectories] = useState<TargetDirectorySummary[]>([]);
+  const aliases = useOrganizerMetadataStore((state) => state.aliases);
+  const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
+  const ensureLoaded = useOrganizerMetadataStore((state) => state.ensureLoaded);
 
   useEffect(() => {
     if (!hasIpcBridge) {
       return;
     }
-
-    void (async () => {
-      try {
-        const [aliasItems, directoryItems] = await Promise.all([
-          ipcInvoke('organizer.listAliases', undefined),
-          ipcInvoke('organizer.listAuthorDirectories', undefined)
-        ]);
-        setAliases(aliasItems);
-        setAuthorDirectories(directoryItems);
-      } catch {
-        // ignore organizer helper data load failure
-      }
-    })();
-  }, [hasIpcBridge]);
+    void ensureLoaded();
+  }, [ensureLoaded, hasIpcBridge]);
 
   const quickMoveCategories = useMemo(() => {
     const aliasMap = new Map<string, string[]>();
