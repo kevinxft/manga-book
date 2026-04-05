@@ -1,37 +1,46 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MangaBookWithCover, MangaTag } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { useTagStore } from '@renderer/stores/tagStore';
 
-interface UseLibraryMangaTagEditorInput {
+interface UseMangaTagEditorInput {
   hasIpcBridge: boolean;
-  availableTags: string[];
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
-  setOperationError: (message: string | null) => void;
+  setError: (message: string | null) => void;
 }
 
-export function useLibraryMangaTagEditor({
-  hasIpcBridge,
-  availableTags,
-  updateMangaLocal,
-  setOperationError
-}: UseLibraryMangaTagEditorInput) {
+function isMissingTagHandlerError(message: string): boolean {
+  return message.includes('No handler registered for') && message.includes('tag.');
+}
+
+export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: UseMangaTagEditorInput) {
+  const tags = useTagStore((state) => state.tags);
+  const ensureLoaded = useTagStore((state) => state.ensureLoaded);
   const upsertTagLocal = useTagStore((state) => state.upsertTagLocal);
   const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
   const [addTagTarget, setAddTagTarget] = useState<MangaBookWithCover | null>(null);
+  const [addTagAnchor, setAddTagAnchor] = useState<{ x: number; y: number } | null>(null);
   const [addTagInput, setAddTagInput] = useState('');
   const [addTagDraft, setAddTagDraft] = useState<string[]>([]);
   const [addTagSaving, setAddTagSaving] = useState(false);
   const [addTagError, setAddTagError] = useState<string | null>(null);
-  const [addTagAnchor, setAddTagAnchor] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    void ensureLoaded();
+  }, [ensureLoaded, hasIpcBridge]);
+
+  const availableTagNames = useMemo(
+    () => Array.from(new Set(tags.map((tag) => tag.label.trim()).filter((name) => name.length > 0))),
+    [tags]
+  );
 
   const openAddTagDialog = (item: MangaBookWithCover, anchor: { x: number; y: number }) => {
     if (!hasIpcBridge) {
-      setOperationError('当前运行在普通浏览器环境，无法添加标签。请使用 bun run dev 启动 Electron 窗口。');
+      setError('当前运行在普通浏览器环境，无法添加标签。请使用 bun run dev 启动 Electron 窗口。');
       return;
     }
 
-    setOperationError(null);
+    setError(null);
     setAddTagTarget(item);
     setAddTagAnchor(anchor);
     setAddTagInput('');
@@ -109,7 +118,7 @@ export function useLibraryMangaTagEditor({
     const tagsToAdd = finalTagNames.filter((name) => !currentSet.has(name.toLocaleLowerCase()));
     const tagsToRemove = currentTagNames.filter((name) => !finalSet.has(name.toLocaleLowerCase()));
 
-    setOperationError(null);
+    setError(null);
     setAddTagError(null);
     setAddTagSaving(true);
     try {
@@ -153,7 +162,7 @@ export function useLibraryMangaTagEditor({
       closeAddTagDialog(true);
     } catch (error) {
       const message = error instanceof Error ? error.message : '保存标签失败';
-      if (message.includes('No handler registered for') && message.includes('tag.')) {
+      if (isMissingTagHandlerError(message)) {
         setAddTagError('当前 Electron 主进程尚未加载标签功能，请重启 bun run dev 后再试。');
         return;
       }
@@ -163,10 +172,6 @@ export function useLibraryMangaTagEditor({
     }
   };
 
-  const quickCandidates = availableTags.filter(
-    (name) => !addTagDraft.some((tagName) => tagName.toLocaleLowerCase() === name.toLocaleLowerCase())
-  );
-
   return {
     addTagDialogOpen,
     addTagTarget,
@@ -175,7 +180,7 @@ export function useLibraryMangaTagEditor({
     addTagDraft,
     addTagSaving,
     addTagError,
-    quickCandidates,
+    availableTagNames,
     setAddTagInput,
     openAddTagDialog,
     closeAddTagDialog,

@@ -1,8 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
-import { useState } from 'react';
-import type { MangaBookWithCover } from '@shared/types';
-import { ipcInvoke } from '@renderer/ipc/client';
-import { getErrorMessage } from './error';
+import { useMangaDeleteAction } from '@renderer/hooks/manga/useMangaDeleteAction';
 
 interface UseOrganizerDeleteActionsInput {
   removeMangaLocal: (mangaId: string) => void;
@@ -15,53 +12,15 @@ export function useOrganizerDeleteActions({
   setMoveError,
   setSelectedIds
 }: UseOrganizerDeleteActionsInput) {
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<MangaBookWithCover | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  const handleRequestDeleteManga = (item: MangaBookWithCover) => {
-    setMoveError(null);
-    setDeleteTarget(item);
-    setDeleteDialogOpen(true);
-  };
-
-  const closeDeleteDialog = (force = false) => {
-    if (deleting && !force) {
-      return;
-    }
-    setDeleteDialogOpen(false);
-    setDeleteTarget(null);
-  };
-
-  const handleConfirmDeleteManga = async () => {
-    if (!deleteTarget || deleting) {
-      return;
-    }
-
-    setDeleting(true);
-    setMoveError(null);
-    try {
-      await ipcInvoke('organizer.deleteManga', { mangaId: deleteTarget.id, withFiles: true });
+  return useMangaDeleteAction({
+    removeMangaLocal,
+    setError: setMoveError,
+    onDeleted: (mangaId) => {
       setSelectedIds((prev) => {
         const next = new Set(prev);
-        next.delete(deleteTarget.id);
+        next.delete(mangaId);
         return next;
       });
-      removeMangaLocal(deleteTarget.id);
-      closeDeleteDialog(true);
-    } catch (error) {
-      setMoveError(getErrorMessage(error, '删除漫画失败'));
-    } finally {
-      setDeleting(false);
     }
-  };
-
-  return {
-    deleteDialogOpen,
-    deleteTarget,
-    deleting,
-    handleRequestDeleteManga,
-    closeDeleteDialog,
-    handleConfirmDeleteManga
-  };
+  });
 }

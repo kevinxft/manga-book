@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import { useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
+import { useMangaRenameAction } from '@renderer/hooks/manga/useMangaRenameAction';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { mergeMangaWithBase } from '@renderer/lib/manga';
 import type { OrganizerCategory } from '../types';
@@ -28,6 +29,10 @@ export function useOrganizerMoveActions({
   setMoveError
 }: UseOrganizerMoveActionsInput) {
   const [moving, setMoving] = useState(false);
+  const { handleRenameManga } = useMangaRenameAction({
+    updateMangaLocal,
+    setError: setMoveError
+  });
 
   const handleMoveSelected = async () => {
     if (!hasIpcBridge || moving || selectedIds.size === 0 || !selectedCategoryKey) {
@@ -116,29 +121,10 @@ export function useOrganizerMoveActions({
     }
   };
 
-  const handleRenameSingle = async (item: MangaBookWithCover) => {
-    const nextTitle = window.prompt('请输入新的漫画名称', item.title);
-    const trimmed = nextTitle?.trim();
-    if (!trimmed || trimmed === item.title) {
-      return;
-    }
-
-    setMoveError(null);
-    try {
-      const updated = await ipcInvoke('organizer.renameManga', {
-        mangaId: item.id,
-        newTitle: trimmed
-      });
-      updateMangaLocal(item.id, (current) => mergeMangaWithBase(current, updated));
-    } catch (error) {
-      setMoveError(getErrorMessage(error, '重命名失败'));
-    }
-  };
-
   return {
     moving,
     handleMoveSelected,
     handleQuickMoveSingle,
-    handleRenameSingle
+    handleRenameSingle: handleRenameManga
   };
 }

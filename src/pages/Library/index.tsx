@@ -9,11 +9,11 @@ import { LibrarySidebar } from './components/LibrarySidebar';
 import { MangaGrid } from './components/MangaGrid';
 import { TagManagementDialog } from './components/TagManagementDialog';
 import { DeleteMangaDialog } from '@renderer/pages/Organizer/components/DeleteMangaDialog';
+import { useMangaTagEditor } from '@renderer/hooks/manga/useMangaTagEditor';
 import { useTagEditor } from './hooks/useTagEditor';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 import { useLibraryFilters } from './hooks/useLibraryFilters';
 import { useLibraryMangaActions } from './hooks/useLibraryMangaActions';
-import { useLibraryMangaTagEditor } from './hooks/useLibraryMangaTagEditor';
 import { useLibraryOrganizerCategories } from './hooks/useLibraryOrganizerCategories';
 import { useLibraryDataLifecycle } from './hooks/useLibraryDataLifecycle';
 
@@ -152,11 +152,10 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     removeDraftTag,
     appendInputTag,
     handleConfirmAddTag
-  } = useLibraryMangaTagEditor({
+  } = useMangaTagEditor({
     hasIpcBridge,
-    availableTags: tags.map((tag) => tag.label),
     updateMangaLocal,
-    setOperationError
+    setError: setOperationError
   });
 
   const handleSidebarCollapsedChange = useCallback((value: boolean) => {
