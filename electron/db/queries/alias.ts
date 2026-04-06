@@ -34,6 +34,11 @@ export function createAliasQueries(db: Database.Database) {
   );
   const listStatement = db.prepare('SELECT * FROM directory_aliases ORDER BY alias ASC');
   const removeStatement = db.prepare('DELETE FROM directory_aliases WHERE alias_key = ?');
+  const updateCanonicalNameStatement = db.prepare(
+    `UPDATE directory_aliases
+      SET canonical_name = @canonical_name, canonical_key = @canonical_key
+    WHERE canonical_key = @previous_canonical_key`
+  );
 
   function insert(alias: string, canonicalName: string): DirectoryAlias {
     const now = new Date().toISOString();
@@ -75,10 +80,20 @@ export function createAliasQueries(db: Database.Database) {
     return result.changes > 0;
   }
 
+  function updateCanonicalName(previousCanonicalName: string, canonicalName: string): number {
+    const result = updateCanonicalNameStatement.run({
+      canonical_name: canonicalName,
+      canonical_key: toKey(canonicalName),
+      previous_canonical_key: toKey(previousCanonicalName)
+    });
+    return result.changes;
+  }
+
   return {
     insert,
     resolve,
     list,
-    remove
+    remove,
+    updateCanonicalName
   };
 }

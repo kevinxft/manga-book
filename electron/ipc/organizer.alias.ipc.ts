@@ -19,7 +19,7 @@ function getAuthorAliasMetadataPath(directoryPath: string): string {
   return path.join(normalizeAbsolutePath(directoryPath), AUTHOR_ALIAS_METADATA_FILENAME);
 }
 
-async function readAuthorAliasMetadata(directoryPath: string): Promise<AuthorAliasMetadata | null> {
+export async function readAuthorAliasMetadata(directoryPath: string): Promise<AuthorAliasMetadata | null> {
   const metadataPath = getAuthorAliasMetadataPath(directoryPath);
   if (!(await pathExists(metadataPath))) {
     return null;
@@ -42,7 +42,7 @@ async function readAuthorAliasMetadata(directoryPath: string): Promise<AuthorAli
   }
 }
 
-async function writeAuthorAliasMetadata(directoryPath: string, canonicalName: string, aliases: string[]): Promise<void> {
+export async function writeAuthorAliasMetadata(directoryPath: string, canonicalName: string, aliases: string[]): Promise<void> {
   const metadataPath = getAuthorAliasMetadataPath(directoryPath);
   const nextAliases = Array.from(new Set(aliases.map((item) => item.trim()).filter((item) => item.length > 0)));
 

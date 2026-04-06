@@ -14,7 +14,17 @@ interface UseLibraryMangaActionsInput {
 
 export function useLibraryMangaActions({ hasIpcBridge, updateMangaLocal, removeMangaLocal }: UseLibraryMangaActionsInput) {
   const [operationError, setOperationError] = useState<string | null>(null);
-  const { handleRenameManga } = useMangaRenameAction({
+  const {
+    renameDialogOpen,
+    renameTarget,
+    renameInput,
+    renaming,
+    setRenameInput,
+    handleRequestRenameManga,
+    closeRenameDialog,
+    handleConfirmRenameManga
+  } = useMangaRenameAction({
+    hasIpcBridge,
     updateMangaLocal,
     setError: setOperationError
   });
@@ -54,7 +64,14 @@ export function useLibraryMangaActions({ hasIpcBridge, updateMangaLocal, removeM
     operationError,
     setOperationError,
     handleQuickMoveManga,
-    handleRenameManga,
+    renameDialogOpen,
+    renameTarget,
+    renameInput,
+    renaming,
+    setRenameInput,
+    handleRequestRenameManga,
+    closeRenameDialog,
+    handleConfirmRenameManga,
     handleOpenInFolder,
     handleSearchWeb,
     deleteDialogOpen,

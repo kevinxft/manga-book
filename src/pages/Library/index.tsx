@@ -12,6 +12,7 @@ import { DeleteMangaDialog } from '@renderer/pages/Organizer/components/DeleteMa
 import { useMangaTagEditor } from '@renderer/hooks/manga/useMangaTagEditor';
 import { useTagEditor } from './hooks/useTagEditor';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
+import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
 import { useLibraryFilters } from './hooks/useLibraryFilters';
 import { useLibraryMangaActions } from './hooks/useLibraryMangaActions';
 import { useLibraryOrganizerCategories } from './hooks/useLibraryOrganizerCategories';
@@ -122,7 +123,14 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     operationError,
     setOperationError,
     handleQuickMoveManga,
-    handleRenameManga,
+    renameDialogOpen,
+    renameTarget,
+    renameInput,
+    renaming,
+    setRenameInput,
+    handleRequestRenameManga,
+    closeRenameDialog,
+    handleConfirmRenameManga,
     handleOpenInFolder,
     handleSearchWeb,
     deleteDialogOpen,
@@ -329,7 +337,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
               quickMoveCategories={quickMoveCategories}
               onQuickMoveManga={(mangaId, destinationPath) => void handleQuickMoveManga(mangaId, destinationPath)}
               onAddTagManga={(item, anchor) => openAddTagDialog(item, anchor)}
-              onRenameManga={(item) => void handleRenameManga(item)}
+              onRenameManga={handleRequestRenameManga}
               onSearchWeb={(item, provider) => void handleSearchWeb(item, provider)}
               onOpenInFolder={(mangaId) => void handleOpenInFolder(mangaId)}
               onDeleteManga={handleRequestDeleteManga}
@@ -356,6 +364,16 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
         deleting={deleting}
         onClose={() => closeDeleteDialog()}
         onConfirm={() => void handleConfirmDeleteManga()}
+      />
+
+      <RenameMangaDialog
+        open={renameDialogOpen}
+        target={renameTarget}
+        value={renameInput}
+        renaming={renaming}
+        onValueChange={setRenameInput}
+        onClose={closeRenameDialog}
+        onSubmit={() => void handleConfirmRenameManga()}
       />
 
       <AddTagPopover

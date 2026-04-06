@@ -2,12 +2,14 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory } from '../types';
 import { useAliasMutations } from './useAliasMutations';
+import { useAuthorDirectoryRename } from './useAuthorDirectoryRename';
 import { useCreateAuthorMutation } from './useCreateAuthorMutation';
 import { useMangaMutations } from './useMangaMutations';
 import { useOrganizerMutationErrors } from './useOrganizerMutationErrors';
 
 interface UseOrganizerMutationsArgs {
   hasIpcBridge: boolean;
+  fetchMangas: () => Promise<void>;
   categories: OrganizerCategory[];
   aliases: DirectoryAlias[];
   selectedCategoryKey: string | null;
@@ -15,6 +17,7 @@ interface UseOrganizerMutationsArgs {
   setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
   setSelectedCategoryKey: (value: string | null) => void;
   removeMangaLocal: (mangaId: string) => void;
+  refreshOrganizerMetadata: () => Promise<void>;
   refreshAuthorDirectories: () => Promise<void>;
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
   upsertAlias: (alias: DirectoryAlias) => void;
@@ -24,6 +27,7 @@ interface UseOrganizerMutationsArgs {
 
 export function useOrganizerMutations({
   hasIpcBridge,
+  fetchMangas,
   categories,
   aliases,
   selectedCategoryKey,
@@ -31,6 +35,7 @@ export function useOrganizerMutations({
   setSelectedIds,
   setSelectedCategoryKey,
   removeMangaLocal,
+  refreshOrganizerMetadata,
   refreshAuthorDirectories,
   updateMangaLocal,
   upsertAlias,
@@ -67,10 +72,19 @@ export function useOrganizerMutations({
     setMoveError
   });
 
+  const authorDirectoryRename = useAuthorDirectoryRename({
+    hasIpcBridge,
+    fetchMangas,
+    refreshOrganizerMetadata,
+    setSelectedCategoryKey,
+    setMoveError
+  });
+
   return {
     ...mangaMutations,
     ...aliasMutations,
     ...createAuthorMutation,
+    ...authorDirectoryRename,
     moveError,
     setMoveError
   };

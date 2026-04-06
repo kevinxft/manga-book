@@ -59,6 +59,26 @@ async function inspectFolderAsManga(folderPath: string): Promise<FolderInspectio
     };
   }
 
+  const childDirectories = await listDirectories(folderPath);
+  let totalChildPages = 0;
+  let hasChildVolume = false;
+
+  for (const childDirectory of childDirectories) {
+    const childImages = await listImageFiles(childDirectory);
+    if (childImages.length === 0) {
+      continue;
+    }
+    hasChildVolume = true;
+    totalChildPages += childImages.length;
+  }
+
+  if (hasChildVolume) {
+    return {
+      structure: 'multiVolume',
+      totalPages: totalChildPages
+    };
+  }
+
   return null;
 }
 

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownUp, Folder, Loader2, Search, Tags, X } from 'lucide-react';
+import { ArrowDownUp, Folder, Loader2, Pencil, Search, Tags, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
@@ -17,6 +17,7 @@ interface OrganizerCategoryPanelProps {
   onSelectCategory: (key: string) => void;
   onMoveSelected: () => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
+  onRequestRenameCategory: (category: OrganizerCategory) => void;
   onRequestCreateAuthor: () => void;
 }
 
@@ -41,6 +42,7 @@ export function OrganizerCategoryPanel({
   onSelectCategory,
   onMoveSelected,
   onRequestAddAlias,
+  onRequestRenameCategory,
   onRequestCreateAuthor
 }: OrganizerCategoryPanelProps) {
   const [search, setSearch] = useState('');
@@ -112,7 +114,7 @@ export function OrganizerCategoryPanel({
         <button
           key={category.key}
           className={cn(
-            'flex w-full items-center justify-between rounded-xl border px-3 py-2.5 text-left transition',
+            'flex w-full items-center justify-between rounded-xl border px-2.5 py-2 text-left transition',
             active
               ? 'border-[#2f7fe6] bg-[#2f7fe6] shadow-[0_8px_18px_rgba(47,127,230,0.34)]'
               : 'border-transparent hover:bg-[#e8edf6]'
@@ -132,16 +134,16 @@ export function OrganizerCategoryPanel({
           }}
           title={category.path}
         >
-          <span className="inline-flex min-w-0 items-center gap-2">
-            <Folder className={cn('h-4 w-4', active ? 'text-white' : 'text-[#2f7fe6]')} />
-            <span className="inline-flex min-w-0 items-baseline gap-1">
-              <span className={cn('truncate text-[13px] font-semibold', active ? 'text-white' : 'text-[#1f2f48]')}>
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <Folder className={cn('h-3.5 w-3.5', active ? 'text-white' : 'text-[#2f7fe6]')} />
+            <span className="inline-flex min-w-0 items-baseline gap-0.5">
+              <span className={cn('truncate text-[12px] font-semibold', active ? 'text-white' : 'text-[#1f2f48]')}>
                 {label}
               </span>
               {aliasText ? (
                 <span
                   className={cn(
-                    'truncate text-[12px] font-medium',
+                    'truncate text-[11px] font-medium',
                     active ? 'text-white/80' : 'text-[#71839d]'
                   )}
                   title={category.aliases.join(' / ')}
@@ -153,7 +155,7 @@ export function OrganizerCategoryPanel({
           </span>
           <span
             className={cn(
-              'rounded-full px-2 py-0.5 text-[11px] font-bold',
+              'rounded-full px-1.5 py-0.5 text-[10px] font-bold',
               active ? 'bg-white/24 text-white' : 'bg-[#e5ebf5] text-[#6f7f98]'
             )}
           >
@@ -302,9 +304,9 @@ export function OrganizerCategoryPanel({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-3 overflow-auto pr-1">
+        <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-1">
           {filteredCategories.length > 0 ? (
-            <section className="space-y-1.5">
+            <section className="space-y-1">
               <p className="px-1 text-[11px] font-bold tracking-[0.1em] text-[#7f8ea6]">ARTISTS</p>
               {renderCategoryList(filteredCategories)}
             </section>
@@ -370,6 +372,16 @@ export function OrganizerCategoryPanel({
             visibility: contextMenuReady ? 'visible' : 'hidden'
           }}
         >
+          <button
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+            onClick={() => {
+              onRequestRenameCategory(contextMenu.category);
+              setContextMenu(null);
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5 text-[#627694]" />
+            重命名作者
+          </button>
           <button
             className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
             onClick={() => {

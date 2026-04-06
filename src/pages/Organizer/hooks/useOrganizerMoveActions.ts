@@ -29,7 +29,17 @@ export function useOrganizerMoveActions({
   setMoveError
 }: UseOrganizerMoveActionsInput) {
   const [moving, setMoving] = useState(false);
-  const { handleRenameManga } = useMangaRenameAction({
+  const {
+    renameDialogOpen,
+    renameTarget,
+    renameInput,
+    renaming,
+    setRenameInput,
+    handleRequestRenameManga,
+    closeRenameDialog,
+    handleConfirmRenameManga
+  } = useMangaRenameAction({
+    hasIpcBridge,
     updateMangaLocal,
     setError: setMoveError
   });
@@ -125,6 +135,13 @@ export function useOrganizerMoveActions({
     moving,
     handleMoveSelected,
     handleQuickMoveSingle,
-    handleRenameSingle: handleRenameManga
+    renameDialogOpen,
+    renameTarget,
+    renameInput,
+    renaming,
+    setRenameInput,
+    handleRequestRenameManga,
+    closeRenameDialog,
+    handleConfirmRenameManga
   };
 }

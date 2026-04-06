@@ -17,6 +17,7 @@ interface UseOrganizerDataResult {
   organizerItems: ReturnType<typeof buildOrganizerItems>;
   selectedCategoryKey: string | null;
   setSelectedCategoryKey: (value: string | null) => void;
+  refreshOrganizerMetadata: () => Promise<void>;
   refreshAuthorDirectories: () => Promise<void>;
   upsertAlias: ReturnType<typeof useOrganizerMetadataStore.getState>['upsertAlias'];
   removeAliasLocal: (aliasName: string) => void;
@@ -28,6 +29,7 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
   const aliases = useOrganizerMetadataStore((state) => state.aliases);
   const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
   const ensureLoaded = useOrganizerMetadataStore((state) => state.ensureLoaded);
+  const refreshOrganizerMetadata = useOrganizerMetadataStore((state) => state.refreshOrganizerMetadata);
   const refreshAuthorDirectories = useOrganizerMetadataStore((state) => state.refreshAuthorDirectories);
   const upsertAlias = useOrganizerMetadataStore((state) => state.upsertAlias);
   const removeAliasLocal = useOrganizerMetadataStore((state) => state.removeAliasLocal);
@@ -87,6 +89,7 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
     organizerItems,
     selectedCategoryKey,
     setSelectedCategoryKey,
+    refreshOrganizerMetadata,
     refreshAuthorDirectories,
     upsertAlias,
     removeAliasLocal,

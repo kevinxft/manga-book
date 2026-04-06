@@ -5,6 +5,14 @@ import { registerHandler, ok, fail } from './helpers';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
+async function listImagePaths(directoryPath: string): Promise<string[]> {
+  const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+    .map((entry) => path.join(directoryPath, entry.name))
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+}
+
 export function registerReaderIpc(context: IpcContext): void {
   const { manga } = context.repositories;
 
@@ -15,11 +23,21 @@ export function registerReaderIpc(context: IpcContext): void {
     }
 
     try {
-      const entries = await fs.readdir(existing.folderPath, { withFileTypes: true });
-      const pagePaths = entries
-        .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
-        .map((entry) => path.join(existing.folderPath, entry.name))
-        .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+      let pagePaths: string[];
+
+      if (existing.structure === 'multiVolume') {
+        const entries = await fs.readdir(existing.folderPath, { withFileTypes: true });
+        const childDirectories = entries
+          .filter((entry) => entry.isDirectory())
+          .map((entry) => path.join(existing.folderPath, entry.name))
+          .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+        const pagesByDirectory = await Promise.all(childDirectories.map((directoryPath) => listImagePaths(directoryPath)));
+        pagePaths = pagesByDirectory.flat();
+      } else {
+        pagePaths = await listImagePaths(existing.folderPath);
+      }
+
       return ok(pagePaths);
     } catch (error) {
       return fail('FS_ERROR', error instanceof Error ? error.message : 'Failed to list manga pages');

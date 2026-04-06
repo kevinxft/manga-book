@@ -3,6 +3,7 @@ import path from 'node:path';
 import { shell } from 'electron';
 import type { IpcContext } from './context';
 import { fail, ok, registerHandler } from './helpers';
+import { readAuthorAliasMetadata, writeAuthorAliasMetadata } from './organizer.alias.ipc';
 import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath } from '@main/utils/pathUtils';
@@ -32,7 +33,7 @@ async function getAvailableDirectoryPath(
 }
 
 export function registerOrganizerFileIpc(context: IpcContext): void {
-  const { manga, library, directoryUsage } = context.repositories;
+  const { manga, library, directoryUsage, alias } = context.repositories;
 
   registerHandler('organizer.moveManga', async (request) => {
     const book = manga.getById(request.mangaId);
@@ -158,6 +159,58 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     }
 
     return ok({ path: targetPath, created: false });
+  });
+
+  registerHandler('organizer.renameAuthorDirectory', async (request) => {
+    const currentPath = normalizeAbsolutePath(request.directoryPath);
+    const nextName = request.newName?.trim();
+
+    if (!nextName) {
+      return fail('VALIDATION', 'Author name is required');
+    }
+    if (nextName === '.' || nextName === '..' || /[\\/]/.test(nextName)) {
+      return fail('VALIDATION', 'Invalid author directory name');
+    }
+
+    if (!(await directoryExists(currentPath))) {
+      return fail('NOT_FOUND', 'Author directory not found');
+    }
+
+    const previousName = path.basename(currentPath);
+    const nextPath = normalizeAbsolutePath(path.join(path.dirname(currentPath), nextName));
+
+    if (nextPath === currentPath) {
+      return ok({ path: currentPath });
+    }
+
+    if (await pathExists(nextPath)) {
+      return fail('CONFLICT', 'Author directory already exists');
+    }
+
+    const aliasMetadata = await readAuthorAliasMetadata(currentPath);
+    await movePath(currentPath, nextPath);
+
+    if (aliasMetadata) {
+      await writeAuthorAliasMetadata(nextPath, nextName, aliasMetadata.aliases);
+    }
+
+    const prefix = `${currentPath}${path.sep}`;
+    for (const book of manga.list()) {
+      const normalizedFolderPath = normalizeAbsolutePath(book.folderPath);
+      if (!normalizedFolderPath.startsWith(prefix)) {
+        continue;
+      }
+
+      const relativeFolderPath = path.relative(currentPath, normalizedFolderPath);
+      const nextFolderPath = normalizeAbsolutePath(path.join(nextPath, relativeFolderPath));
+
+      invalidateCoverPath(book.folderPath);
+      manga.updatePath(book.id, book.title, nextFolderPath, book.sourceFolderPath);
+    }
+
+    alias.updateCanonicalName(previousName, nextName);
+
+    return ok({ path: nextPath });
   });
 
   registerHandler('organizer.deleteManga', async (request) => {

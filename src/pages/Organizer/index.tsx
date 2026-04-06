@@ -6,11 +6,13 @@ import { CreateAuthorDialog } from './components/CreateAuthorDialog';
 import { DeleteMangaDialog } from './components/DeleteMangaDialog';
 import { OrganizerFileGrid } from './components/OrganizerFileGrid';
 import { OrganizerHeader } from './components/OrganizerHeader';
+import { RenameAuthorDirectoryDialog } from './components/RenameAuthorDirectoryDialog';
 import { useOrganizerData } from './hooks/useOrganizerData';
 import { useOrganizerFilters } from './hooks/useOrganizerFilters';
 import { useOrganizerMutations } from './hooks/useOrganizerMutations';
 import { useOrganizerSelection } from './hooks/useOrganizerSelection';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
+import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
 
 interface OrganizerPageProps {
   onBack?: () => void;
@@ -26,6 +28,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     organizerItems,
     selectedCategoryKey,
     setSelectedCategoryKey,
+    refreshOrganizerMetadata,
     refreshAuthorDirectories,
     upsertAlias,
     removeAliasLocal,
@@ -73,7 +76,14 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     availableTagNames,
     closeAddTagDialog,
     handleConfirmAddTag,
-    handleRenameSingle,
+    renameDialogOpen,
+    renameTarget,
+    renameInput,
+    renaming,
+    setRenameInput,
+    handleRequestRenameManga,
+    closeRenameDialog,
+    handleConfirmRenameManga,
     handleSearchWeb,
     handleOpenInFolder,
     deleteDialogOpen,
@@ -101,9 +111,18 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     createAuthorError,
     closeCreateAuthorDialog,
     handleRequestCreateAuthor,
-    handleConfirmCreateAuthor
+    handleConfirmCreateAuthor,
+    renameAuthorDialogOpen,
+    renameAuthorTarget,
+    renameAuthorInput,
+    renamingAuthor,
+    setRenameAuthorInput,
+    handleRequestRenameAuthorDirectory,
+    closeRenameAuthorDialog,
+    handleConfirmRenameAuthorDirectory
   } = useOrganizerMutations({
     hasIpcBridge,
+    fetchMangas,
     categories,
     aliases,
     selectedCategoryKey,
@@ -111,6 +130,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     setSelectedIds,
     setSelectedCategoryKey,
     removeMangaLocal,
+    refreshOrganizerMetadata,
     refreshAuthorDirectories,
     updateMangaLocal,
     upsertAlias,
@@ -154,7 +174,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               onOpenManga={(item) => onOpenManga?.(item)}
               onQuickMoveManga={handleQuickMoveSingle}
               onAddTagManga={(item, anchor) => void handleAddTagManga(item, anchor)}
-              onRenameManga={handleRenameSingle}
+              onRenameManga={handleRequestRenameManga}
               onSearchWeb={handleSearchWeb}
               onOpenInFolder={handleOpenInFolder}
               onDeleteManga={handleRequestDeleteManga}
@@ -172,6 +192,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               onSelectCategory={setSelectedCategoryKey}
               onMoveSelected={() => void handleMoveSelected()}
               onRequestAddAlias={handleRequestAddAlias}
+              onRequestRenameCategory={handleRequestRenameAuthorDirectory}
               onRequestCreateAuthor={handleRequestCreateAuthor}
             />
           </div>
@@ -209,12 +230,32 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
         onSubmit={() => void handleConfirmCreateAuthor()}
       />
 
+      <RenameAuthorDirectoryDialog
+        open={renameAuthorDialogOpen}
+        target={renameAuthorTarget}
+        value={renameAuthorInput}
+        renaming={renamingAuthor}
+        onValueChange={setRenameAuthorInput}
+        onClose={closeRenameAuthorDialog}
+        onSubmit={() => void handleConfirmRenameAuthorDirectory()}
+      />
+
       <DeleteMangaDialog
         open={deleteDialogOpen}
         target={deleteTarget}
         deleting={deleting}
         onClose={() => closeDeleteDialog()}
         onConfirm={() => void handleConfirmDeleteManga()}
+      />
+
+      <RenameMangaDialog
+        open={renameDialogOpen}
+        target={renameTarget}
+        value={renameInput}
+        renaming={renaming}
+        onValueChange={setRenameInput}
+        onClose={closeRenameDialog}
+        onSubmit={() => void handleConfirmRenameManga()}
       />
 
       <AddTagPopover
