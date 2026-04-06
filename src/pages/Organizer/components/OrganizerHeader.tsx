@@ -33,32 +33,32 @@ export function OrganizerHeader({
   onToggleSelectAllVisible
 }: OrganizerHeaderProps) {
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-[#d8dde6] bg-[#f7f9fc] px-7 py-3.5">
-      <div className="flex min-w-0 flex-1 items-center gap-3">
+    <header className="flex items-center justify-between gap-3 border-b border-[#d8dde6] bg-[#f7f9fc] px-5 py-2.5">
+      <div className="flex min-w-0 flex-1 items-center gap-2.5">
         <Button
           variant="secondary"
-          className="h-11 shrink-0 rounded-xl border border-[#d7deea] bg-[#edf1f6] px-5 text-[14px] font-semibold text-[#47556c]"
+          className="h-[34px] shrink-0 rounded-xl border border-[#d7deea] bg-[#edf1f6] px-4 text-[12px] font-semibold text-[#47556c]"
           onClick={onBack}
         >
-          <ArrowLeft className="mr-2 h-4 w-4" />
+          <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
           返回
         </Button>
 
-        <div className="relative w-[25%] min-w-[180px] max-w-[280px]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8c9bb0]" />
+        <div className="relative w-[24%] min-w-[170px] max-w-[260px]">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8c9bb0]" />
           <Input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            className="h-10 rounded-xl border-[#d8deea] bg-[#ecf0f6] pl-9 pr-9 text-[13px]"
+            className="h-[34px] rounded-xl border-[#d8deea] bg-[#ecf0f6] pl-8 pr-8 text-[12px]"
             placeholder="搜索漫画名或路径..."
           />
           {query.trim().length > 0 ? (
             <button
-              className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
+              className="absolute right-1.5 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
               onClick={() => onQueryChange('')}
               title="清空搜索"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
             </button>
           ) : null}
         </div>
@@ -66,7 +66,7 @@ export function OrganizerHeader({
         <select
           value={statusFilter}
           onChange={(event) => onStatusFilterChange(event.target.value as OrganizerStatusFilter)}
-          className="h-10 shrink-0 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[12px] font-semibold text-[#3d4d67] outline-none"
+          className="h-[34px] shrink-0 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[11px] font-semibold text-[#3d4d67] outline-none"
         >
           <option value="all">状态: 全部</option>
           <option value="organized">状态: 已整理</option>
@@ -76,7 +76,7 @@ export function OrganizerHeader({
         <select
           value={sourceFilter}
           onChange={(event) => onSourceFilterChange(event.target.value)}
-          className="h-10 min-w-[150px] shrink-0 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[12px] font-semibold text-[#3d4d67] outline-none"
+          className="h-[34px] min-w-[142px] shrink-0 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[11px] font-semibold text-[#3d4d67] outline-none"
           title={sourceFilter === 'all' ? '目录: 全部' : sourceOptions.find((option) => option.path === sourceFilter)?.path ?? sourceFilter}
         >
           <option value="all">目录: 全部</option>
@@ -90,7 +90,7 @@ export function OrganizerHeader({
         <select
           value={sortBy}
           onChange={(event) => onSortByChange(event.target.value as OrganizerSortKey)}
-          className="h-10 shrink-0 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[12px] font-semibold text-[#3d4d67] outline-none"
+          className="h-[34px] shrink-0 rounded-xl border border-[#d8deea] bg-[#ecf0f6] px-3 text-[11px] font-semibold text-[#3d4d67] outline-none"
         >
           <option value="addedAt">排序: 最近导入</option>
           <option value="title">排序: 标题</option>
@@ -98,19 +98,19 @@ export function OrganizerHeader({
         </select>
 
         <button
-          className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[#d8deea] bg-[#ecf0f6] text-[#5f708a] hover:bg-[#e6edf6]"
+          className="inline-flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-xl border border-[#d8deea] bg-[#ecf0f6] text-[#5f708a] hover:bg-[#e6edf6]"
           title="全选当前结果"
           onClick={onToggleSelectAllVisible}
         >
-          {allVisibleSelected ? <CheckSquare2 className="h-5 w-5" /> : <Square className="h-5 w-5" />}
+          {allVisibleSelected ? <CheckSquare2 className="h-4 w-4" /> : <Square className="h-4 w-4" />}
         </button>
       </div>
 
       <div className="hidden items-start gap-2 2xl:flex">
-        <BookOpen className="mt-0.5 h-5 w-5 text-[#2563eb]" />
+        <BookOpen className="mt-0.5 h-4 w-4 text-[#2563eb]" />
         <div>
-          <p className="text-[24px] font-bold leading-none tracking-tight text-[#1e2a3a]">漫画整理</p>
-          <p className="mt-1 text-[10px] font-semibold tracking-[0.1em] text-[#7e8a9a]">MANGA ORGANIZER</p>
+          <p className="text-[20px] font-bold leading-none tracking-tight text-[#1e2a3a]">漫画整理</p>
+          <p className="mt-0.5 text-[9px] font-semibold tracking-[0.08em] text-[#7e8a9a]">MANGA ORGANIZER</p>
         </div>
       </div>
     </header>

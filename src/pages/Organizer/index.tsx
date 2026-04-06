@@ -198,11 +198,11 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
           </div>
         </div>
 
-        <footer className="flex items-center justify-between border-t border-[#d9e0ea] bg-[#f7f9fc] px-7 py-3 text-[12px] font-semibold text-[#6d7d96]">
+        <footer className="flex items-center justify-between border-t border-[#d9e0ea] bg-[#f7f9fc] px-5 py-2 text-[11px] font-semibold text-[#6d7d96]">
           <span>
             已选择 {selectedIds.size} 本漫画 {visibleItems.length > 0 ? `· 当前结果 ${visibleItems.length} 本` : ''}
           </span>
-          <span className="tracking-[0.08em] text-[#8191a8]">MANGA ORGANIZER</span>
+          <span className="tracking-[0.06em] text-[#8191a8]">MANGA ORGANIZER</span>
         </footer>
       </div>
 

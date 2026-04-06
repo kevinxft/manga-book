@@ -113,21 +113,21 @@ export function LibrarySidebar({
       <aside className="flex h-full min-h-0 flex-col border-r border-[#dce1ea] bg-[#f6f7f9]">
         <div
           className={cn(
-            'flex h-16 items-center border-b border-[#e2e6ee]',
+            'flex h-[54px] items-center border-b border-[#e2e6ee]',
             sidebarCollapsed ? 'justify-center px-2' : 'px-4'
           )}
         >
           <div className={cn('flex items-center', sidebarCollapsed ? 'justify-center' : 'gap-2')}>
-            <BookOpen className="h-6 w-6 text-[#2563eb]" />
+            <BookOpen className="h-5 w-5 text-[#2563eb]" />
             {!sidebarCollapsed ? (
               <div>
-                <div className="flex items-end gap-2">
-                  <p className="text-[28px] font-bold leading-none tracking-tight text-[#1e2a3a]">{APP_NAME}</p>
-                  <span className="mb-0.5 rounded-md bg-[#e7edf8] px-1.5 py-0.5 text-[10px] font-semibold text-[#6b7d98]">
+                <div className="flex items-end gap-1.5">
+                  <p className="text-[22px] font-bold leading-none tracking-tight text-[#1e2a3a]">{APP_NAME}</p>
+                  <span className="mb-0.5 rounded-md bg-[#e7edf8] px-1.5 py-0.5 text-[9px] font-semibold text-[#6b7d98]">
                     v{APP_VERSION}
                   </span>
                 </div>
-                <p className="mt-1 text-[10px] font-semibold tracking-[0.1em] text-[#7e8a9a]">MANGA BOOK</p>
+                <p className="mt-0.5 text-[9px] font-semibold tracking-[0.08em] text-[#7e8a9a]">MANGA BOOK</p>
               </div>
             ) : null}
           </div>
@@ -199,14 +199,14 @@ export function LibrarySidebar({
                 onClick={() => onActiveMenuChange('all')}
                 title={sidebarCollapsed ? '所有漫画' : undefined}
                 className={cn(
-                  'shrink-0 flex w-full items-center rounded-lg py-2 text-sm font-semibold transition',
-                  sidebarCollapsed ? 'justify-center px-0' : 'gap-2 px-3',
+                  'shrink-0 flex w-full items-center rounded-lg py-1.5 text-[12px] font-semibold transition',
+                  sidebarCollapsed ? 'justify-center px-0' : 'gap-1.5 px-2.5',
                   activeMenu === 'all'
                     ? 'bg-[#2f6cf6] text-white shadow-[0_6px_18px_rgba(47,108,246,0.25)]'
                     : 'text-[#2f3b4c] hover:bg-[#e7ebf2]'
                 )}
               >
-                <FolderClosed className="h-4 w-4" />
+                <FolderClosed className="h-3.5 w-3.5" />
                 {!sidebarCollapsed ? '所有漫画' : null}
               </button>
 
@@ -252,19 +252,19 @@ export function LibrarySidebar({
 
           {!sidebarCollapsed ? (
             <section className="flex shrink-0 flex-col overflow-hidden">
-              <div className="mb-3 flex items-center justify-between px-2">
-                <p className="text-xs font-semibold text-[#8893a4]">标签过滤</p>
+              <div className="mb-2 flex items-center justify-between px-2">
+                <p className="text-[11px] font-semibold text-[#8893a4]">标签过滤</p>
                 <div className="flex items-center gap-1">
                   {selectedTags.length > 0 ? (
                     <button
-                      className="rounded-md px-2 py-1 text-[11px] font-semibold text-[#7a869b] hover:bg-[#edf2f9]"
+                      className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-[#7a869b] hover:bg-[#edf2f9]"
                       onClick={onClearSelectedTags}
                     >
                       清空
                     </button>
                   ) : null}
                   <button
-                    className="rounded-md px-2 py-1 text-[11px] font-semibold text-[#2f6cf6] hover:bg-[#e7efff]"
+                    className="rounded-md px-1.5 py-0.5 text-[10px] font-semibold text-[#2f6cf6] hover:bg-[#e7efff]"
                     onClick={onOpenTagDialog}
                   >
                     管理
@@ -276,8 +276,8 @@ export function LibrarySidebar({
                   暂无标签数据
                 </div>
               ) : (
-                <div className="library-sidebar-scroll max-h-[140px] overflow-y-auto pr-1">
-                  <div className="flex flex-wrap gap-2">
+                <div className="library-sidebar-scroll max-h-[132px] overflow-y-auto pr-1">
+                  <div className="flex flex-wrap gap-1">
                   {tags.map((tag) => {
                     const active = selectedTags.includes(tag.id);
                     return (
@@ -285,7 +285,7 @@ export function LibrarySidebar({
                         key={tag.id}
                         onClick={() => onToggleTag(tag.id)}
                         className={cn(
-                          'inline-flex max-w-full items-center justify-center rounded-md border px-2 py-1.5 text-xs font-semibold transition',
+                          'inline-flex max-w-full items-center justify-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold leading-4 transition',
                           active
                             ? 'border-[#2f6cf6] bg-[#2f6cf6] text-white'
                             : 'border-[#d4dce8] bg-white text-[#51627c] hover:bg-[#edf2f9]'
@@ -302,7 +302,7 @@ export function LibrarySidebar({
           ) : null}
         </div>
 
-        <div className={cn('mt-auto shrink-0 space-y-3 border-t border-[#dce1ea] p-4', sidebarCollapsed && 'px-2')}>
+        <div className={cn('mt-auto shrink-0 space-y-2.5 border-t border-[#dce1ea] p-3.5', sidebarCollapsed && 'px-2')}>
           <div
             className={cn(
               'grid items-center gap-2',
@@ -311,28 +311,28 @@ export function LibrarySidebar({
           >
             <Button
               className={cn(
-                'h-11 rounded-lg bg-[#2f6cf6] text-sm font-semibold text-white hover:bg-[#255de0]',
-                sidebarCollapsed && 'h-10 w-full px-0'
+                'h-9 rounded-lg bg-[#2f6cf6] text-[12px] font-semibold text-white hover:bg-[#255de0]',
+                sidebarCollapsed && 'h-9 w-full px-0'
               )}
               onClick={onPickAndAddSources}
               disabled={!hasIpcBridge}
               title="导入目录"
             >
-              <Import className={cn('h-4 w-4', !sidebarCollapsed && 'mr-2')} />
+              <Import className={cn('h-3.5 w-3.5', !sidebarCollapsed && 'mr-1.5')} />
               {!sidebarCollapsed ? '导入' : null}
             </Button>
 
             {sources.length > 0 ? (
               <button
                 className={cn(
-                  'inline-flex h-11 w-full items-center justify-center rounded-lg border border-[#d7deea] bg-white px-3 text-[#5a6880] transition hover:bg-[#e7ebf2]',
-                  sidebarCollapsed && 'h-10 w-full px-0'
+                  'inline-flex h-9 w-full items-center justify-center rounded-lg border border-[#d7deea] bg-white px-2.5 text-[#5a6880] transition hover:bg-[#e7ebf2]',
+                  sidebarCollapsed && 'h-9 w-full px-0'
                 )}
                 title="管理已导入目录"
                 onClick={() => setSourceManagerOpen(true)}
               >
-                <FolderCog className="h-4 w-4" />
-                {!sidebarCollapsed ? <span className="ml-1 text-[12px] font-semibold">{sources.length}</span> : null}
+                <FolderCog className="h-3.5 w-3.5" />
+                {!sidebarCollapsed ? <span className="ml-1 text-[11px] font-semibold">{sources.length}</span> : null}
               </button>
             ) : null}
           </div>
@@ -340,25 +340,25 @@ export function LibrarySidebar({
           <div className={cn('grid gap-2', sidebarCollapsed ? 'grid-cols-1' : 'grid-cols-2')}>
             <button
               className={cn(
-                'flex w-full items-center rounded-lg py-2 text-sm font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
-                sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-2 px-3'
+                'flex w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
+                sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
               )}
               title="漫画整理"
               onClick={onOpenOrganizer}
             >
-              <FolderTree className="h-4 w-4" />
+              <FolderTree className="h-3.5 w-3.5" />
               {!sidebarCollapsed ? '整理' : null}
             </button>
 
             <button
               className={cn(
-                'flex w-full items-center rounded-lg py-2 text-sm font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
-                sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-2 px-3'
+                'flex w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
+                sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
               )}
               title="设置"
               onClick={onOpenSettings}
             >
-              <Settings className="h-4 w-4" />
+              <Settings className="h-3.5 w-3.5" />
               {!sidebarCollapsed ? '设置' : null}
             </button>
           </div>
