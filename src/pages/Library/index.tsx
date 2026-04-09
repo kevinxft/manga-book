@@ -487,8 +487,8 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   );
 
   return (
-    <main className="h-full w-full bg-[#eceef2] p-1">
-      <div ref={containerRef} className="h-full overflow-hidden rounded-[8px] border border-[#d8dee9] bg-[#f1f2f5]">
+    <main className="h-full w-full bg-slate-50/50">
+      <div ref={containerRef} className="h-full overflow-hidden">
         <div className="grid h-full overflow-hidden transition-[grid-template-columns] duration-200" style={libraryLayoutStyle}>
           <LibrarySidebar
             sidebarCollapsed={sidebarCollapsed}
@@ -519,18 +519,18 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
 
           {!sidebarCollapsed ? (
             <div
-              className="group relative h-full cursor-col-resize bg-transparent"
+              className="group relative h-full cursor-col-resize bg-transparent z-10"
               onMouseDown={handleSidebarResizeStart}
               role="separator"
               aria-orientation="vertical"
               aria-label="调整侧边栏宽度"
             >
-              <div className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-[#d7deea] transition group-hover:bg-[#2f6cf6]" />
-              <div className="absolute inset-y-0 left-1/2 w-2 -translate-x-1/2" />
+              <div className="absolute inset-y-0 left-1/2 w-[2px] -translate-x-1/2 bg-slate-200/50 transition-colors duration-300 group-hover:bg-blue-400" />
+              <div className="absolute inset-y-0 left-1/2 w-4 -translate-x-1/2" />
             </div>
           ) : null}
 
-          <section className="relative flex min-h-0 flex-col bg-[#f3f5f9]">
+          <section className="relative flex min-h-0 flex-col bg-slate-50/50">
             <LibraryHeader
               sidebarCollapsed={sidebarCollapsed}
               sortBy={sortBy}

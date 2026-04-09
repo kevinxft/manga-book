@@ -62,22 +62,22 @@ export function SettingsPage({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0e131d]/58 px-4 py-8" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-8 transition-all" onClick={onClose}>
       <div
-        className="w-[700px] max-w-[calc(100vw-32px)] overflow-hidden rounded-2xl border border-[#d7dde8] bg-[#f4f6fa] shadow-[0_24px_72px_rgba(39,53,73,0.35)]"
+        className="w-[700px] max-w-[calc(100vw-32px)] overflow-hidden rounded-3xl border border-white/60 bg-slate-50/95 shadow-[0_24px_72px_rgba(15,23,42,0.2)] backdrop-blur-xl"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-[#dde3ee] px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#deebff]">
-              <Settings2 className="h-4 w-4 text-[#2f6cf6]" />
+        <header className="flex items-center justify-between border-b border-slate-200/60 bg-white/50 px-6 py-5 backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500 shadow-sm ring-1 ring-blue-600/20">
+              <Settings2 className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-[15px] font-bold text-[#111b2d]">阅读设置</h2>
+            <h2 className="text-[16px] font-bold tracking-wide text-slate-800">阅读与界面设置</h2>
           </div>
           <button
-            className="rounded-md p-1.5 text-[#7a869b] transition hover:bg-[#e8edf5] hover:text-[#4d5d75]"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200/50 text-slate-500 transition-all hover:bg-slate-200 hover:text-slate-900"
             onClick={onClose}
-            title="关闭"
+            title="关闭设置"
           >
             <X className="h-4 w-4" />
           </button>
@@ -176,17 +176,17 @@ export function SettingsPage({
           </section>
         </div>
 
-        <footer className="flex items-center justify-end gap-2 border-t border-[#dde3ee] bg-[#eef1f6] px-6 py-3.5">
+        <footer className="flex items-center justify-end gap-3 border-t border-slate-200/60 bg-white/50 px-6 py-4 backdrop-blur-md">
           <button
-            className="h-9 rounded-lg border border-[#d4dce8] bg-white px-5 text-[13px] font-semibold text-[#465974] transition hover:bg-[#f5f7fb]"
+            className="h-10 rounded-xl border border-slate-200 bg-white px-6 text-[13px] font-bold text-slate-600 transition-all hover:bg-slate-50 hover:text-slate-900 shadow-sm"
             onClick={onClose}
           >
             取消
           </button>
           <button
             className={cn(
-              'h-9 rounded-lg px-5 text-[13px] font-semibold text-white shadow-[0_8px_18px_rgba(47,108,246,0.26)] transition',
-              dirty ? 'bg-[#2f6cf6] hover:bg-[#255de0]' : 'cursor-not-allowed bg-[#8fb3f8]'
+              'h-10 rounded-xl px-6 text-[13px] font-bold text-white shadow-md transition-all duration-300',
+              dirty ? 'bg-blue-600 hover:bg-blue-500 hover:shadow-blue-500/25' : 'cursor-not-allowed bg-slate-300 shadow-none'
             )}
             onClick={() => {
               if (!dirty) return;
@@ -195,7 +195,7 @@ export function SettingsPage({
             }}
             disabled={!dirty}
           >
-            保存设置
+            保存所有更改
           </button>
         </footer>
       </div>

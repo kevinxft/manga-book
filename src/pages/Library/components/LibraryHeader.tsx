@@ -63,70 +63,72 @@ export function LibraryHeader({
   const scanStatus = getScanStatusText(progress);
 
   return (
-    <header className="flex h-[52px] items-center justify-between border-b border-[#dde2eb] bg-[#f1f3f6] px-4">
-      <div className="flex items-center gap-3">
+    <header className="flex h-[64px] items-center justify-between border-b border-slate-200/50 bg-white/40 px-5 backdrop-blur-2xl">
+      <div className="flex items-center gap-4">
         <button
-          className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-[#dce2ec] bg-[#eceff4] text-[#5f6c80] hover:bg-[#e2e7f0]"
+          className="group inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 text-slate-500 shadow-sm ring-1 ring-slate-200/60 transition-all hover:bg-white hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           onClick={() => onSidebarCollapsedChange(!sidebarCollapsed)}
           title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
         >
-          {sidebarCollapsed ? <PanelLeftOpen className="h-3.5 w-3.5" /> : <PanelLeftClose className="h-3.5 w-3.5" />}
+          {sidebarCollapsed ? <PanelLeftOpen className="h-4 w-4 transition-transform group-hover:scale-110" /> : <PanelLeftClose className="h-4 w-4 transition-transform group-hover:scale-110" />}
         </button>
 
         <button
-          className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-[#dce2ec] bg-[#eceff4] text-[#5f6c80] hover:bg-[#e2e7f0] disabled:opacity-60"
+          className="group inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 text-slate-500 shadow-sm ring-1 ring-slate-200/60 transition-all hover:bg-white hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50"
           onClick={scanRunning ? onCancelSync : onSyncSources}
           disabled={!hasIpcBridge}
           title={scanRunning ? '停止同步' : '重新扫描'}
         >
-          {scanRunning ? <Square className="h-3.5 w-3.5 fill-current" /> : <RefreshCw className={cn('h-3.5 w-3.5')} />}
+          {scanRunning ? <Square className="h-4 w-4 fill-current transition-transform group-hover:scale-95" /> : <RefreshCw className={cn('h-4 w-4 transition-transform group-hover:rotate-180')} />}
         </button>
 
         {scanStatus ? (
           <div className="min-w-0 max-w-[280px]">
-            <p className="truncate text-[11px] font-semibold text-[#3e5c96]">{scanStatus.primary}</p>
-            <p className="truncate text-[11px] text-[#6f7e95]">{scanStatus.secondary}</p>
+            <p className="truncate text-[12px] font-bold text-blue-700">{scanStatus.primary}</p>
+            <p className="truncate text-[11px] font-medium text-slate-500">{scanStatus.secondary}</p>
           </div>
         ) : null}
 
-        <div className="flex items-center gap-2.5">
-          <span className="text-[12px] font-semibold text-[#617089]">排序:</span>
-          <div className="relative">
+        <div className="flex items-center gap-3 ml-2">
+          <span className="text-[13px] font-bold tracking-wide text-slate-400">排序方式</span>
+          <div className="relative group">
             <select
-              className="h-[34px] appearance-none rounded-[16px] bg-[#eef2f8] pl-3.5 pr-8 text-[12px] font-semibold text-[#4f5d73] outline-none ring-1 ring-inset ring-[#d8e0ec] transition hover:bg-[#e8edf5] focus:bg-white focus:ring-[#b8c8e3]"
+              className="h-9 appearance-none rounded-xl bg-white/60 pl-4 pr-9 text-[13px] font-semibold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/60 transition-all hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500/20"
               value={sortBy}
               onChange={(event) => onSortByChange(event.target.value as SortKey)}
             >
-              <option value="addedAtDesc">日期(新-旧)</option>
-              <option value="addedAtAsc">日期(旧-新)</option>
-              <option value="titleAsc">标题(A-Z)</option>
-              <option value="titleDesc">标题(Z-A)</option>
-              <option value="lastReadAtDesc">最近阅读</option>
+              <option value="addedAtDesc">日期 (新到旧)</option>
+              <option value="addedAtAsc">日期 (旧到新)</option>
+              <option value="titleAsc">标题 (A-Z)</option>
+              <option value="titleDesc">标题 (Z-A)</option>
+              <option value="lastReadAtDesc">最近阅读优先</option>
             </select>
-            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7d8ca3]" />
+            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-hover:text-blue-500" />
           </div>
         </div>
 
-        {loading ? <span className="text-[11px] font-semibold text-[#7b8799]">加载中...</span> : null}
+        {loading ? <span className="text-[12px] font-bold text-slate-400 animate-pulse">正在加载...</span> : null}
       </div>
 
-      <div className="flex items-center gap-2.5">
-        <span className="shrink-0 text-[12px] font-semibold text-[#617089]">共 {mangaCount} 本</span>
-        <div className="relative w-[240px] max-w-[30vw]">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8a95a7]" />
+      <div className="flex items-center gap-4">
+        <span className="shrink-0 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold tracking-wide text-slate-500 shadow-sm ring-1 ring-slate-200/50">
+          共 <span className="text-blue-600 font-black text-[12px]">{mangaCount}</span> 本典藏
+        </span>
+        <div className="relative w-[260px] max-w-[30vw] group">
+          <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500" />
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            className="h-[34px] rounded-lg border-[#dce2ec] bg-[#eceff4] py-0 pl-8 pr-8 text-[12px] leading-normal"
-            placeholder="搜索漫画、作者或标签..."
+            className="h-10 rounded-2xl border-slate-200/60 bg-white/60 py-0 pl-10 pr-10 text-[13px] leading-normal text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+            placeholder="搜索您想看的漫画、作者或标签..."
           />
           {search.trim().length > 0 ? (
             <button
-              className="absolute right-1.5 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
+              className="absolute right-2 top-1/2 inline-flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
               onClick={() => onSearchChange('')}
               title="清空搜索"
             >
-              <X className="h-3 w-3" />
+              <X className="h-3.5 w-3.5" />
             </button>
           ) : null}
         </div>

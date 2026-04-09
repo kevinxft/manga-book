@@ -1,5 +1,6 @@
+// Force HMR
 import { memo, useCallback, useMemo, useState, type MouseEvent } from 'react';
-import { Copy, ImageOff, Tag } from 'lucide-react';
+import { BookOpen, Copy, ImageOff, Tag } from 'lucide-react';
 import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import { CoverContextMenu, type CoverContextMenuState } from '@renderer/components/manga/CoverContextMenu';
 import { VirtualCardGrid } from '@renderer/components/virtual/VirtualCardGrid';
@@ -58,7 +59,7 @@ const LibraryGridCard = memo(function LibraryGridCard({
   return (
     <article key={item.manga.id} title={item.fullDisplayPath} className="group">
       <div
-        className="relative block w-full cursor-pointer overflow-hidden rounded-2xl border-0 bg-[#d8dde6] p-0 text-left shadow-[0_10px_24px_rgba(53,71,95,0.18)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2f6cf6]/40"
+        className="relative block w-full cursor-pointer overflow-hidden rounded-2xl border border-white/40 bg-slate-100 p-0 text-left shadow-[0_8px_20px_rgba(0,0,0,0.06)] transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-[0_16px_36px_rgba(47,108,246,0.15)] ring-1 ring-slate-900/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
         onContextMenu={(event) => onContextMenuOpen(event, item.manga)}
       >
         <button className="block w-full text-left" onClick={() => onOpenManga?.(item.manga)} title={`打开：${item.manga.title}`}>
@@ -71,30 +72,30 @@ const LibraryGridCard = memo(function LibraryGridCard({
                 className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"
               />
             ) : (
-              <div className="flex h-full items-center justify-center bg-[#dce2ec] text-[#8a96a8]">
+              <div className="flex h-full items-center justify-center bg-slate-100 text-slate-300">
                 <ImageOff className="h-10 w-10" />
               </div>
             )}
           </div>
         </button>
         <div className="absolute left-2 right-2 top-2 flex items-start justify-between gap-2">
-          <span className="shrink-0 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
+          <span className="shrink-0 rounded-lg bg-black/40 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-sm ring-1 ring-white/20">
             {item.manga.totalPages} 页
           </span>
           {item.artistName ? (
             <span
-              className="min-w-0 max-w-[70%] truncate rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white"
+              className="min-w-0 max-w-[70%] truncate rounded-lg bg-black/40 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-sm ring-1 ring-white/20"
               title={item.artistTooltip ?? item.artistName}
             >
               {item.artistName}
             </span>
           ) : null}
         </div>
-        <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1 overflow-hidden">
+        <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1.5">
           {!item.hasTags ? (
             <button
               type="button"
-              className="inline-flex shrink-0 items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white transition hover:bg-black/75"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg bg-black/50 backdrop-blur-md h-6 w-6 text-white/90 shadow-sm ring-1 ring-white/20 transition-all hover:bg-blue-500 hover:text-white hover:ring-blue-400"
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -110,7 +111,7 @@ const LibraryGridCard = memo(function LibraryGridCard({
             <button
               key={`${item.manga.id}-${name}`}
               type="button"
-              className="min-w-0 truncate rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold text-white/95 transition hover:bg-[#2f7fe6]/90"
+              className="min-w-0 truncate rounded-lg bg-black/50 backdrop-blur-md px-2 h-6 text-[10px] font-bold text-white/95 shadow-sm ring-1 ring-white/20 transition-all hover:bg-blue-500 hover:text-white hover:ring-blue-400"
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -125,7 +126,7 @@ const LibraryGridCard = memo(function LibraryGridCard({
           {item.hiddenTagCount > 0 ? (
             <button
               type="button"
-              className="shrink-0 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 transition hover:bg-[#2f7fe6]/80"
+              className="shrink-0 rounded-lg bg-black/50 backdrop-blur-md px-1.5 h-6 text-[10px] font-bold text-white/90 shadow-sm ring-1 ring-white/20 transition-all hover:bg-blue-500 hover:text-white hover:ring-blue-400"
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -140,25 +141,25 @@ const LibraryGridCard = memo(function LibraryGridCard({
         </div>
       </div>
 
-      <div className="mt-1.5">
-        <p className="flex items-start gap-1.5 text-xs font-semibold leading-tight text-[#1f2b3d]" title={item.fullDisplayPath}>
+      <div className="mt-2.5 px-0.5">
+        <p className="flex items-start gap-1.5 text-[13px] font-bold leading-snug text-slate-700 transition-colors group-hover:text-blue-600" title={item.fullDisplayPath}>
           {item.missingArtistDirectory ? (
             <span
-              className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f59e0b]"
+              className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
               title="未分配作者目录"
               aria-label="未分配作者目录"
             />
           ) : null}
           {item.duplicateConflict ? (
             <span
-              className="mt-0.5 inline-flex shrink-0 text-[#f97316]"
+              className="mt-0.5 inline-flex shrink-0 text-orange-500"
               title="当前作者目录下存在同名副本"
               aria-label="当前作者目录下存在同名副本"
             >
-              <Copy className="h-3 w-3" />
+              <Copy className="h-3.5 w-3.5" />
             </span>
           ) : null}
-          <span className="min-w-0 break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
+          <span className="min-w-0 break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden drop-shadow-sm">
             {item.manga.title}
           </span>
         </p>
@@ -242,11 +243,16 @@ export function MangaGrid({
   }, []);
 
   const emptyState = !loading ? (
-    <div className="px-6 py-5">
-      <div className="mt-8 rounded-xl border border-dashed border-[#cfd7e4] bg-[#f7f9fc] px-6 py-10 text-center">
-        <p className="text-sm font-semibold text-[#46546a]">{totalMangaCount === 0 ? '当前没有漫画数据' : '当前筛选下没有漫画'}</p>
-        <p className="mt-2 text-xs text-[#7d889c]">
-          {totalMangaCount === 0 ? '点击左下角“导入目录”添加来源后会自动显示。' : '请调整分类或标签筛选条件。'}
+    <div className="flex h-full w-full flex-col items-center justify-center p-8">
+      <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white/50 px-12 py-16 text-center shadow-sm backdrop-blur-md">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-100 text-slate-300">
+          <BookOpen className="h-8 w-8" />
+        </div>
+        <p className="text-[15px] font-bold tracking-wide text-slate-600">
+          {totalMangaCount === 0 ? '漫画库空空如也' : '当前没找到匹配的漫画哦'}
+        </p>
+        <p className="mt-2.5 max-w-[280px] text-[13px] font-medium leading-relaxed text-slate-400">
+          {totalMangaCount === 0 ? '赶紧点击左下角的“导入”按钮，添加你的第一个漫画宝库吧！' : '不妨换个标签或者搜索词再试一次。'}
         </p>
       </div>
     </div>

@@ -50,10 +50,10 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
     <article key={card.item.id} className="group" title={card.item.displayPath}>
       <div
         className={cn(
-          'relative block w-full overflow-hidden rounded-xl border bg-[#d9e0ea] text-left shadow-[0_8px_22px_rgba(42,60,88,0.2)] transition',
+          'relative block w-full overflow-hidden rounded-2xl border text-left transition-all duration-150 ease-out',
           card.isSelected
-            ? 'border-[#2f7fe6] bg-[#dfe9fb] ring-4 ring-[#2f7fe6]/50 shadow-[0_16px_34px_rgba(47,127,230,0.3)]'
-            : 'border-transparent hover:border-[#b7c8df] hover:shadow-[0_12px_28px_rgba(42,60,88,0.24)]'
+            ? 'border-blue-500 bg-blue-100 ring-4 ring-blue-500/30 shadow-[0_12px_24px_rgba(47,108,246,0.25)] scale-[1.02]'
+            : 'border-white/60 bg-slate-100 ring-1 ring-slate-900/5 shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_16px_36px_rgba(47,108,246,0.12)] hover:-translate-y-1'
         )}
         onContextMenu={(event) => onContextMenuOpen(event, card.item)}
       >
@@ -64,39 +64,39 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
                 src={toCoverSrc(card.item.coverPath)}
                 alt={card.item.title}
                 loading="lazy"
-                className="h-full w-full object-cover"
+                className="h-full w-full object-cover transition-transform duration-300 hover:scale-[1.02]"
               />
             ) : (
-              <div className="flex h-full items-center justify-center bg-[#d3dfef] text-[#6fa4de]">
-                <ImageOff className="h-8 w-8" />
+              <div className="flex h-full items-center justify-center bg-slate-100 text-slate-300">
+                <ImageOff className="h-10 w-10" />
               </div>
             )}
           </div>
         </button>
 
-        <div className="absolute left-2 right-2 top-2 flex items-start justify-between gap-2 overflow-hidden">
+        <div className="absolute left-2 right-2 top-2 flex items-start justify-between gap-2">
           {card.isSelected ? (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-[#2f7fe6] px-1.5 py-0.5 text-[10px] font-semibold text-white shadow-[0_8px_18px_rgba(47,127,230,0.34)]">
+            <span className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-md ring-1 ring-white/20">
               <Check className="h-3 w-3" />
               已选
             </span>
           ) : (
-            <span className="shrink-0 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+            <span className="shrink-0 rounded-lg bg-black/40 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-sm ring-1 ring-white/20">
               {card.item.totalPages} 页
             </span>
           )}
           {card.item.ownerBadge ? (
-            <span className="min-w-0 max-w-[70%] truncate rounded-md bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">
+            <span className="min-w-0 max-w-[70%] truncate rounded-lg bg-black/40 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-sm ring-1 ring-white/20">
               {card.item.ownerBadge}
             </span>
           ) : null}
         </div>
 
-        <div className="absolute bottom-2 left-2 right-8 flex items-center gap-1 overflow-hidden">
+        <div className="absolute bottom-2 left-2 right-8 flex items-center gap-1.5">
           {!card.hasTags ? (
             <button
               type="button"
-              className="inline-flex shrink-0 items-center gap-1 rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white transition hover:bg-black/65"
+              className="inline-flex shrink-0 items-center justify-center rounded-lg bg-black/50 backdrop-blur-md h-6 w-6 text-white/90 shadow-sm ring-1 ring-white/20 transition-all hover:bg-blue-500 hover:text-white hover:ring-blue-400"
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -112,7 +112,7 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
             <button
               key={`${card.item.id}-${name}`}
               type="button"
-              className="min-w-0 truncate rounded-md bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white/95 transition hover:bg-[#2f7fe6]/90"
+              className="min-w-0 truncate rounded-lg bg-black/50 backdrop-blur-md px-2 h-6 text-[10px] font-bold text-white/95 shadow-sm ring-1 ring-white/20 transition-all hover:bg-blue-500 hover:text-white hover:ring-blue-400"
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -127,7 +127,7 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
           {card.hiddenTagCount > 0 ? (
             <button
               type="button"
-              className="shrink-0 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-semibold text-white/90 transition hover:bg-[#2f7fe6]/80"
+              className="shrink-0 rounded-lg bg-black/50 backdrop-blur-md px-1.5 h-6 text-[10px] font-bold text-white/90 shadow-sm ring-1 ring-white/20 transition-all hover:bg-blue-500 hover:text-white hover:ring-blue-400"
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
@@ -143,7 +143,7 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
 
         {onOpenManga ? (
           <button
-            className="absolute bottom-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-md bg-black/55 text-white transition hover:bg-black/70"
+            className="absolute bottom-2 right-2 inline-flex h-6 w-6 items-center justify-center rounded-lg bg-black/50 backdrop-blur-md text-white/90 shadow-sm ring-1 ring-white/20 transition-all hover:bg-blue-500 hover:text-white hover:ring-blue-400"
             onClick={(event) => {
               event.stopPropagation();
               onOpenManga(card.item);
@@ -154,27 +154,29 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
           </button>
         ) : null}
       </div>
-      <p className="mt-2 flex items-start gap-1.5 text-[11px] font-semibold leading-tight text-[#1a2840]" title={card.item.title}>
-        {card.item.organizeStatus === 'unorganized' ? (
-          <span
-            className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#f59e0b]"
-            title="未分配作者目录"
-            aria-label="未分配作者目录"
-          />
-        ) : null}
-        {card.duplicateConflict ? (
-          <span
-            className="mt-0.5 inline-flex shrink-0 text-[#f97316]"
-            title="当前作者目录下存在同名副本"
-            aria-label="当前作者目录下存在同名副本"
-          >
-            <Copy className="h-3.5 w-3.5" />
+      <div className="mt-2.5 px-1">
+        <p className="flex items-start gap-1.5 text-[13px] font-bold leading-snug text-slate-700 transition-colors group-hover:text-blue-600" title={card.item.title}>
+          {card.item.organizeStatus === 'unorganized' ? (
+            <span
+              className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"
+              title="未分配作者目录"
+              aria-label="未分配作者目录"
+            />
+          ) : null}
+          {card.duplicateConflict ? (
+            <span
+              className="mt-0.5 inline-flex shrink-0 text-orange-500"
+              title="当前作者目录下存在同名副本"
+              aria-label="当前作者目录下存在同名副本"
+            >
+              <Copy className="h-3.5 w-3.5" />
+            </span>
+          ) : null}
+          <span className="min-w-0 break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden drop-shadow-sm">
+            {card.item.title}
           </span>
-        ) : null}
-        <span className="min-w-0 break-words [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] overflow-hidden">
-          {card.item.title}
-        </span>
-      </p>
+        </p>
+      </div>
     </article>
   );
 });
@@ -247,20 +249,22 @@ export function OrganizerFileGrid({
   }, []);
 
   const emptyState = !loading && !error ? (
-    <div className="px-7 py-5">
-      <div className="rounded-xl border border-dashed border-[#c6d2e2] bg-white/70 px-5 py-12 text-center text-sm text-[#6d7f99]">
-        当前没有匹配到待整理漫画
+    <div className="flex h-full w-full flex-col items-center justify-center p-8">
+      <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white/40 px-12 py-16 text-center shadow-sm backdrop-blur-md">
+        <p className="text-[15px] font-bold tracking-wide text-slate-600">
+          当前没有匹配到待整理漫画
+        </p>
       </div>
     </div>
   ) : null;
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col overflow-hidden border-r border-[#dbe1eb] bg-[#f6f8fc]">
-      {loading ? <p className="px-7 pt-5 text-sm font-semibold text-[#5f6f89]">加载中...</p> : null}
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden shadow-inner bg-slate-50/40">
+      {loading ? <p className="px-7 pt-5 text-[13px] font-bold text-slate-500">加载中...</p> : null}
 
       {!loading && error ? (
         <div className="px-7 py-5">
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+          <div className="rounded-xl border border-red-200 bg-red-50/80 backdrop-blur-sm px-4 py-3 text-[13px] font-medium text-red-700">{error}</div>
         </div>
       ) : null}
 

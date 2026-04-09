@@ -165,8 +165,8 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
   };
 
   return (
-    <main className="h-full w-full bg-[#ebedf1] p-2">
-      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-[14px] border border-[#cad3e0] bg-[#f4f6fa] shadow-[0_18px_48px_rgba(32,45,68,0.22)]">
+    <main className="h-full w-full bg-slate-50/50">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <OrganizerHeader
           query={query}
           statusFilter={statusFilter}
@@ -226,11 +226,11 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
           </div>
         </div>
 
-        <footer className="flex items-center justify-between border-t border-[#d9e0ea] bg-[#f7f9fc] px-5 py-2 text-[11px] font-semibold text-[#6d7d96]">
-          <span>
-            已选择 {selectedIds.size} 本漫画 {visibleItems.length > 0 ? `· 当前结果 ${visibleItems.length} 本` : ''}
+        <footer className="flex items-center justify-between border-t border-slate-200/50 bg-white/50 backdrop-blur-md px-6 py-2.5 text-[11px] font-bold text-slate-400">
+          <span className="text-slate-500">
+            已选择 <strong className="text-blue-600">{selectedIds.size}</strong> 本典藏 {visibleItems.length > 0 ? `· 当前结果 ${visibleItems.length} 本` : ''}
           </span>
-          <span className="tracking-[0.06em] text-[#8191a8]">MANGA ORGANIZER</span>
+          <span className="tracking-[0.15em]">ORGANIZER</span>
         </footer>
       </div>
 
