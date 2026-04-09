@@ -12,12 +12,28 @@ interface CoverPathCacheEntry {
 const coverPathCache = new Map<string, CoverPathCacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
+function isIgnorableDirectoryReadError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error.code === 'ENOENT' || error.code === 'ENOTDIR')
+  );
+}
+
 function isImage(filePath: string): boolean {
   return SUPPORTED_EXTENSIONS.has(path.extname(filePath).toLowerCase());
 }
 
 async function findCoverInDirectory(directoryPath: string): Promise<string | null> {
-  const files = await listFiles(directoryPath);
+  let files: string[];
+  try {
+    files = await listFiles(directoryPath);
+  } catch (error) {
+    if (isIgnorableDirectoryReadError(error)) {
+      return null;
+    }
+    throw error;
+  }
   const sorted = files.sort((a, b) => a.localeCompare(b));
   const firstImage = sorted.find(isImage);
   return firstImage ?? null;
@@ -32,7 +48,17 @@ export async function resolveCoverPath(folderPath: string): Promise<string | nul
   let coverPath = await findCoverInDirectory(folderPath);
 
   if (!coverPath) {
-    const subDirectories = (await listDirectories(folderPath)).sort((a, b) => a.localeCompare(b));
+    let subDirectories: string[];
+    try {
+      subDirectories = await listDirectories(folderPath);
+    } catch (error) {
+      if (isIgnorableDirectoryReadError(error)) {
+        subDirectories = [];
+      } else {
+        throw error;
+      }
+    }
+    subDirectories = subDirectories.sort((a, b) => a.localeCompare(b));
     for (const subDirectory of subDirectories) {
       coverPath = await findCoverInDirectory(subDirectory);
       if (coverPath) {

@@ -16,6 +16,7 @@ interface LibraryState {
   loading: boolean;
   error: string | null;
   lastFetchOptions: LibraryFetchOptions;
+  clearError: () => void;
   fetchSources: () => Promise<void>;
   fetchMangas: (options?: LibraryFetchOptions) => Promise<void>;
   addSource: (sourcePath: string) => Promise<void>;
@@ -44,6 +45,10 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   error: null,
   lastFetchOptions: {
     sortBy: 'addedAtDesc'
+  },
+
+  clearError() {
+    set({ error: null });
   },
 
   async monitorScanTask(taskId: string) {
@@ -218,15 +223,42 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   async refreshScanProgress() {
     try {
       const previousProgress = get().progress;
+      if (previousProgress.taskId) {
+        const status = await ipcInvoke('library.getScanTaskStatus', { taskId: previousProgress.taskId });
+
+        if (status.status === 'queued' || status.status === 'running') {
+          set({
+            progress: {
+              taskId: status.taskId,
+              status: 'running',
+              current: status.current,
+              total: status.total,
+              message: status.message
+            }
+          });
+          return;
+        }
+
+        set({
+          progress: {
+            taskId: null,
+            status: 'idle',
+            current: 0,
+            total: 0,
+            message: status.status === 'completed' ? 'Idle' : status.message
+          }
+        });
+
+        if (status.status === 'completed') {
+          await Promise.all([get().fetchSources(), get().fetchMangas()]);
+        } else if (status.status === 'failed') {
+          set({ error: status.error ?? 'Library sync failed' });
+        }
+        return;
+      }
+
       const progress = await ipcInvoke('library.getScanProgress', undefined);
       set({ progress });
-
-      const scanJustFinished =
-        previousProgress.taskId !== null && progress.status === 'idle';
-
-      if (scanJustFinished) {
-        await get().fetchMangas();
-      }
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to fetch scan progress' });
     }

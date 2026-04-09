@@ -88,6 +88,16 @@ export class TaskQueue {
     return this.tasks.get(taskId)?.state ?? null;
   }
 
+  getActiveTask(): TaskState | null {
+    const running = Array.from(this.tasks.values()).find((task) => task.state.status === 'running');
+    if (running) {
+      return running.state;
+    }
+
+    const queued = this.queue.find((task) => task.state.status === 'queued');
+    return queued?.state ?? null;
+  }
+
   getRunningTask(): TaskState | null {
     const running = Array.from(this.tasks.values()).find((task) => task.state.status === 'running');
     return running?.state ?? null;

@@ -33,8 +33,21 @@ interface MangaEntry {
   inspection: FolderInspection;
 }
 
+function isIgnorableDirectoryReadError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    'code' in error &&
+    (error.code === 'ENOENT' || error.code === 'ENOTDIR')
+  );
+}
+
 function normalizeDirectoryName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function isArtistsDirectoryName(name: string): boolean {
+  const normalized = normalizeDirectoryName(name);
+  return normalized === 'artists' || normalized === 'artist';
 }
 
 function assertNotAborted(signal?: AbortSignal): void {
@@ -44,13 +57,20 @@ function assertNotAborted(signal?: AbortSignal): void {
 }
 
 async function listImageFiles(directoryPath: string): Promise<string[]> {
-  const entries = await fs.readdir(directoryPath, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
-    .map((entry) => path.join(directoryPath, entry.name));
+  try {
+    const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+    return entries
+      .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+      .map((entry) => path.join(directoryPath, entry.name));
+  } catch (error) {
+    if (isIgnorableDirectoryReadError(error)) {
+      return [];
+    }
+    throw error;
+  }
 }
 
-async function inspectFolderAsManga(folderPath: string): Promise<FolderInspection | null> {
+async function inspectFolderAsManga(folderPath: string, allowChildDirectories = true): Promise<FolderInspection | null> {
   const directImages = await listImageFiles(folderPath);
   if (directImages.length >= MIN_MANGA_IMAGE_COUNT) {
     return {
@@ -59,7 +79,19 @@ async function inspectFolderAsManga(folderPath: string): Promise<FolderInspectio
     };
   }
 
-  const childDirectories = await listDirectories(folderPath);
+  if (!allowChildDirectories) {
+    return null;
+  }
+
+  let childDirectories: string[];
+  try {
+    childDirectories = await listDirectories(folderPath);
+  } catch (error) {
+    if (isIgnorableDirectoryReadError(error)) {
+      return null;
+    }
+    throw error;
+  }
   let totalChildPages = 0;
   let hasChildVolume = false;
 
@@ -85,8 +117,9 @@ async function inspectFolderAsManga(folderPath: string): Promise<FolderInspectio
 async function discoverMangaEntries(rootPath: string, signal?: AbortSignal): Promise<MangaEntry[]> {
   const discovered: MangaEntry[] = [];
   const stack: string[] = [rootPath];
-  const sourceRootKey = normalizeDirectoryName(path.basename(rootPath));
-  const sourceIsArtistsRoot = sourceRootKey === 'artists' || sourceRootKey === 'artist';
+  const sourceRootName = path.basename(rootPath);
+  const sourceRootKey = normalizeDirectoryName(sourceRootName);
+  const sourceIsArtistsRoot = isArtistsDirectoryName(sourceRootName);
   const sourceIsInboxRoot = sourceRootKey === 'inbox';
   const sourceIsSeriesRoot = sourceRootKey === 'series';
 
@@ -97,12 +130,16 @@ async function discoverMangaEntries(rootPath: string, signal?: AbortSignal): Pro
       continue;
     }
 
+    if (!(await directoryExists(currentPath))) {
+      continue;
+    }
+
     const relativePath = path.relative(rootPath, currentPath);
     const relativeSegments = relativePath === '' ? [] : relativePath.split(path.sep).filter(Boolean);
 
-    const firstSegmentKey =
-      relativeSegments.length > 0 ? normalizeDirectoryName(relativeSegments[0] ?? '') : '';
-    const inArtistsTree = firstSegmentKey === 'artists' || firstSegmentKey === 'artist';
+    const firstSegmentName = relativeSegments[0] ?? '';
+    const firstSegmentKey = normalizeDirectoryName(firstSegmentName);
+    const inArtistsTree = isArtistsDirectoryName(firstSegmentName);
     const inSeriesTree = firstSegmentKey === 'series';
     const inInboxTree = firstSegmentKey === 'inbox';
 
@@ -123,8 +160,11 @@ async function discoverMangaEntries(rootPath: string, signal?: AbortSignal): Pro
       isRootLevelContainerForImportedOrganizerFolder ||
       isSourceRootItselfContainer;
 
+    const allowChildDirectoriesAsMultiVolume =
+      sourceIsArtistsRoot || inArtistsTree || inSeriesTree || inInboxTree;
+
     if (!shouldSkipAsContainer) {
-      const inspection = await inspectFolderAsManga(currentPath);
+      const inspection = await inspectFolderAsManga(currentPath, allowChildDirectoriesAsMultiVolume);
       if (inspection) {
         discovered.push({
           folderPath: currentPath,
@@ -134,7 +174,15 @@ async function discoverMangaEntries(rootPath: string, signal?: AbortSignal): Pro
       }
     }
 
-    const childDirectories = await listDirectories(currentPath);
+    let childDirectories: string[];
+    try {
+      childDirectories = await listDirectories(currentPath);
+    } catch (error) {
+      if (isIgnorableDirectoryReadError(error)) {
+        continue;
+      }
+      throw error;
+    }
     for (let index = childDirectories.length - 1; index >= 0; index -= 1) {
       const childDirectory = childDirectories[index];
       if (!childDirectory) {

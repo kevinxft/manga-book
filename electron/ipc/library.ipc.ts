@@ -161,6 +161,10 @@ export function registerLibraryIpc(context: IpcContext): void {
     const paths = request?.paths?.length ? request.paths : library.list().map((item) => item.path);
     const forceRescan = request?.forceRescan ?? true;
 
+    if (paths.length === 0) {
+      return fail('NO_SOURCES', '请先添加至少一个漫画来源目录。');
+    }
+
     const taskId = scanQueue.enqueue({
       name: 'Library sync',
       run: async (signal, reportProgress) => {
@@ -189,9 +193,9 @@ export function registerLibraryIpc(context: IpcContext): void {
   });
 
   registerHandler('library.getScanProgress', () => {
-    const runningTask = scanQueue.getRunningTask();
+    const activeTask = scanQueue.getActiveTask();
 
-    if (!runningTask) {
+    if (!activeTask) {
       return ok({
         taskId: null,
         status: 'idle' as const,
@@ -202,11 +206,11 @@ export function registerLibraryIpc(context: IpcContext): void {
     }
 
     return ok({
-      taskId: runningTask.id,
+      taskId: activeTask.id,
       status: 'running' as const,
-      current: runningTask.progress.current,
-      total: runningTask.progress.total,
-      message: runningTask.progress.message
+      current: activeTask.progress.current,
+      total: activeTask.progress.total,
+      message: activeTask.progress.message
     });
   });
 

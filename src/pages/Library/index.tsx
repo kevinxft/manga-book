@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { MangaBookWithCover } from '@shared/types';
-import { cn } from '@renderer/lib/utils';
 import { useLibraryStore } from '@renderer/stores/libraryStore';
 import { LibraryHeader } from './components/LibraryHeader';
 import { LibraryScanOverlay } from './components/LibraryScanOverlay';
@@ -77,6 +76,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     loading,
     error,
     progress,
+    clearError,
     fetchSources,
     fetchMangas,
     pickAndAddSources,
@@ -314,7 +314,16 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
             <LibraryScanOverlay progress={progress} />
 
             {error ? (
-              <div className="mx-6 mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+              <div className="mx-6 mt-3 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <span className="min-w-0 flex-1 break-words">{error}</span>
+                <button
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-red-500 transition hover:bg-red-100 hover:text-red-700"
+                  onClick={clearError}
+                  title="关闭错误提示"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             ) : null}
 
             {operationError ? (
