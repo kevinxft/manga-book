@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ArrowDownUp, Folder, Loader2, Pencil, Search, Tags, X } from 'lucide-react';
+import { ArrowDownUp, Folder, Loader2, Pencil, Search, Tags, Trash2, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
@@ -18,6 +18,7 @@ interface OrganizerCategoryPanelProps {
   onMoveSelected: () => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
   onRequestRenameCategory: (category: OrganizerCategory) => void;
+  onRequestDeleteCategory: (category: OrganizerCategory) => void;
   onRequestCreateAuthor: () => void;
 }
 
@@ -43,6 +44,7 @@ export function OrganizerCategoryPanel({
   onMoveSelected,
   onRequestAddAlias,
   onRequestRenameCategory,
+  onRequestDeleteCategory,
   onRequestCreateAuthor
 }: OrganizerCategoryPanelProps) {
   const [search, setSearch] = useState('');
@@ -245,8 +247,6 @@ export function OrganizerCategoryPanel({
     <aside className="flex h-full w-[340px] flex-col bg-[#f1f3f7]">
       <div className="flex min-h-0 flex-1 flex-col border-b border-[#dbe1eb] px-5 pb-4 pt-5">
         <div className="mb-3 flex items-center gap-2">
-          <h3 className="shrink-0 text-[18px] font-bold text-[#1a2940]">整理目录</h3>
-
           <div className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8b98ac]" />
             <Input
@@ -391,6 +391,26 @@ export function OrganizerCategoryPanel({
           >
             <Tags className="h-3.5 w-3.5 text-[#627694]" />
             添加别名
+          </button>
+          <button
+            className={cn(
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold transition',
+              contextMenu.category.count === 0
+                ? 'text-[#b03a3a] hover:bg-[#fdf0f0]'
+                : 'cursor-not-allowed text-[#9aa6b8]'
+            )}
+            onClick={() => {
+              if (contextMenu.category.count > 0) {
+                return;
+              }
+              onRequestDeleteCategory(contextMenu.category);
+              setContextMenu(null);
+            }}
+            disabled={contextMenu.category.count > 0}
+            title={contextMenu.category.count > 0 ? '仅可删除不包含漫画的作者目录' : '删除该作者目录'}
+          >
+            <Trash2 className={cn('h-3.5 w-3.5', contextMenu.category.count === 0 ? 'text-[#b03a3a]' : 'text-[#9aa6b8]')} />
+            删除目录
           </button>
         </div>
       ) : null}

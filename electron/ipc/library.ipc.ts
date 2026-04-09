@@ -199,6 +199,23 @@ export function registerLibraryIpc(context: IpcContext): void {
     return ok({ taskId });
   });
 
+  registerHandler('library.cancelSync', async (request) => {
+    const requestedTaskId = request?.taskId?.trim() ?? '';
+    const activeTask = scanQueue.getActiveTask();
+    const taskId = requestedTaskId || activeTask?.id || null;
+
+    if (!taskId) {
+      return ok({ cancelled: false, taskId: null });
+    }
+
+    const cancelled = scanQueue.cancel(taskId);
+    if (!cancelled) {
+      return fail('NOT_FOUND', '当前没有可取消的同步任务。');
+    }
+
+    return ok({ cancelled: true, taskId });
+  });
+
   registerHandler('library.listMangas', async (request) => {
     const filter = request ?? undefined;
     const books = manga.list(filter);
@@ -229,7 +246,13 @@ export function registerLibraryIpc(context: IpcContext): void {
         status: 'idle' as const,
         current: 0,
         total: 0,
-        message: 'Idle'
+        message: 'Idle',
+        sourceCurrent: 0,
+        sourceTotal: 0,
+        sourceName: '',
+        itemCurrent: 0,
+        itemTotal: 0,
+        currentItemName: ''
       });
     }
 
@@ -238,7 +261,13 @@ export function registerLibraryIpc(context: IpcContext): void {
       status: 'running' as const,
       current: activeTask.progress.current,
       total: activeTask.progress.total,
-      message: activeTask.progress.message
+      message: activeTask.progress.message,
+      sourceCurrent: activeTask.progress.sourceCurrent ?? 0,
+      sourceTotal: activeTask.progress.sourceTotal ?? 0,
+      sourceName: activeTask.progress.sourceName ?? '',
+      itemCurrent: activeTask.progress.itemCurrent ?? 0,
+      itemTotal: activeTask.progress.itemTotal ?? 0,
+      currentItemName: activeTask.progress.currentItemName ?? ''
     });
   });
 
@@ -254,6 +283,12 @@ export function registerLibraryIpc(context: IpcContext): void {
       current: task.progress.current,
       total: task.progress.total,
       message: task.progress.message,
+      sourceCurrent: task.progress.sourceCurrent ?? 0,
+      sourceTotal: task.progress.sourceTotal ?? 0,
+      sourceName: task.progress.sourceName ?? '',
+      itemCurrent: task.progress.itemCurrent ?? 0,
+      itemTotal: task.progress.itemTotal ?? 0,
+      currentItemName: task.progress.currentItemName ?? '',
       error: task.error
     });
   });

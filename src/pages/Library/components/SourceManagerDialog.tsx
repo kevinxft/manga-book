@@ -30,7 +30,7 @@ export function SourceManagerDialog({
 
   return (
     <div className="fixed inset-0 z-[115] flex items-center justify-center bg-black/35 p-4">
-      <div className="flex h-[46vh] w-full max-w-[380px] flex-col overflow-hidden rounded-xl border border-[#d3dceb] bg-[#f9fbff] shadow-[0_22px_54px_rgba(20,34,58,0.32)]">
+      <div className="flex h-[60vh] w-full max-w-[480px] flex-col overflow-hidden rounded-xl border border-[#d3dceb] bg-[#f9fbff] shadow-[0_22px_54px_rgba(20,34,58,0.32)]">
         <div className="flex items-center justify-between border-b border-[#dce3ef] px-4 py-3">
           <p className="text-[15px] font-semibold text-[#1f2f48]">已导入目录 ({sources.length})</p>
           <button
@@ -50,19 +50,21 @@ export function SourceManagerDialog({
           ) : (
             <div className="space-y-2">
               {sources.map((source) => (
-                <div key={source.id} className="rounded-lg border border-[#dbe2ee] bg-[#f9fbff] px-3 py-2.5" title={source.path}>
+                <div key={source.id} className="rounded-lg border border-[#dbe2ee] bg-[#f9fbff] px-3 py-2" title={source.path}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="truncate text-[16px] font-semibold text-[#2b3950]">{source.displayName}</p>
-                      <p className="mt-0.5 truncate text-[12px] text-[#7a879a]">{source.path}</p>
-                      <p className="mt-1 text-[12px] font-semibold text-[#4f7bd8]">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-[14px] font-semibold text-[#2b3950]">{source.displayName}</p>
+                        {source.isTarget ? (
+                          <div className="shrink-0 inline-flex items-center rounded bg-[#dfe9fb] px-1.5 py-0.5 text-[10px] font-bold text-[#2f6cf6]">
+                            作者目录
+                          </div>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 truncate text-[11px] text-[#8492a6]">{source.path}</p>
+                      <p className="mt-0.5 text-[11px] font-bold text-[#5684e4]">
                         {sourceMangaCountByPath[source.path] ?? 0} 本漫画
                       </p>
-                      {source.isTarget ? (
-                        <div className="mt-2 inline-flex items-center rounded-md bg-[#dfe9fb] px-2 py-1 text-[11px] font-semibold text-[#2f6cf6]">
-                          作者目录
-                        </div>
-                      ) : null}
                     </div>
                     <div className="flex items-center gap-1">
                       <button

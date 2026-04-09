@@ -1,7 +1,7 @@
 {
   "name": "manga-book-electron",
   "productName": "漫书",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "MangaBook Electron rewrite",
   "main": "./out/main/main.js",
   "author": "",

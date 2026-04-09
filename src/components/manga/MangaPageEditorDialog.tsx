@@ -76,8 +76,9 @@ export function MangaPageEditorDialog({
       >
         <header className="flex items-start justify-between gap-4 border-b border-[#dde4ef] bg-white/90 px-6 py-5">
           <div className="min-w-0">
-            <p className="text-[18px] font-bold text-[#1d2a3f]">编辑漫画页面</p>
-            <p className="mt-1 truncate text-[12px] text-[#667892]">{title ?? '未选择漫画'}</p>
+            <p className="truncate text-[18px] font-bold text-[#1d2a3f]" title={title ?? '未选择漫画'}>
+              {title ?? '未选择漫画'}
+            </p>
             <p className="mt-2 text-[12px] font-semibold text-[#3f5878]">
               共 {pagePaths.length} 页
               {selectedPagePaths.length > 0 ? `，已选 ${selectedPagePaths.length} 页` : ''}
@@ -120,7 +121,7 @@ export function MangaPageEditorDialog({
           <div className="mx-6 mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
         ) : null}
 
-        <div className="min-h-0 flex-1 px-3 pb-3 pt-3">
+        <div className="min-h-0 flex-1 px-3">
           {loading ? (
             <div className="flex h-full items-center justify-center text-[13px] font-semibold text-[#5c6e89]">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -132,10 +133,13 @@ export function MangaPageEditorDialog({
               minColumnWidth={136}
               estimatedCardHeight={(cardWidth) => cardWidth * (4 / 3) + 52}
               gapX={18}
-              gapY={22}
+              gapY={14}
               paddingX={12}
-              paddingY={12}
+              paddingY={0}
               className="h-full overflow-auto"
+              initialScrollToIndex={pageCards.length > 0 ? pageCards.length - 1 : null}
+              initialScrollAlign="end"
+              initialScrollKey={title ?? 'page-editor'}
               emptyState={
                 <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#d3dce9] bg-white/70 text-[13px] font-semibold text-[#6a7890]">
                   当前没有可编辑的漫画页面

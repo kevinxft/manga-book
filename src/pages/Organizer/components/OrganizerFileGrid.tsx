@@ -267,11 +267,11 @@ export function OrganizerFileGrid({
       {!error ? (
         <VirtualCardGrid
           items={gridItems}
-          minColumnWidth={164}
-          estimatedCardHeight={(cardWidth) => cardWidth * (4 / 3) + 36}
-          gapX={16}
+          minColumnWidth={128}
+          estimatedCardHeight={(cardWidth) => cardWidth * (4 / 3) + 40}
+          gapX={20}
           gapY={24}
-          paddingX={28}
+          paddingX={24}
           paddingY={20}
           className="min-h-0 flex-1 overflow-auto"
           dataScrollRegion="organizer-file-grid"

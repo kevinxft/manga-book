@@ -1,4 +1,4 @@
-import { ArrowLeft, Images, Minus, Plus } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Images, Minus, Plus } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import type { ReaderMode, ReaderWidthMode } from '../types';
 
@@ -46,115 +46,116 @@ export function ReaderBottomBar({
   onToolbarButtonMouseDown
 }: ReaderBottomBarProps) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-4 z-30 flex justify-center px-4">
-      <div className="pointer-events-auto flex w-full max-w-[860px] items-center gap-2 rounded-[18px] border border-black/45 bg-[rgba(0,0,0,0.72)] px-3 py-2.5 shadow-[0_18px_50px_rgba(0,0,0,0.42)]">
+    <div className="pointer-events-none absolute inset-x-0 bottom-6 z-30 flex justify-center px-4">
+      <div className="pointer-events-auto flex w-full max-w-[920px] items-center gap-3 rounded-full border border-white/10 bg-[#0f1115]/75 px-4 py-3 shadow-[0_20px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+        {/* Back Button */}
         <button
-          className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[#dce2ec] transition hover:bg-white/10 focus:outline-none focus-visible:outline-none"
+          className="group inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full bg-white/5 py-1 pl-2.5 pr-3.5 text-[#dce2ec] transition-all duration-200 hover:bg-white/15 hover:text-white focus:outline-none"
           onClick={onBack}
           onMouseDown={onToolbarButtonMouseDown}
           title="返回"
         >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          <span className="text-[11px] font-semibold">返回</span>
+          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
+          <span className="text-[12px] font-medium tracking-wide">返回</span>
         </button>
 
-        <div className="h-4 w-px bg-white/14" />
+        <div className="mx-1 h-5 w-px shrink-0 bg-white/10" />
 
-        <button
-          className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-[#dce2ec] transition hover:bg-white/10 focus:outline-none focus-visible:outline-none"
-          onClick={onOpenPageEditor}
-          onMouseDown={onToolbarButtonMouseDown}
-          title="编辑漫画页面"
-        >
-          <Images className="h-3.5 w-3.5" />
-          <span className="text-[11px] font-semibold">整理</span>
-        </button>
+        {/* Page Slider */}
+        <div className="flex min-w-0 flex-1 items-center gap-3">
+          <div className="flex shrink-0 min-w-[54px] items-center justify-center rounded-full bg-black/40 px-2.5 py-1 text-[11px] font-medium tracking-wide text-[#e7eaf0] ring-1 ring-white/10">
+            {pageProgress}
+          </div>
+          <input
+            type="range"
+            min={1}
+            max={Math.max(pageCount, 1)}
+            value={Math.min(currentPageIndex + 1, Math.max(pageCount, 1))}
+            onChange={onSliderChange}
+            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 accent-[#3d7cf9] outline-none transition-all hover:bg-white/30"
+            aria-label="页面快速跳转"
+          />
+        </div>
 
-        <div className="h-4 w-px bg-white/14" />
+        <div className="mx-1 h-5 w-px shrink-0 bg-white/10" />
 
-        <span className="min-w-[62px] text-xs font-semibold text-[#e7eaf0]">{pageProgress}</span>
-        <input
-          type="range"
-          min={1}
-          max={Math.max(pageCount, 1)}
-          value={Math.min(currentPageIndex + 1, Math.max(pageCount, 1))}
-          onChange={onSliderChange}
-          className="h-1.5 flex-1 cursor-pointer accent-[#2f6cf6]"
-          aria-label="页面快速跳转"
-        />
+        {/* Navigation Buttons */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-[#a3b1c6] transition-all duration-200 hover:bg-white/15 hover:text-white focus:outline-none"
+            onClick={onPrev}
+            onMouseDown={onToolbarButtonMouseDown}
+            title={canGoPrev ? '上一页' : '显示前面的候选漫画'}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-[#a3b1c6] transition-all duration-200 hover:bg-white/15 hover:text-white focus:outline-none"
+            onClick={onNext}
+            onMouseDown={onToolbarButtonMouseDown}
+            title={canGoNext ? '下一页' : '显示后面的候选漫画'}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
 
-        <div className="mx-1 h-4 w-px bg-white/14" />
+        <div className="mx-1 h-5 w-px shrink-0 bg-white/10" />
 
-        <button
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#dce2ec] transition hover:bg-white/10 focus:outline-none focus-visible:outline-none"
-          onClick={onPrev}
-          onMouseDown={onToolbarButtonMouseDown}
-          title={canGoPrev ? '上一页' : '显示前面的候选漫画'}
-        >
-          ‹
-        </button>
-        <button
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md text-[#dce2ec] transition hover:bg-white/10 focus:outline-none focus-visible:outline-none"
-          onClick={onNext}
-          onMouseDown={onToolbarButtonMouseDown}
-          title={canGoNext ? '下一页' : '显示后面的候选漫画'}
-        >
-          ›
-        </button>
-
-        <div className="mx-1 h-4 w-px bg-white/14" />
-
-        <div className="flex items-center gap-1 rounded-md bg-black/20 p-1">
+        {/* Read Mode Toggles */}
+        <div className="flex shrink-0 items-center gap-1 rounded-full bg-black/40 p-1 ring-1 ring-white/5">
           <button
             className={cn(
-              'rounded px-2 py-1 text-[11px] font-semibold transition focus:outline-none focus-visible:outline-none',
-              readerMode === 'paged' ? 'bg-[#2f6cf6] text-white' : 'text-[#dce2ec] hover:bg-white/10'
+              'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
+              readerMode === 'paged' ? 'bg-[#3d7cf9] text-white shadow-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onReaderModeChange('paged')}
             onMouseDown={onToolbarButtonMouseDown}
             title="翻页模式"
           >
-            翻
+            翻页
           </button>
           <button
             className={cn(
-              'rounded px-2 py-1 text-[11px] font-semibold transition focus:outline-none focus-visible:outline-none',
-              readerMode === 'scroll' ? 'bg-[#2f6cf6] text-white' : 'text-[#dce2ec] hover:bg-white/10'
+              'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
+              readerMode === 'scroll' ? 'bg-[#3d7cf9] text-white shadow-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onReaderModeChange('scroll')}
             onMouseDown={onToolbarButtonMouseDown}
             title="滚动模式"
           >
-            滚
+            滚动
           </button>
         </div>
 
-        <div className="flex items-center gap-1 rounded-md bg-black/20 p-1">
+        {/* Width Mode Toggles */}
+        <div className="flex shrink-0 items-center gap-1 rounded-full bg-black/40 p-1 ring-1 ring-white/5">
           <button
             className={cn(
-              'rounded px-2 py-1 text-[11px] font-semibold transition focus:outline-none focus-visible:outline-none',
-              widthMode === 'fit' ? 'bg-[#2f6cf6] text-white' : 'text-[#dce2ec] hover:bg-white/10'
+              'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
+              widthMode === 'fit' ? 'bg-white/20 text-white shadow-md backdrop-blur-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onWidthModeChange('fit')}
             onMouseDown={onToolbarButtonMouseDown}
             title="适应宽度"
           >
-            适
+            适应
           </button>
           <button
             className={cn(
-              'rounded px-2 py-1 text-[11px] font-semibold transition focus:outline-none focus-visible:outline-none',
-              widthMode === 'fixed' ? 'bg-[#2f6cf6] text-white' : 'text-[#dce2ec] hover:bg-white/10'
+              'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
+              widthMode === 'fixed' ? 'bg-white/20 text-white shadow-md backdrop-blur-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onWidthModeChange('fixed')}
             onMouseDown={onToolbarButtonMouseDown}
             title="固定宽度"
           >
-            固
+            固定
           </button>
 
+          <div className="mx-1.5 h-3 w-px bg-white/10" />
+
           <button
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-[#e3e5ea] transition hover:bg-white/10 focus:outline-none focus-visible:outline-none disabled:opacity-40"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[#a3b1c6] transition-all hover:bg-white/15 hover:text-white focus:outline-none disabled:opacity-30 disabled:hover:bg-transparent"
             onClick={() => onAdjustWidth(-5)}
             onMouseDown={onToolbarButtonMouseDown}
             disabled={!canDecreaseWidth}
@@ -162,9 +163,9 @@ export function ReaderBottomBar({
           >
             <Minus className="h-3 w-3" />
           </button>
-          <span className="min-w-[44px] text-center text-[11px] font-semibold text-[#e3e5ea]">{widthLabel}</span>
+          <span className="min-w-[42px] text-center text-[11px] font-medium text-[#e3e5ea]">{widthLabel}</span>
           <button
-            className="inline-flex h-6 w-6 items-center justify-center rounded text-[#e3e5ea] transition hover:bg-white/10 focus:outline-none focus-visible:outline-none disabled:opacity-40"
+            className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[#a3b1c6] transition-all hover:bg-white/15 hover:text-white focus:outline-none disabled:opacity-30 disabled:hover:bg-transparent"
             onClick={() => onAdjustWidth(5)}
             onMouseDown={onToolbarButtonMouseDown}
             disabled={!canIncreaseWidth}
@@ -173,6 +174,19 @@ export function ReaderBottomBar({
             <Plus className="h-3 w-3" />
           </button>
         </div>
+
+        <div className="mx-1 h-5 w-px shrink-0 bg-white/10" />
+
+        {/* Organize Button */}
+        <button
+          className="group inline-flex shrink-0 h-8 items-center gap-1.5 rounded-full bg-white/5 py-1 pl-3 pr-3.5 text-[#dce2ec] transition-all duration-200 hover:bg-[#3d7cf9] hover:text-white hover:shadow-[0_0_12px_rgba(61,124,249,0.4)] focus:outline-none"
+          onClick={onOpenPageEditor}
+          onMouseDown={onToolbarButtonMouseDown}
+          title="编辑漫画页面"
+        >
+          <Images className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+          <span className="text-[12px] font-medium tracking-wide">整理</span>
+        </button>
       </div>
     </div>
   );

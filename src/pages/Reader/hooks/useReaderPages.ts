@@ -23,7 +23,7 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
   }, [manga.id]);
 
   const reloadPages = useCallback(
-    async (options?: { preferredPagePath?: string; fallbackPageIndex?: number }) => {
+    async (options?: { preferredPagePath?: string; fallbackPageIndex?: number; silent?: boolean }) => {
       const requestId = loadRequestIdRef.current + 1;
       loadRequestIdRef.current = requestId;
 
@@ -33,7 +33,9 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
         return [] as string[];
       }
 
-      setLoading(true);
+      if (!options?.silent) {
+        setLoading(true);
+      }
       setError(null);
 
       try {
@@ -63,7 +65,7 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
         setPagePaths([]);
         return [] as string[];
       } finally {
-        if (requestId === loadRequestIdRef.current) {
+        if (requestId === loadRequestIdRef.current && !options?.silent) {
           setLoading(false);
         }
       }

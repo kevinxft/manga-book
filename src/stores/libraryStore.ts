@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LibraryFolder, MangaBookWithCover, ScanProgress } from '@shared/types';
+import type { LibraryFolder, MangaBookWithCover, ScanProgress, ScanTaskEvent } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import type { SortKey } from '@renderer/pages/Library/types';
 import { useOrganizerMetadataStore } from './organizerMetadataStore';
@@ -28,8 +28,9 @@ interface LibraryState {
   removeSource: (id: string) => Promise<void>;
   openSourceFolder: (path: string) => Promise<void>;
   syncSources: (paths?: string[]) => Promise<void>;
+  cancelSync: () => Promise<void>;
   fetchCoverPaths: (folderPaths: string[], options?: { force?: boolean }) => Promise<void>;
-  monitorScanTask: (taskId: string) => Promise<void>;
+  handleScanTaskUpdate: (payload: ScanTaskEvent) => Promise<void>;
   refreshScanProgress: () => Promise<void>;
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
   updateAllMangasLocal: (updater: (manga: MangaBookWithCover) => MangaBookWithCover) => void;
@@ -44,7 +45,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     status: 'idle',
     current: 0,
     total: 0,
-    message: 'Idle'
+    message: 'Idle',
+    sourceCurrent: 0,
+    sourceTotal: 0,
+    sourceName: '',
+    itemCurrent: 0,
+    itemTotal: 0,
+    currentItemName: ''
   },
   loading: false,
   error: null,
@@ -56,46 +63,47 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     set({ error: null });
   },
 
-  async monitorScanTask(taskId: string) {
-    while (true) {
-      try {
-        const status = await ipcInvoke('library.getScanTaskStatus', { taskId });
-
-        if (status.status === 'queued' || status.status === 'running') {
-          set({
-            progress: {
-              taskId: status.taskId,
-              status: 'running',
-              current: status.current,
-              total: status.total,
-              message: status.message
-            }
-          });
-          await new Promise((resolve) => setTimeout(resolve, 500));
-          continue;
+  async handleScanTaskUpdate(payload) {
+    if (payload.status === 'queued' || payload.status === 'running') {
+      set({
+        progress: {
+          taskId: payload.taskId,
+          status: 'running',
+          current: payload.current,
+          total: payload.total,
+          message: payload.message,
+          sourceCurrent: payload.sourceCurrent,
+          sourceTotal: payload.sourceTotal,
+          sourceName: payload.sourceName,
+          itemCurrent: payload.itemCurrent,
+          itemTotal: payload.itemTotal,
+          currentItemName: payload.currentItemName
         }
+      });
+      return;
+    }
 
-        set({
-          progress: {
-            taskId: null,
-            status: 'idle',
-            current: 0,
-            total: 0,
-            message: status.status === 'completed' ? 'Idle' : status.message
-          }
-        });
-
-        if (status.status === 'completed') {
-          await Promise.all([get().fetchSources(), get().fetchMangas()]);
-          await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
-        } else if (status.status === 'failed') {
-          set({ error: status.error ?? 'Library sync failed' });
-        }
-        return;
-      } catch (error) {
-        set({ error: error instanceof Error ? error.message : 'Failed to track scan task' });
-        return;
+    set({
+      progress: {
+        taskId: null,
+        status: 'idle',
+        current: 0,
+        total: 0,
+        message: payload.status === 'completed' ? 'Idle' : payload.message,
+        sourceCurrent: 0,
+        sourceTotal: 0,
+        sourceName: '',
+        itemCurrent: 0,
+        itemTotal: 0,
+        currentItemName: ''
       }
+    });
+
+    if (payload.status === 'completed') {
+      await Promise.all([get().fetchSources(), get().fetchMangas()]);
+      await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
+    } else if (payload.status === 'failed') {
+      set({ error: payload.error ?? 'Library sync failed' });
     }
   },
 
@@ -154,11 +162,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             status: 'running',
             current: 0,
             total: 0,
-            message: 'Queued'
+            message: 'Queued',
+            sourceCurrent: 0,
+            sourceTotal: 0,
+            sourceName: '',
+            itemCurrent: 0,
+            itemTotal: 0,
+            currentItemName: ''
           }
         });
-        void get().monitorScanTask(result.taskId);
-        await get().refreshScanProgress();
       }
       if (result.added.length === 0 && result.skipped.length > 0) {
         const firstSkip = result.skipped[0];
@@ -227,13 +239,28 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
           status: 'running',
           current: 0,
           total: 0,
-          message: 'Queued'
+          message: 'Queued',
+          sourceCurrent: 0,
+          sourceTotal: 0,
+          sourceName: '',
+          itemCurrent: 0,
+          itemTotal: 0,
+          currentItemName: ''
         }
       });
-      void get().monitorScanTask(result.taskId);
-      await get().refreshScanProgress();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to sync sources' });
+    }
+  },
+
+  async cancelSync() {
+    set({ error: null });
+    try {
+      await ipcInvoke('library.cancelSync', {
+        taskId: get().progress.taskId ?? undefined
+      });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to cancel sync' });
     }
   },
 
@@ -278,41 +305,6 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   async refreshScanProgress() {
     try {
-      const previousProgress = get().progress;
-      if (previousProgress.taskId) {
-        const status = await ipcInvoke('library.getScanTaskStatus', { taskId: previousProgress.taskId });
-
-        if (status.status === 'queued' || status.status === 'running') {
-          set({
-            progress: {
-              taskId: status.taskId,
-              status: 'running',
-              current: status.current,
-              total: status.total,
-              message: status.message
-            }
-          });
-          return;
-        }
-
-        set({
-          progress: {
-            taskId: null,
-            status: 'idle',
-            current: 0,
-            total: 0,
-            message: status.status === 'completed' ? 'Idle' : status.message
-          }
-        });
-
-        if (status.status === 'completed') {
-          await Promise.all([get().fetchSources(), get().fetchMangas()]);
-        } else if (status.status === 'failed') {
-          set({ error: status.error ?? 'Library sync failed' });
-        }
-        return;
-      }
-
       const progress = await ipcInvoke('library.getScanProgress', undefined);
       set({ progress });
     } catch (error) {

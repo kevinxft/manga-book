@@ -14,6 +14,9 @@ interface VirtualCardGridProps<T> {
   dataScrollRegion?: string;
   emptyState?: ReactNode;
   onVisibleItemsChange?: (items: T[]) => void;
+  initialScrollToIndex?: number | null;
+  initialScrollAlign?: 'auto' | 'start' | 'center' | 'end';
+  initialScrollKey?: string | number | null;
   renderCard: (item: T, index: number) => ReactNode;
 }
 
@@ -30,9 +33,13 @@ export function VirtualCardGrid<T>({
   dataScrollRegion,
   emptyState,
   onVisibleItemsChange,
+  initialScrollToIndex = null,
+  initialScrollAlign = 'start',
+  initialScrollKey = null,
   renderCard
 }: VirtualCardGridProps<T>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const appliedInitialScrollKeyRef = useRef<string | number | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
 
   useEffect(() => {
@@ -103,6 +110,44 @@ export function VirtualCardGrid<T>({
     }
     onVisibleItemsChange(nextVisibleItems);
   }, [columnCount, items, onVisibleItemsChange, virtualRows]);
+
+  useEffect(() => {
+    if (items.length === 0 || initialScrollToIndex === null || rowCount <= 0 || containerWidth <= 0) {
+      return;
+    }
+
+    if (appliedInitialScrollKeyRef.current === initialScrollKey) {
+      return;
+    }
+
+    appliedInitialScrollKeyRef.current = initialScrollKey;
+
+    const clampedIndex = Math.max(0, Math.min(initialScrollToIndex, items.length - 1));
+    const rowIndex = Math.floor(clampedIndex / Math.max(columnCount, 1));
+
+    let firstFrameId = 0;
+    let secondFrameId = 0;
+
+    firstFrameId = window.requestAnimationFrame(() => {
+      secondFrameId = window.requestAnimationFrame(() => {
+        rowVirtualizer.scrollToIndex(rowIndex, {
+          align: initialScrollAlign
+        });
+
+        if (initialScrollAlign === 'end' && clampedIndex === items.length - 1) {
+          const container = containerRef.current;
+          if (container) {
+            container.scrollTop = container.scrollHeight;
+          }
+        }
+      });
+    });
+
+    return () => {
+      window.cancelAnimationFrame(firstFrameId);
+      window.cancelAnimationFrame(secondFrameId);
+    };
+  }, [columnCount, containerWidth, initialScrollAlign, initialScrollKey, initialScrollToIndex, items.length, rowCount, rowVirtualizer]);
 
   return (
     <div

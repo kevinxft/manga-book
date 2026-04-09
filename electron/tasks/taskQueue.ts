@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
+import type { ScanTaskEvent } from '@shared/types';
 
 export interface TaskProgress {
   current: number;
   total: number;
   message: string;
+  sourceCurrent?: number;
+  sourceTotal?: number;
+  sourceName?: string;
+  itemCurrent?: number;
+  itemTotal?: number;
+  currentItemName?: string;
 }
 
 export interface QueueTask {
@@ -29,6 +36,7 @@ export class TaskQueue {
   private readonly concurrency: number;
   private readonly queue: InternalTask[] = [];
   private readonly tasks = new Map<string, InternalTask>();
+  private readonly listeners = new Set<(task: ScanTaskEvent) => void>();
   private runningCount = 0;
 
   constructor(concurrency = 4) {
@@ -44,7 +52,13 @@ export class TaskQueue {
       progress: {
         current: 0,
         total: 0,
-        message: 'Queued'
+        message: 'Queued',
+        sourceCurrent: 0,
+        sourceTotal: 0,
+        sourceName: '',
+        itemCurrent: 0,
+        itemTotal: 0,
+        currentItemName: ''
       }
     };
 
@@ -56,9 +70,17 @@ export class TaskQueue {
 
     this.tasks.set(id, internalTask);
     this.queue.push(internalTask);
+    this.emitTaskUpdate(state);
     this.drain();
 
     return id;
+  }
+
+  onTaskUpdate(listener: (task: ScanTaskEvent) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
   }
 
   cancel(taskId: string): boolean {
@@ -75,6 +97,7 @@ export class TaskQueue {
         ...task.state.progress,
         message: 'Cancelled before start'
       };
+      this.emitTaskUpdate(task.state);
       const index = this.queue.findIndex((item) => item.state.id === taskId);
       if (index >= 0) {
         this.queue.splice(index, 1);
@@ -123,10 +146,12 @@ export class TaskQueue {
       ...task.state.progress,
       message: 'Running'
     };
+    this.emitTaskUpdate(task.state);
 
     try {
       await task.run(task.controller.signal, (progress) => {
         task.state.progress = progress;
+        this.emitTaskUpdate(task.state);
       });
 
       if (task.controller.signal.aborted) {
@@ -135,12 +160,14 @@ export class TaskQueue {
           ...task.state.progress,
           message: 'Cancelled'
         };
+        this.emitTaskUpdate(task.state);
       } else {
         task.state.status = 'completed';
         task.state.progress = {
           ...task.state.progress,
           message: 'Completed'
         };
+        this.emitTaskUpdate(task.state);
       }
     } catch (error) {
       task.state.status = task.controller.signal.aborted ? 'cancelled' : 'failed';
@@ -149,9 +176,31 @@ export class TaskQueue {
         ...task.state.progress,
         message: task.state.status === 'cancelled' ? 'Cancelled' : 'Failed'
       };
+      this.emitTaskUpdate(task.state);
     } finally {
       this.runningCount -= 1;
       this.drain();
+    }
+  }
+
+  private emitTaskUpdate(task: TaskState): void {
+    const payload: ScanTaskEvent = {
+      taskId: task.id,
+      status: task.status,
+      current: task.progress.current,
+      total: task.progress.total,
+      message: task.progress.message,
+      sourceCurrent: task.progress.sourceCurrent ?? 0,
+      sourceTotal: task.progress.sourceTotal ?? 0,
+      sourceName: task.progress.sourceName ?? '',
+      itemCurrent: task.progress.itemCurrent ?? 0,
+      itemTotal: task.progress.itemTotal ?? 0,
+      currentItemName: task.progress.currentItemName ?? '',
+      ...(task.error ? { error: task.error } : {})
+    };
+
+    for (const listener of this.listeners) {
+      listener(payload);
     }
   }
 }

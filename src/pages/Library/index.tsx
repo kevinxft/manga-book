@@ -4,25 +4,32 @@ import type { MangaBookWithCover } from '@shared/types';
 import { useLibraryStore } from '@renderer/stores/libraryStore';
 import { useShallow } from 'zustand/react/shallow';
 import { LibraryHeader } from './components/LibraryHeader';
-import { LibraryScanOverlay } from './components/LibraryScanOverlay';
 import { LibrarySidebar } from './components/LibrarySidebar';
 import { MangaGrid } from './components/MangaGrid';
 import { TagManagementDialog } from './components/TagManagementDialog';
+import { AliasManagerDialog } from '@renderer/pages/Organizer/components/AliasManagerDialog';
+import { DeleteAuthorDirectoryDialog } from '@renderer/pages/Organizer/components/DeleteAuthorDirectoryDialog';
 import { DeleteMangaDialog } from '@renderer/pages/Organizer/components/DeleteMangaDialog';
 import { useMangaTagEditor } from '@renderer/hooks/manga/useMangaTagEditor';
 import { useTagEditor } from './hooks/useTagEditor';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 import { MangaPageEditorDialog } from '@renderer/components/manga/MangaPageEditorDialog';
 import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
+import { RenameAuthorDirectoryDialog } from '@renderer/pages/Organizer/components/RenameAuthorDirectoryDialog';
 import { useLibraryFilters } from './hooks/useLibraryFilters';
 import { useLibraryMangaActions } from './hooks/useLibraryMangaActions';
 import { useLibraryOrganizerCategories } from './hooks/useLibraryOrganizerCategories';
 import { useLibraryDataLifecycle } from './hooks/useLibraryDataLifecycle';
+import { useAliasMutations } from '@renderer/pages/Organizer/hooks/useAliasMutations';
+import { useAuthorDirectoryDelete } from '@renderer/pages/Organizer/hooks/useAuthorDirectoryDelete';
+import { useAuthorDirectoryRename } from '@renderer/pages/Organizer/hooks/useAuthorDirectoryRename';
+import { useOrganizerMutationErrors } from '@renderer/pages/Organizer/hooks/useOrganizerMutationErrors';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
 import { resolveTargetSourcePaths } from './utils';
 
 interface LibraryPageProps {
+  active?: boolean;
   onOpenManga?: (manga: MangaBookWithCover, queueIds?: string[]) => void;
   onOpenSettings?: () => void;
   onOpenOrganizer?: () => void;
@@ -54,7 +61,7 @@ function clampSidebarWidth(width: number, containerWidth?: number): number {
   return Math.min(Math.max(width, LIBRARY_SIDEBAR_MIN_WIDTH), Math.min(LIBRARY_SIDEBAR_MAX_WIDTH, containerMaxWidth));
 }
 
-export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: LibraryPageProps) {
+export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpenOrganizer }: LibraryPageProps) {
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pageEditorLoadRequestRef = useRef(0);
@@ -96,7 +103,9 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     removeSource,
     openSourceFolder,
     syncSources,
+    cancelSync,
     fetchCoverPaths,
+    handleScanTaskUpdate,
     refreshScanProgress,
     updateMangaLocal,
     removeMangaLocal
@@ -114,7 +123,9 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       removeSource: state.removeSource,
       openSourceFolder: state.openSourceFolder,
       syncSources: state.syncSources,
+      cancelSync: state.cancelSync,
       fetchCoverPaths: state.fetchCoverPaths,
+      handleScanTaskUpdate: state.handleScanTaskUpdate,
       refreshScanProgress: state.refreshScanProgress,
       updateMangaLocal: state.updateMangaLocal,
       removeMangaLocal: state.removeMangaLocal
@@ -156,9 +167,11 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
   });
 
   const { scanRunning } = useLibraryDataLifecycle({
+    active,
     hasIpcBridge,
     fetchSources,
     fetchMangas,
+    handleScanTaskUpdate,
     refreshScanProgress,
     progress
   });
@@ -312,6 +325,67 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     updateMangaLocal,
     removeMangaLocal
   });
+  const { setMoveError } = useOrganizerMutationErrors();
+
+  const {
+    aliasDialogOpen,
+    aliasTargetCategory,
+    aliasTargetItems,
+    aliasSaving,
+    aliasRemoving,
+    aliasError,
+    closeAliasDialog,
+    handleRequestAddAlias,
+    handleConfirmAddAlias,
+    handleRemoveAlias
+  } = useAliasMutations({
+    aliases,
+    upsertAlias: useOrganizerMetadataStore.getState().upsertAlias,
+    removeAliasLocal: useOrganizerMetadataStore.getState().removeAliasLocal,
+    setMoveError: (message) => {
+      setMoveError(message);
+      setOperationError(message);
+    }
+  });
+
+  const {
+    renameAuthorDialogOpen,
+    renameAuthorTarget,
+    renamingAuthor,
+    handleRequestRenameAuthorDirectory,
+    closeRenameAuthorDialog,
+    handleConfirmRenameAuthorDirectory
+  } = useAuthorDirectoryRename({
+    hasIpcBridge,
+    fetchMangas,
+    refreshOrganizerMetadata: useOrganizerMetadataStore.getState().refreshOrganizerMetadata,
+    setSelectedCategoryKey: (value) => setActiveMenu(value ? value.replace(/^artists:/, 'artist:') : 'all'),
+    setMoveError: (message) => {
+      setMoveError(message);
+      setOperationError(message);
+    },
+    buildCategoryKey: (directoryPath) => `artist:${directoryPath}`
+  });
+
+  const {
+    deleteAuthorDialogOpen,
+    deleteAuthorTarget,
+    deletingAuthor,
+    deleteAuthorError,
+    handleRequestDeleteAuthorDirectory,
+    closeDeleteAuthorDialog,
+    handleConfirmDeleteAuthorDirectory
+  } = useAuthorDirectoryDelete({
+    hasIpcBridge,
+    fetchMangas,
+    refreshOrganizerMetadata: useOrganizerMetadataStore.getState().refreshOrganizerMetadata,
+    setSelectedCategoryKey: () => setActiveMenu('all'),
+    setMoveError: (message) => {
+      setMoveError(message);
+      setOperationError(message);
+    },
+    nextSelectedCategoryKey: 'all'
+  });
 
   const {
     addTagDialogOpen,
@@ -436,6 +510,9 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
             onRemoveSource={(sourceId) => {
               void removeSource(sourceId);
             }}
+            onRequestAddAlias={handleRequestAddAlias}
+            onRequestRenameCategory={handleRequestRenameAuthorDirectory}
+            onRequestDeleteCategory={handleRequestDeleteAuthorDirectory}
             onOpenSettings={onOpenSettings}
             onOpenOrganizer={onOpenOrganizer}
           />
@@ -461,11 +538,13 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
               mangaCount={visibleMangas.length}
               hasIpcBridge={hasIpcBridge}
               scanRunning={scanRunning}
+              progress={progress}
               search={search}
               onSidebarCollapsedChange={handleSidebarCollapsedChange}
               onSortByChange={setSortBy}
               onSearchChange={setSearch}
               onSyncSources={() => void syncSources()}
+              onCancelSync={() => void cancelSync()}
             />
 
             {!hasIpcBridge ? (
@@ -473,9 +552,6 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
                 当前运行在普通浏览器环境，IPC 不可用。请使用 <code>bun run dev</code> 启动 Electron 窗口。
               </div>
             ) : null}
-
-            <LibraryScanOverlay progress={progress} />
-
             {error ? (
               <div className="mx-6 mt-3 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                 <span className="min-w-0 flex-1 break-words">{error}</span>
@@ -539,6 +615,35 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
         onClearAllTags={clearAllTags}
       />
 
+      <AliasManagerDialog
+        open={aliasDialogOpen}
+        targetCategory={aliasTargetCategory}
+        aliasItems={aliasTargetItems}
+        aliasSaving={aliasSaving}
+        aliasRemoving={aliasRemoving}
+        aliasError={aliasError}
+        onClose={() => closeAliasDialog()}
+        onSubmit={(value) => void handleConfirmAddAlias(value)}
+        onRemoveAlias={(alias) => void handleRemoveAlias(alias)}
+      />
+
+      <RenameAuthorDirectoryDialog
+        open={renameAuthorDialogOpen}
+        target={renameAuthorTarget}
+        renaming={renamingAuthor}
+        onClose={closeRenameAuthorDialog}
+        onSubmit={(value) => void handleConfirmRenameAuthorDirectory(value)}
+      />
+
+      <DeleteAuthorDirectoryDialog
+        open={deleteAuthorDialogOpen}
+        target={deleteAuthorTarget}
+        deleting={deletingAuthor}
+        error={deleteAuthorError}
+        onClose={() => closeDeleteAuthorDialog()}
+        onConfirm={() => void handleConfirmDeleteAuthorDirectory()}
+      />
+
       <DeleteMangaDialog
         open={deleteDialogOpen}
         target={deleteTarget}
@@ -558,6 +663,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       <AddTagPopover
         open={addTagDialogOpen}
         anchor={addTagAnchor}
+        mangaId={addTagTarget?.id ?? null}
         mangaTitle={addTagTarget?.title ?? null}
         initialTags={addTagTarget?.tags.map((tag) => tag.name) ?? []}
         availableTags={tags.map((tag) => tag.label)}

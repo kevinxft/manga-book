@@ -83,6 +83,7 @@ export default function App() {
       <div className={cn('h-full w-full', activeManga ? 'pointer-events-none invisible' : '')}>
         <div className={cn('h-full w-full', activePage !== 'library' && 'pointer-events-none hidden')}>
           <LibraryPage
+            active={activePage === 'library'}
             onOpenManga={handleOpenManga}
             onOpenSettings={() => setSettingsOpen(true)}
             onOpenOrganizer={() => setActivePage('organizer')}
@@ -90,6 +91,7 @@ export default function App() {
         </div>
         <div className={cn('h-full w-full', activePage !== 'organizer' && 'pointer-events-none hidden')}>
           <OrganizerPage
+            active={activePage === 'organizer'}
             onBack={() => setActivePage('library')}
             onOpenManga={handleOpenManga}
           />

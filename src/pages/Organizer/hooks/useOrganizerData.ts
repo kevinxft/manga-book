@@ -6,6 +6,7 @@ import type { OrganizerCategory } from '../types';
 import { buildOrganizerCategories, buildOrganizerItems } from '../utils';
 
 interface UseOrganizerDataArgs {
+  active: boolean;
   mangas: MangaBookWithCover[];
   hasIpcBridge: boolean;
   fetchMangas: (options?: { sortBy?: SortKey }) => Promise<void>;
@@ -25,25 +26,32 @@ interface UseOrganizerDataResult {
   addAuthorDirectoryLocal: (directoryPath: string) => void;
 }
 
-export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas, targetSourcePaths }: UseOrganizerDataArgs): UseOrganizerDataResult {
+const EMPTY_ALIASES: ReturnType<typeof useOrganizerMetadataStore.getState>['aliases'] = [];
+const EMPTY_AUTHOR_DIRECTORIES: ReturnType<typeof useOrganizerMetadataStore.getState>['authorDirectories'] = [];
+const noopAsync = async () => {};
+const noopUpsertAlias: UseOrganizerDataResult['upsertAlias'] = () => {};
+const noopRemoveAlias = () => {};
+const noopAddAuthorDirectory = () => {};
+
+export function useOrganizerData({ active, mangas, hasIpcBridge, fetchMangas, targetSourcePaths }: UseOrganizerDataArgs): UseOrganizerDataResult {
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
-  const aliases = useOrganizerMetadataStore((state) => state.aliases);
-  const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
-  const ensureLoaded = useOrganizerMetadataStore((state) => state.ensureLoaded);
-  const refreshOrganizerMetadata = useOrganizerMetadataStore((state) => state.refreshOrganizerMetadata);
-  const refreshAuthorDirectories = useOrganizerMetadataStore((state) => state.refreshAuthorDirectories);
-  const upsertAlias = useOrganizerMetadataStore((state) => state.upsertAlias);
-  const removeAliasLocal = useOrganizerMetadataStore((state) => state.removeAliasLocal);
-  const addAuthorDirectoryLocal = useOrganizerMetadataStore((state) => state.addAuthorDirectoryLocal);
+  const aliases = useOrganizerMetadataStore((state) => (active ? state.aliases : EMPTY_ALIASES));
+  const authorDirectories = useOrganizerMetadataStore((state) => (active ? state.authorDirectories : EMPTY_AUTHOR_DIRECTORIES));
+  const ensureLoaded = useOrganizerMetadataStore((state) => (active ? state.ensureLoaded : noopAsync));
+  const refreshOrganizerMetadata = useOrganizerMetadataStore((state) => (active ? state.refreshOrganizerMetadata : noopAsync));
+  const refreshAuthorDirectories = useOrganizerMetadataStore((state) => (active ? state.refreshAuthorDirectories : noopAsync));
+  const upsertAlias = useOrganizerMetadataStore((state) => (active ? state.upsertAlias : noopUpsertAlias));
+  const removeAliasLocal = useOrganizerMetadataStore((state) => (active ? state.removeAliasLocal : noopRemoveAlias));
+  const addAuthorDirectoryLocal = useOrganizerMetadataStore((state) => (active ? state.addAuthorDirectoryLocal : noopAddAuthorDirectory));
 
   useEffect(() => {
-    if (!hasIpcBridge) {
+    if (!active || !hasIpcBridge) {
       return;
     }
     void (async () => {
       await Promise.all([mangas.length === 0 ? fetchMangas() : Promise.resolve(), ensureLoaded()]);
     })();
-  }, [ensureLoaded, fetchMangas, hasIpcBridge, mangas.length]);
+  }, [active, ensureLoaded, fetchMangas, hasIpcBridge, mangas.length]);
 
   const categories = useMemo(() => {
     const aliasMap = new Map<string, string[]>();

@@ -4,6 +4,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { AliasManagerDialog } from './components/AliasManagerDialog';
 import { OrganizerCategoryPanel } from './components/OrganizerCategoryPanel';
 import { CreateAuthorDialog } from './components/CreateAuthorDialog';
+import { DeleteAuthorDirectoryDialog } from './components/DeleteAuthorDirectoryDialog';
 import { DeleteMangaDialog } from './components/DeleteMangaDialog';
 import { OrganizerFileGrid } from './components/OrganizerFileGrid';
 import { OrganizerHeader } from './components/OrganizerHeader';
@@ -18,25 +19,32 @@ import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataSto
 import { resolveTargetSourcePaths } from '@renderer/pages/Library/utils';
 
 interface OrganizerPageProps {
+  active?: boolean;
   onBack?: () => void;
   onOpenManga?: (manga: MangaBookWithCover, queueIds?: string[]) => void;
 }
 
-export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
+const EMPTY_SOURCES = [] as ReturnType<typeof useLibraryStore.getState>['sources'];
+const EMPTY_MANGAS = [] as ReturnType<typeof useLibraryStore.getState>['mangas'];
+const EMPTY_AUTHOR_DIRECTORIES = [] as ReturnType<typeof useOrganizerMetadataStore.getState>['authorDirectories'];
+const noopAsync = async () => {};
+const noop = () => {};
+
+export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerPageProps) {
   const { sources, mangas, loading, error, fetchMangas, fetchCoverPaths, updateMangaLocal, removeMangaLocal } = useLibraryStore(
     useShallow((state) => ({
-      sources: state.sources,
-      mangas: state.mangas,
-      loading: state.loading,
-      error: state.error,
-      fetchMangas: state.fetchMangas,
-      fetchCoverPaths: state.fetchCoverPaths,
-      updateMangaLocal: state.updateMangaLocal,
-      removeMangaLocal: state.removeMangaLocal
+      sources: active ? state.sources : EMPTY_SOURCES,
+      mangas: active ? state.mangas : EMPTY_MANGAS,
+      loading: active ? state.loading : false,
+      error: active ? state.error : null,
+      fetchMangas: active ? state.fetchMangas : noopAsync,
+      fetchCoverPaths: active ? state.fetchCoverPaths : noopAsync,
+      updateMangaLocal: active ? state.updateMangaLocal : noop,
+      removeMangaLocal: active ? state.removeMangaLocal : noop
     }))
   );
-  const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
-  const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
+  const hasIpcBridge = active && typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
+  const authorDirectories = useOrganizerMetadataStore((state) => (active ? state.authorDirectories : EMPTY_AUTHOR_DIRECTORIES));
   const targetSourcePaths = resolveTargetSourcePaths(
     sources,
     authorDirectories.map((item) => item.directory)
@@ -53,6 +61,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     removeAliasLocal,
     addAuthorDirectoryLocal
   } = useOrganizerData({
+    active,
     mangas,
     hasIpcBridge,
     fetchMangas,
@@ -125,7 +134,14 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     renamingAuthor,
     handleRequestRenameAuthorDirectory,
     closeRenameAuthorDialog,
-    handleConfirmRenameAuthorDirectory
+    handleConfirmRenameAuthorDirectory,
+    deleteAuthorDialogOpen,
+    deleteAuthorTarget,
+    deletingAuthor,
+    deleteAuthorError,
+    handleRequestDeleteAuthorDirectory,
+    closeDeleteAuthorDialog,
+    handleConfirmDeleteAuthorDirectory
   } = useOrganizerMutations({
     hasIpcBridge,
     fetchMangas,
@@ -204,6 +220,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               onMoveSelected={() => void handleMoveSelected()}
               onRequestAddAlias={handleRequestAddAlias}
               onRequestRenameCategory={handleRequestRenameAuthorDirectory}
+              onRequestDeleteCategory={handleRequestDeleteAuthorDirectory}
               onRequestCreateAuthor={handleRequestCreateAuthor}
             />
           </div>
@@ -245,6 +262,15 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
         onSubmit={(value) => void handleConfirmRenameAuthorDirectory(value)}
       />
 
+      <DeleteAuthorDirectoryDialog
+        open={deleteAuthorDialogOpen}
+        target={deleteAuthorTarget}
+        deleting={deletingAuthor}
+        error={deleteAuthorError}
+        onClose={() => closeDeleteAuthorDialog()}
+        onConfirm={() => void handleConfirmDeleteAuthorDirectory()}
+      />
+
       <DeleteMangaDialog
         open={deleteDialogOpen}
         target={deleteTarget}
@@ -264,6 +290,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
       <AddTagPopover
         open={addTagDialogOpen}
         anchor={addTagAnchor}
+        mangaId={addTagTarget?.id ?? null}
         mangaTitle={addTagTarget?.title ?? null}
         initialTags={addTagTarget?.tags.map((tag) => tag.name) ?? []}
         availableTags={availableTagNames}

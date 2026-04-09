@@ -8,6 +8,7 @@ interface UseAuthorDirectoryRenameArgs {
   refreshOrganizerMetadata: () => Promise<void>;
   setSelectedCategoryKey: (value: string | null) => void;
   setMoveError: (message: string | null) => void;
+  buildCategoryKey?: (directoryPath: string) => string | null;
 }
 
 export function useAuthorDirectoryRename({
@@ -15,7 +16,8 @@ export function useAuthorDirectoryRename({
   fetchMangas,
   refreshOrganizerMetadata,
   setSelectedCategoryKey,
-  setMoveError
+  setMoveError,
+  buildCategoryKey
 }: UseAuthorDirectoryRenameArgs) {
   const [renameAuthorDialogOpen, setRenameAuthorDialogOpen] = useState(false);
   const [renameAuthorTarget, setRenameAuthorTarget] = useState<OrganizerCategory | null>(null);
@@ -55,7 +57,7 @@ export function useAuthorDirectoryRename({
       });
 
       await Promise.all([fetchMangas(), refreshOrganizerMetadata()]);
-      setSelectedCategoryKey(`artists:${result.path}`);
+      setSelectedCategoryKey(buildCategoryKey ? buildCategoryKey(result.path) : `artists:${result.path}`);
       setRenameAuthorDialogOpen(false);
       setRenameAuthorTarget(null);
     } catch (error) {

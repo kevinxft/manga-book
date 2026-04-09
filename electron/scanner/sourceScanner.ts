@@ -15,6 +15,12 @@ export interface ScanProgressPayload {
   current: number;
   total: number;
   message: string;
+  sourceCurrent: number;
+  sourceTotal: number;
+  sourceName: string;
+  itemCurrent: number;
+  itemTotal: number;
+  currentItemName: string;
 }
 
 export interface SourceScanner {
@@ -61,6 +67,10 @@ async function listImageFiles(directoryPath: string): Promise<string[]> {
     }
     throw error;
   }
+}
+
+function buildScanProgressPayload(input: ScanProgressPayload): ScanProgressPayload {
+  return input;
 }
 
 async function inspectFolderAsManga(folderPath: string, allowChildDirectories = true): Promise<FolderInspection | null> {
@@ -201,10 +211,13 @@ export function createSourceScanner(repositories: Repositories): SourceScanner {
 
   async function syncSingleSource(
     sourcePath: string,
+    sourceCurrent: number,
+    sourceTotal: number,
     onProgress?: (payload: ScanProgressPayload) => void,
     signal?: AbortSignal
   ): Promise<void> {
     const normalizedSourcePath = normalizeAbsolutePath(sourcePath);
+    const sourceName = path.basename(normalizedSourcePath);
     const exists = await directoryExists(normalizedSourcePath);
 
     if (!exists) {
@@ -234,19 +247,35 @@ export function createSourceScanner(repositories: Repositories): SourceScanner {
         totalPages: entry.inspection.totalPages
       });
 
-      onProgress?.({
-        current: index + 1,
-        total: discoveredEntries.length,
-        message: `Synced: ${path.basename(entry.folderPath)}`
-      });
+      onProgress?.(
+        buildScanProgressPayload({
+          current: sourceCurrent,
+          total: sourceTotal,
+          message: `Scanning ${sourceName}`,
+          sourceCurrent,
+          sourceTotal,
+          sourceName,
+          itemCurrent: index + 1,
+          itemTotal: discoveredEntries.length,
+          currentItemName: path.basename(entry.folderPath)
+        })
+      );
     }
 
     if (discoveredEntries.length === 0) {
-      onProgress?.({
-        current: 0,
-        total: 0,
-        message: `No manga found in ${path.basename(normalizedSourcePath)}`
-      });
+      onProgress?.(
+        buildScanProgressPayload({
+          current: sourceCurrent,
+          total: sourceTotal,
+          message: `No manga found in ${sourceName}`,
+          sourceCurrent,
+          sourceTotal,
+          sourceName,
+          itemCurrent: 0,
+          itemTotal: 0,
+          currentItemName: ''
+        })
+      );
     }
 
     for (const stalePath of dbPathSet) {
@@ -269,15 +298,36 @@ export function createSourceScanner(repositories: Repositories): SourceScanner {
     for (const sourcePath of sourcePaths) {
       assertNotAborted(signal);
       current += 1;
-      onProgress?.({ current, total, message: `Scanning source ${current}/${total}` });
-      await syncSingleSource(sourcePath, onProgress, signal);
+      const sourceName = path.basename(normalizeAbsolutePath(sourcePath));
+      onProgress?.(
+        buildScanProgressPayload({
+          current,
+          total,
+          message: `Scanning ${sourceName}`,
+          sourceCurrent: current,
+          sourceTotal: total,
+          sourceName,
+          itemCurrent: 0,
+          itemTotal: 0,
+          currentItemName: ''
+        })
+      );
+      await syncSingleSource(sourcePath, current, total, onProgress, signal);
     }
 
-    onProgress?.({
-      current: total,
-      total,
-      message: total > 0 ? 'Scan finished' : 'No source configured'
-    });
+    onProgress?.(
+      buildScanProgressPayload({
+        current: total,
+        total,
+        message: total > 0 ? 'Scan finished' : 'No source configured',
+        sourceCurrent: total,
+        sourceTotal: total,
+        sourceName: '',
+        itemCurrent: 0,
+        itemTotal: 0,
+        currentItemName: ''
+      })
+    );
   }
 
   return {

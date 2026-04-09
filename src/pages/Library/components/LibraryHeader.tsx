@@ -1,6 +1,7 @@
-import { ChevronDown, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, X } from 'lucide-react';
+import { ChevronDown, PanelLeftClose, PanelLeftOpen, RefreshCw, Search, Square, X } from 'lucide-react';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
+import type { ScanProgress } from '@shared/types';
 import type { SortKey } from '../types';
 
 interface LibraryHeaderProps {
@@ -10,11 +11,38 @@ interface LibraryHeaderProps {
   mangaCount: number;
   hasIpcBridge: boolean;
   scanRunning: boolean;
+  progress: ScanProgress;
   search: string;
   onSidebarCollapsedChange: (value: boolean) => void;
   onSortByChange: (value: SortKey) => void;
   onSearchChange: (value: string) => void;
   onSyncSources: () => void;
+  onCancelSync: () => void;
+}
+
+function getScanStatusText(progress: ScanProgress): { primary: string; secondary: string } | null {
+  if (progress.status !== 'running') {
+    return null;
+  }
+
+  const primary =
+    progress.sourceTotal > 0
+      ? `目录 ${Math.max(progress.sourceCurrent, 1)}/${progress.sourceTotal}${progress.sourceName ? ` · ${progress.sourceName}` : ''}`
+      : progress.sourceName
+        ? `正在准备同步 · ${progress.sourceName}`
+        : '正在准备同步...';
+
+  const secondary = progress.currentItemName
+    ? `已扫描到 ${progress.currentItemName}${progress.itemTotal > 0 ? ` (${progress.itemCurrent}/${progress.itemTotal})` : ''}`
+    : progress.message === 'Queued'
+      ? '等待开始同步...'
+      : progress.message.startsWith('No manga found')
+        ? '当前目录未发现漫画'
+        : progress.sourceName
+          ? `正在扫描 ${progress.sourceName}`
+          : '正在读取目录内容...';
+
+  return { primary, secondary };
 }
 
 export function LibraryHeader({
@@ -24,12 +52,16 @@ export function LibraryHeader({
   mangaCount,
   hasIpcBridge,
   scanRunning,
+  progress,
   search,
   onSidebarCollapsedChange,
   onSortByChange,
   onSearchChange,
-  onSyncSources
+  onSyncSources,
+  onCancelSync
 }: LibraryHeaderProps) {
+  const scanStatus = getScanStatusText(progress);
+
   return (
     <header className="flex h-[52px] items-center justify-between border-b border-[#dde2eb] bg-[#f1f3f6] px-4">
       <div className="flex items-center gap-3">
@@ -43,12 +75,19 @@ export function LibraryHeader({
 
         <button
           className="inline-flex h-[34px] w-[34px] items-center justify-center rounded-lg border border-[#dce2ec] bg-[#eceff4] text-[#5f6c80] hover:bg-[#e2e7f0] disabled:opacity-60"
-          onClick={onSyncSources}
-          disabled={!hasIpcBridge || scanRunning}
-          title="重新扫描"
+          onClick={scanRunning ? onCancelSync : onSyncSources}
+          disabled={!hasIpcBridge}
+          title={scanRunning ? '停止同步' : '重新扫描'}
         >
-          <RefreshCw className={cn('h-3.5 w-3.5', scanRunning && 'animate-spin')} />
+          {scanRunning ? <Square className="h-3.5 w-3.5 fill-current" /> : <RefreshCw className={cn('h-3.5 w-3.5')} />}
         </button>
+
+        {scanStatus ? (
+          <div className="min-w-0 max-w-[280px]">
+            <p className="truncate text-[11px] font-semibold text-[#3e5c96]">{scanStatus.primary}</p>
+            <p className="truncate text-[11px] text-[#6f7e95]">{scanStatus.secondary}</p>
+          </div>
+        ) : null}
 
         <div className="flex items-center gap-2.5">
           <span className="text-[12px] font-semibold text-[#617089]">排序:</span>
@@ -78,7 +117,7 @@ export function LibraryHeader({
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            className="h-[34px] rounded-lg border-[#dce2ec] bg-[#eceff4] py-1.5 pl-8 pr-8 text-[12px] leading-[1.1]"
+            className="h-[34px] rounded-lg border-[#dce2ec] bg-[#eceff4] py-0 pl-8 pr-8 text-[12px] leading-normal"
             placeholder="搜索漫画、作者或标签..."
           />
           {search.trim().length > 0 ? (

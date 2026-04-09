@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { app, BrowserWindow, protocol, net } from 'electron';
+import type { ScanTaskEvent } from '@shared/types';
 import { createRepositories } from './db';
 import { createSourceScanner } from './scanner/sourceScanner';
 import { TaskQueue } from './tasks/taskQueue';
@@ -102,6 +103,14 @@ async function bootstrap(): Promise<void> {
   const repositories = createRepositories();
   const scanner = createSourceScanner(repositories);
   const scanQueue = new TaskQueue(4);
+
+  scanQueue.onTaskUpdate((task: ScanTaskEvent) => {
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (!window.isDestroyed()) {
+        window.webContents.send('library:scan-progress', task);
+      }
+    }
+  });
 
   protocol.handle('manga-cover', (request) => {
     const url = new URL(request.url);

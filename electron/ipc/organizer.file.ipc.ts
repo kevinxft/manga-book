@@ -6,7 +6,7 @@ import { fail, ok, registerHandler } from './helpers';
 import { updateCachedCanonicalName } from './organizer.alias.ipc';
 import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
-import { normalizeAbsolutePath } from '@main/utils/pathUtils';
+import { normalizeAbsolutePath, toKey } from '@main/utils/pathUtils';
 import { invalidateCoverPath } from '@main/scanner/coverFinder';
 import { isMetadataDirectoryPath } from '@main/db/sourceMetadata';
 
@@ -230,6 +230,41 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     updateCachedCanonicalName(previousName, nextName);
 
     return ok({ path: nextPath });
+  });
+
+  registerHandler('organizer.deleteAuthorDirectory', async (request) => {
+    const currentPath = normalizeAbsolutePath(request.directoryPath);
+    if (!(await directoryExists(currentPath))) {
+      return fail('NOT_FOUND', 'Author directory not found');
+    }
+
+    const artistsRoots = (await listArtistsRoots(library)).map((rootPath) => normalizeAbsolutePath(rootPath));
+    const parentPath = normalizeAbsolutePath(path.dirname(currentPath));
+    if (!artistsRoots.includes(parentPath)) {
+      return fail('VALIDATION', 'Only direct author directories can be deleted');
+    }
+
+    const prefix = `${currentPath}${path.sep}`;
+    const mangaCount = manga.list().filter((book) => {
+      const normalizedFolderPath = normalizeAbsolutePath(book.folderPath);
+      return normalizedFolderPath === currentPath || normalizedFolderPath.startsWith(prefix);
+    }).length;
+
+    if (mangaCount > 0) {
+      return fail('DIRECTORY_NOT_EMPTY', '该作者目录下还有漫画，不能删除。');
+    }
+
+    const previousName = path.basename(currentPath);
+    const previousKey = toKey(previousName);
+    for (const aliasItem of alias.list()) {
+      if (toKey(aliasItem.canonicalName) !== previousKey) {
+        continue;
+      }
+      alias.remove(aliasItem.alias, currentPath);
+    }
+
+    await fs.rm(currentPath, { recursive: true, force: false });
+    return ok({ deleted: true, path: currentPath });
   });
 
   registerHandler('organizer.deleteManga', async (request) => {

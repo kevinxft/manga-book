@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory } from '../types';
 import { useAliasMutations } from './useAliasMutations';
+import { useAuthorDirectoryDelete } from './useAuthorDirectoryDelete';
 import { useAuthorDirectoryRename } from './useAuthorDirectoryRename';
 import { useCreateAuthorMutation } from './useCreateAuthorMutation';
 import { useMangaMutations } from './useMangaMutations';
@@ -80,11 +81,20 @@ export function useOrganizerMutations({
     setMoveError
   });
 
+  const authorDirectoryDelete = useAuthorDirectoryDelete({
+    hasIpcBridge,
+    fetchMangas,
+    refreshOrganizerMetadata,
+    setSelectedCategoryKey,
+    setMoveError
+  });
+
   return {
     ...mangaMutations,
     ...aliasMutations,
     ...createAuthorMutation,
     ...authorDirectoryRename,
+    ...authorDirectoryDelete,
     moveError,
     setMoveError
   };

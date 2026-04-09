@@ -6,8 +6,11 @@ import {
   FolderClosed,
   FolderTree,
   Import,
+  Pencil,
   Search,
   Settings,
+  Tags,
+  Trash2,
   X
 } from 'lucide-react';
 import type { LibraryFolder } from '@shared/types';
@@ -36,9 +39,21 @@ interface LibrarySidebarProps {
   onOpenSourceFolder: (sourcePath: string) => void;
   onSyncSource: (sourcePath: string) => void;
   onRemoveSource: (sourceId: string) => void;
+  onRequestAddAlias: (category: OrganizerCategory) => void;
+  onRequestRenameCategory: (category: OrganizerCategory) => void;
+  onRequestDeleteCategory: (category: OrganizerCategory) => void;
   onOpenSettings?: () => void;
   onOpenOrganizer?: () => void;
 }
+
+interface CategoryContextMenuState {
+  x: number;
+  y: number;
+  category: OrganizerCategory;
+}
+
+const CONTEXT_MENU_OFFSET = 6;
+const CONTEXT_MENU_PADDING = 8;
 
 export function LibrarySidebar({
   sidebarCollapsed,
@@ -58,6 +73,9 @@ export function LibrarySidebar({
   onOpenSourceFolder,
   onSyncSource,
   onRemoveSource,
+  onRequestAddAlias,
+  onRequestRenameCategory,
+  onRequestDeleteCategory,
   onOpenSettings,
   onOpenOrganizer
 }: LibrarySidebarProps) {
@@ -65,7 +83,11 @@ export function LibrarySidebar({
   const [artistSearch, setArtistSearch] = useState('');
   const [artistSortBy, setArtistSortBy] = useState<'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc'>('countDesc');
   const [artistSortMenuOpen, setArtistSortMenuOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<CategoryContextMenuState | null>(null);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ left: 0, top: 0 });
+  const [contextMenuReady, setContextMenuReady] = useState(false);
   const artistSortMenuRef = useRef<HTMLDivElement | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!artistSortMenuOpen) {
@@ -82,6 +104,68 @@ export function LibrarySidebar({
     document.addEventListener('mousedown', handleDocumentClick);
     return () => document.removeEventListener('mousedown', handleDocumentClick);
   }, [artistSortMenuOpen]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      return;
+    }
+
+    const closeMenu = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (contextMenuRef.current && !contextMenuRef.current.contains(target)) {
+        setContextMenu(null);
+      }
+    };
+
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setContextMenu(null);
+      }
+    };
+
+    const closeOnResize = () => {
+      setContextMenu(null);
+    };
+
+    window.addEventListener('mousedown', closeMenu);
+    window.addEventListener('keydown', closeOnEscape);
+    window.addEventListener('resize', closeOnResize, { once: true });
+
+    return () => {
+      window.removeEventListener('mousedown', closeMenu);
+      window.removeEventListener('keydown', closeOnEscape);
+      window.removeEventListener('resize', closeOnResize);
+    };
+  }, [contextMenu]);
+
+  useEffect(() => {
+    if (!contextMenu) {
+      setContextMenuReady(false);
+      return;
+    }
+
+    const updatePosition = () => {
+      if (!contextMenuRef.current) {
+        return;
+      }
+
+      const rect = contextMenuRef.current.getBoundingClientRect();
+      const desiredLeft = contextMenu.x + CONTEXT_MENU_OFFSET;
+      const desiredTop = contextMenu.y + CONTEXT_MENU_OFFSET;
+      const maxLeft = Math.max(CONTEXT_MENU_PADDING, window.innerWidth - rect.width - CONTEXT_MENU_PADDING);
+      const maxTop = Math.max(CONTEXT_MENU_PADDING, window.innerHeight - rect.height - CONTEXT_MENU_PADDING);
+
+      setContextMenuPosition({
+        left: Math.min(Math.max(desiredLeft, CONTEXT_MENU_PADDING), maxLeft),
+        top: Math.min(Math.max(desiredTop, CONTEXT_MENU_PADDING), maxTop)
+      });
+      setContextMenuReady(true);
+    };
+
+    setContextMenuReady(false);
+    const frame = window.requestAnimationFrame(updatePosition);
+    return () => window.cancelAnimationFrame(frame);
+  }, [contextMenu]);
 
   const sortedArtistDirectories = useMemo(() => {
     const keyword = artistSearch.trim().toLowerCase();
@@ -135,7 +219,7 @@ export function LibrarySidebar({
         </div>
 
         <div className={cn('flex min-h-0 flex-1 flex-col gap-5 overflow-hidden px-4 py-5', sidebarCollapsed && 'px-2')}>
-          <section className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <section className="flex min-h-0 flex-1 flex-col">
             {!sidebarCollapsed ? (
               <div className="mb-3 flex items-center gap-2">
                 <div className="relative min-w-0 flex-1">
@@ -143,7 +227,7 @@ export function LibrarySidebar({
                   <Input
                     value={artistSearch}
                     onChange={(event) => setArtistSearch(event.target.value)}
-                    className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] py-1.5 pl-9 pr-9 text-[12px] leading-[1.1]"
+                    className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] py-0 pl-9 pr-9 text-[12px] leading-normal"
                     placeholder="搜索目录..."
                   />
                   {artistSearch.trim().length > 0 ? (
@@ -223,6 +307,15 @@ export function LibrarySidebar({
                         <button
                           key={directory.key}
                           onClick={() => onActiveMenuChange(itemKey)}
+                          onContextMenu={(event) => {
+                            event.preventDefault();
+                            onActiveMenuChange(itemKey);
+                            setContextMenu({
+                              x: event.clientX,
+                              y: event.clientY,
+                              category: directory
+                            });
+                          }}
                           className={cn(
                             'flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold leading-normal transition',
                             active
@@ -308,17 +401,33 @@ export function LibrarySidebar({
           ) : null}
         </div>
 
-        <div className={cn('mt-auto shrink-0 space-y-2.5 border-t border-[#dce1ea] p-3.5', sidebarCollapsed && 'px-2')}>
+        <div 
+          className={cn('mt-auto shrink-0 border-t border-[#dce1ea] p-3.5', sidebarCollapsed && 'px-2')}
+          style={{ containerType: 'inline-size', containerName: 'sidebarActions' } as React.CSSProperties}
+        >
+          <style>{`
+            .sidebar-action-grid { display: grid; gap: 0.5rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .sidebar-action-grid.is-collapsed { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+            @container sidebarActions (min-width: 310px) {
+              .sidebar-action-grid.is-four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+              .sidebar-action-grid.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+            }
+            .sidebar-action-import.span-two { grid-column: span 2 / span 2; }
+            @container sidebarActions (min-width: 310px) {
+              .sidebar-action-import.span-two { grid-column: span 1 / span 1; }
+            }
+          `}</style>
           <div
             className={cn(
-              'grid items-center gap-2',
-              sidebarCollapsed ? 'grid-cols-1' : sources.length > 0 ? 'grid-cols-2' : 'grid-cols-1'
+              'sidebar-action-grid items-center',
+              sidebarCollapsed ? 'is-collapsed' : (sources.length > 0 ? 'is-four' : 'is-three')
             )}
           >
             <button
               className={cn(
-                'flex h-9 w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] transition hover:bg-[#e7ebf2]',
-                sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
+                'sidebar-action-import flex h-9 w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] transition hover:bg-[#e7ebf2]',
+                sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5',
+                !sidebarCollapsed && sources.length === 0 ? 'span-two' : ''
               )}
               onClick={onPickAndAddSources}
               disabled={!hasIpcBridge}
@@ -341,12 +450,10 @@ export function LibrarySidebar({
                 {!sidebarCollapsed ? <span>{sources.length}</span> : null}
               </button>
             ) : null}
-          </div>
 
-          <div className={cn('grid gap-2', sidebarCollapsed ? 'grid-cols-1' : 'grid-cols-2')}>
             <button
               className={cn(
-                'flex w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
+                'flex h-9 w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
                 sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
               )}
               title="设置"
@@ -358,7 +465,7 @@ export function LibrarySidebar({
 
             <button
               className={cn(
-                'flex w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
+                'flex h-9 w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
                 sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
               )}
               title="漫画整理"
@@ -382,6 +489,59 @@ export function LibrarySidebar({
         onSyncSource={onSyncSource}
         onRemoveSource={onRemoveSource}
       />
+
+      {contextMenu ? (
+        <div
+          ref={contextMenuRef}
+          className="fixed z-[90] w-[172px] rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_30px_rgba(36,54,86,0.24)]"
+          style={{
+            left: contextMenuPosition.left,
+            top: contextMenuPosition.top,
+            visibility: contextMenuReady ? 'visible' : 'hidden'
+          }}
+        >
+          <button
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+            onClick={() => {
+              onRequestRenameCategory(contextMenu.category);
+              setContextMenu(null);
+            }}
+          >
+            <Pencil className="h-3.5 w-3.5 text-[#627694]" />
+            重命名作者
+          </button>
+          <button
+            className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+            onClick={() => {
+              onRequestAddAlias(contextMenu.category);
+              setContextMenu(null);
+            }}
+          >
+            <Tags className="h-3.5 w-3.5 text-[#627694]" />
+            添加别名
+          </button>
+          <button
+            className={cn(
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold transition',
+              contextMenu.category.count === 0
+                ? 'text-[#b03a3a] hover:bg-[#fdf0f0]'
+                : 'cursor-not-allowed text-[#9aa6b8]'
+            )}
+            onClick={() => {
+              if (contextMenu.category.count > 0) {
+                return;
+              }
+              onRequestDeleteCategory(contextMenu.category);
+              setContextMenu(null);
+            }}
+            disabled={contextMenu.category.count > 0}
+            title={contextMenu.category.count > 0 ? '仅可删除不包含漫画的作者目录' : '删除该作者目录'}
+          >
+            <Trash2 className={cn('h-3.5 w-3.5', contextMenu.category.count === 0 ? 'text-[#b03a3a]' : 'text-[#9aa6b8]')} />
+            删除目录
+          </button>
+        </div>
+      ) : null}
     </>
   );
 }

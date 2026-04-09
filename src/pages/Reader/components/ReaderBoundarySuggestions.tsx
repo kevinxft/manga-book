@@ -14,38 +14,40 @@ export function ReaderBoundarySuggestions({ direction, mangas, onSelect }: Reade
   }
 
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[96px] z-30 flex justify-center px-4">
-      <div className="pointer-events-auto w-full max-w-[980px] rounded-[22px] border border-black/45 bg-[rgba(0,0,0,0.74)] px-4 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.4)]">
-        <p className="text-[12px] font-semibold text-[#eef2f8]">
-          {direction === 'next' ? '已经到最后一页了，继续看后面的漫画' : '已经到第一页了，回看前面的漫画'}
+    <div className="pointer-events-none absolute inset-x-0 bottom-[110px] z-30 flex justify-center px-4">
+      <div className="pointer-events-auto w-fit min-w-[min(100%,720px)] max-w-full rounded-3xl border border-white/10 bg-[#0f1115]/80 px-6 py-5 shadow-[0_24px_48px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+        <p className="text-[13px] font-bold tracking-wide text-white drop-shadow-sm">
+          {direction === 'next' ? '已经到最后一页啦，继续看后面的漫画' : '已经到第一页啦，回看前面的漫画'}
         </p>
 
-        <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
+        <div className="mt-4 flex gap-4 overflow-x-auto pb-2 custom-scrollbar">
           {mangas.map((manga) => (
             <button
               key={manga.id}
               type="button"
-              className="w-[124px] shrink-0 text-left"
+              className="group w-[124px] shrink-0 text-left focus:outline-none"
               onClick={() => onSelect(manga)}
               title={manga.title}
             >
-              <div className="overflow-hidden rounded-[18px] border border-white/10 bg-[#14161c] shadow-[0_10px_24px_rgba(0,0,0,0.26)] transition hover:-translate-y-0.5 hover:border-white/20 hover:shadow-[0_16px_28px_rgba(0,0,0,0.32)]">
-                <div className="aspect-[3/4] bg-[#1a1d24]">
+              <div className="overflow-hidden rounded-[20px] border border-white/5 bg-[#171921] shadow-[0_10px_20px_rgba(0,0,0,0.3)] transition-all duration-300 group-hover:-translate-y-1.5 group-hover:border-white/20 group-hover:shadow-[0_16px_36px_rgba(61,124,249,0.2)]">
+                <div className="aspect-[3/4] bg-[#1d2029]">
                   {manga.coverPath ? (
                     <img
                       src={toCoverSrc(manga.coverPath)}
                       alt={manga.title}
                       loading="lazy"
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
-                    <div className="flex h-full items-center justify-center text-[#8b96aa]">
+                    <div className="flex h-full items-center justify-center text-[#556379]">
                       <ImageOff className="h-8 w-8" />
                     </div>
                   )}
                 </div>
               </div>
-              <p className="mt-2 line-clamp-2 text-[11px] font-semibold leading-4 text-[#eef2f8]">{manga.title}</p>
+              <p className="mt-2.5 line-clamp-2 text-[11px] font-medium leading-[1.4] text-[#a3b1c6] transition-colors group-hover:text-white">
+                {manga.title}
+              </p>
             </button>
           ))}
         </div>

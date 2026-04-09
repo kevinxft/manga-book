@@ -75,6 +75,12 @@ export interface ScanProgress {
   current: number;
   total: number;
   message: string;
+  sourceCurrent: number;
+  sourceTotal: number;
+  sourceName: string;
+  itemCurrent: number;
+  itemTotal: number;
+  currentItemName: string;
 }
 
 export interface ScanTaskStatus {
@@ -83,6 +89,27 @@ export interface ScanTaskStatus {
   current: number;
   total: number;
   message: string;
+  sourceCurrent: number;
+  sourceTotal: number;
+  sourceName: string;
+  itemCurrent: number;
+  itemTotal: number;
+  currentItemName: string;
+  error?: string;
+}
+
+export interface ScanTaskEvent {
+  taskId: string | null;
+  status: 'idle' | 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  current: number;
+  total: number;
+  message: string;
+  sourceCurrent: number;
+  sourceTotal: number;
+  sourceName: string;
+  itemCurrent: number;
+  itemTotal: number;
+  currentItemName: string;
   error?: string;
 }
 
@@ -121,6 +148,10 @@ export interface LibraryOpenSourceFolderRequest {
 export interface LibrarySyncSourcesRequest {
   paths?: string[];
   forceRescan?: boolean;
+}
+
+export interface LibraryCancelSyncRequest {
+  taskId?: string;
 }
 
 export interface LibraryListCoverPathsRequest {
@@ -206,6 +237,10 @@ export interface OrganizerRenameAuthorDirectoryRequest {
   newName: string;
 }
 
+export interface OrganizerDeleteAuthorDirectoryRequest {
+  directoryPath: string;
+}
+
 export interface OrganizerDeleteMangaRequest {
   mangaId: string;
   withFiles: boolean;
@@ -260,6 +295,7 @@ export interface IpcChannels {
   'library.openSourceFolder': { req: LibraryOpenSourceFolderRequest; res: { opened: boolean } };
   'library.listSources': { req: void; res: LibraryFolder[] };
   'library.syncSources': { req: LibrarySyncSourcesRequest | void; res: { taskId: string } };
+  'library.cancelSync': { req: LibraryCancelSyncRequest | void; res: { cancelled: boolean; taskId: string | null } };
   'library.listMangas': { req: MangaFilter | void; res: MangaBookWithCover[] };
   'library.listCoverPaths': { req: LibraryListCoverPathsRequest; res: Record<string, string | null> };
   'library.getScanProgress': { req: void; res: ScanProgress };
@@ -278,6 +314,7 @@ export interface IpcChannels {
   'organizer.listAuthorDirectories': { req: void; res: TargetDirectorySummary[] };
   'organizer.createAuthorDirectory': { req: OrganizerCreateAuthorDirectoryRequest; res: { path: string; created: boolean } };
   'organizer.renameAuthorDirectory': { req: OrganizerRenameAuthorDirectoryRequest; res: { path: string } };
+  'organizer.deleteAuthorDirectory': { req: OrganizerDeleteAuthorDirectoryRequest; res: { deleted: boolean; path: string } };
   'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
   'organizer.searchGoogle': { req: OrganizerSearchGoogleRequest; res: { opened: boolean } };
   'organizer.searchWeb': { req: OrganizerSearchWebRequest; res: { opened: boolean } };

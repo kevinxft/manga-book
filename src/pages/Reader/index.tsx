@@ -78,7 +78,7 @@ export function ReaderPage({
   const maxPageIndex = Math.max(pagePaths.length - 1, 0);
 
   const scrollByViewport = useCallback(
-    (delta: number, source: 'keyboard' | 'mouse' | 'ui'): boolean => {
+    (delta: number): boolean => {
       if (readerMode !== 'scroll') {
         return false;
       }
@@ -93,9 +93,7 @@ export function ReaderPage({
       const atStart = root.scrollTop <= threshold;
 
       if ((delta > 0 && atEnd) || (delta < 0 && atStart)) {
-        if (source !== 'mouse') {
-          setBoundarySuggestionDirection(delta > 0 ? 'next' : 'prev');
-        }
+        setBoundarySuggestionDirection(delta > 0 ? 'next' : 'prev');
         return true;
       }
 
@@ -132,14 +130,12 @@ export function ReaderPage({
   );
 
   const movePage = useCallback(
-    (delta: number, options?: { source?: 'keyboard' | 'mouse' | 'ui' }) => {
+    (delta: number) => {
       if (pagePaths.length === 0) {
         return;
       }
 
-      const source = options?.source ?? 'ui';
-
-      if (scrollByViewport(delta, source)) {
+      if (scrollByViewport(delta)) {
         return;
       }
 
@@ -151,9 +147,7 @@ export function ReaderPage({
         return;
       }
 
-      if (source !== 'mouse') {
-        setBoundarySuggestionDirection(delta > 0 ? 'next' : 'prev');
-      }
+      setBoundarySuggestionDirection(delta > 0 ? 'next' : 'prev');
     },
     [currentPageIndex, maxPageIndex, pagePaths.length, scrollByViewport, scrollToPage, setCurrentPageIndex]
   );
@@ -278,7 +272,8 @@ export function ReaderPage({
 
       await reloadPages({
         preferredPagePath,
-        fallbackPageIndex
+        fallbackPageIndex,
+        silent: true
       });
 
       updateMangaLocal(manga.id, (current) => ({
@@ -344,6 +339,7 @@ export function ReaderPage({
         onOpenNextManga={onOpenNextManga}
         canOpenPreviousManga={canOpenPreviousManga}
         canOpenNextManga={canOpenNextManga}
+        onOpenPageEditor={handleOpenPageEditor}
         onDeleteManga={handleRequestDeleteManga}
         deleting={deletingManga}
       />
@@ -388,8 +384,8 @@ export function ReaderPage({
           onSliderChange={handleSliderChange}
           onBack={onBack}
           onOpenPageEditor={handleOpenPageEditor}
-          onPrev={() => movePage(-pageStep, { source: 'ui' })}
-          onNext={() => movePage(pageStep, { source: 'ui' })}
+          onPrev={() => movePage(-pageStep)}
+          onNext={() => movePage(pageStep)}
           onReaderModeChange={onReaderModeChange}
           onWidthModeChange={onWidthModeChange}
           onAdjustWidth={adjustFixedWidth}

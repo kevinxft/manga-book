@@ -6,6 +6,7 @@ import { Input } from '@renderer/components/ui/input';
 interface AddTagPopoverProps {
   open: boolean;
   anchor: { x: number; y: number } | null;
+  mangaId: string | null;
   mangaTitle: string | null;
   initialTags: string[];
   availableTags: string[];
@@ -21,6 +22,7 @@ const VIEWPORT_PADDING = 8;
 export function AddTagPopover({
   open,
   anchor,
+  mangaId,
   mangaTitle,
   initialTags,
   availableTags,
@@ -30,6 +32,8 @@ export function AddTagPopover({
   onSubmit
 }: AddTagPopoverProps) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const previousOpenRef = useRef(false);
+  const previousMangaIdRef = useRef<string | null>(null);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const [ready, setReady] = useState(false);
   const [inputTagName, setInputTagName] = useState('');
@@ -37,11 +41,21 @@ export function AddTagPopover({
 
   useEffect(() => {
     if (!open) {
+      previousOpenRef.current = false;
+      previousMangaIdRef.current = mangaId;
       return;
     }
-    setInputTagName('');
-    setDraftTags(initialTags);
-  }, [initialTags, open]);
+
+    const justOpened = !previousOpenRef.current;
+    const mangaChanged = previousMangaIdRef.current !== mangaId;
+    if (justOpened || mangaChanged) {
+      setInputTagName('');
+      setDraftTags(initialTags);
+    }
+
+    previousOpenRef.current = true;
+    previousMangaIdRef.current = mangaId;
+  }, [initialTags, open, mangaId]);
 
   useLayoutEffect(() => {
     if (!open || !anchor) {
