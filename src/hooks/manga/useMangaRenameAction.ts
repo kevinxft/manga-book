@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { mergeMangaWithBase } from '@renderer/lib/manga';
@@ -12,19 +12,10 @@ interface UseMangaRenameActionInput {
 export function useMangaRenameAction({ hasIpcBridge, updateMangaLocal, setError }: UseMangaRenameActionInput) {
   const [renameDialogOpen, setRenameDialogOpen] = useState(false);
   const [renameTarget, setRenameTarget] = useState<MangaBookWithCover | null>(null);
-  const [renameInput, setRenameInput] = useState('');
   const [renaming, setRenaming] = useState(false);
-
-  useEffect(() => {
-    if (!renameDialogOpen) {
-      setRenameInput('');
-      setRenaming(false);
-    }
-  }, [renameDialogOpen]);
 
   const handleRequestRenameManga = (item: MangaBookWithCover) => {
     setRenameTarget(item);
-    setRenameInput(item.title);
     setRenameDialogOpen(true);
   };
 
@@ -36,12 +27,12 @@ export function useMangaRenameAction({ hasIpcBridge, updateMangaLocal, setError 
     setRenameTarget(null);
   };
 
-  const handleConfirmRenameManga = async () => {
+  const handleConfirmRenameManga = async (nextTitle: string) => {
     if (!hasIpcBridge || !renameTarget || renaming) {
       return;
     }
 
-    const trimmed = renameInput.trim();
+    const trimmed = nextTitle.trim();
     if (!trimmed || trimmed === renameTarget.title) {
       closeRenameDialog();
       return;
@@ -66,9 +57,7 @@ export function useMangaRenameAction({ hasIpcBridge, updateMangaLocal, setError 
   return {
     renameDialogOpen,
     renameTarget,
-    renameInput,
     renaming,
-    setRenameInput,
     handleRequestRenameManga,
     closeRenameDialog,
     handleConfirmRenameManga

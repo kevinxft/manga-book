@@ -1,5 +1,6 @@
 import type { MangaBookWithCover } from '@shared/types';
 import { useLibraryStore } from '@renderer/stores/libraryStore';
+import { useShallow } from 'zustand/react/shallow';
 import { AliasManagerDialog } from './components/AliasManagerDialog';
 import { OrganizerCategoryPanel } from './components/OrganizerCategoryPanel';
 import { CreateAuthorDialog } from './components/CreateAuthorDialog';
@@ -20,7 +21,17 @@ interface OrganizerPageProps {
 }
 
 export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
-  const { mangas, loading, error, fetchMangas, updateMangaLocal, removeMangaLocal } = useLibraryStore();
+  const { mangas, loading, error, fetchMangas, fetchCoverPaths, updateMangaLocal, removeMangaLocal } = useLibraryStore(
+    useShallow((state) => ({
+      mangas: state.mangas,
+      loading: state.loading,
+      error: state.error,
+      fetchMangas: state.fetchMangas,
+      fetchCoverPaths: state.fetchCoverPaths,
+      updateMangaLocal: state.updateMangaLocal,
+      removeMangaLocal: state.removeMangaLocal
+    }))
+  );
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
   const {
     aliases,
@@ -65,12 +76,6 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     addTagDialogOpen,
     addTagTarget,
     addTagAnchor,
-    addTagInput,
-    setAddTagInput,
-    addTagDraft,
-    appendInputTag,
-    appendDraftTag,
-    removeDraftTag,
     addTagSaving,
     addTagError,
     availableTagNames,
@@ -78,9 +83,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     handleConfirmAddTag,
     renameDialogOpen,
     renameTarget,
-    renameInput,
     renaming,
-    setRenameInput,
     handleRequestRenameManga,
     closeRenameDialog,
     handleConfirmRenameManga,
@@ -95,8 +98,6 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     aliasDialogOpen,
     aliasTargetCategory,
     aliasTargetItems,
-    aliasInput,
-    setAliasInput,
     aliasSaving,
     aliasRemoving,
     aliasError,
@@ -105,8 +106,6 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     handleConfirmAddAlias,
     handleRemoveAlias,
     createAuthorDialogOpen,
-    newAuthorName,
-    setNewAuthorName,
     creatingAuthor,
     createAuthorError,
     closeCreateAuthorDialog,
@@ -114,9 +113,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     handleConfirmCreateAuthor,
     renameAuthorDialogOpen,
     renameAuthorTarget,
-    renameAuthorInput,
     renamingAuthor,
-    setRenameAuthorInput,
     handleRequestRenameAuthorDirectory,
     closeRenameAuthorDialog,
     handleConfirmRenameAuthorDirectory
@@ -137,6 +134,10 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     removeAliasLocal,
     addAuthorDirectoryLocal
   });
+
+  const handleVisibleItemsChange = (items: MangaBookWithCover[]) => {
+    void fetchCoverPaths(items.map((item) => item.folderPath));
+  };
 
   return (
     <main className="h-full w-full bg-[#ebedf1] p-2">
@@ -170,6 +171,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               visibleItems={visibleItems}
               selectedIds={selectedIds}
               categories={categories}
+              onVisibleItemsChange={handleVisibleItemsChange}
               onToggleItem={toggleItem}
               onOpenManga={(item) => onOpenManga?.(item)}
               onQuickMoveManga={handleQuickMoveSingle}
@@ -210,34 +212,28 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
         open={aliasDialogOpen}
         targetCategory={aliasTargetCategory}
         aliasItems={aliasTargetItems}
-        aliasInput={aliasInput}
         aliasSaving={aliasSaving}
         aliasRemoving={aliasRemoving}
         aliasError={aliasError}
-        onAliasInputChange={setAliasInput}
         onClose={() => closeAliasDialog()}
-        onSubmit={() => void handleConfirmAddAlias()}
+        onSubmit={(value) => void handleConfirmAddAlias(value)}
         onRemoveAlias={(alias) => void handleRemoveAlias(alias)}
       />
 
       <CreateAuthorDialog
         open={createAuthorDialogOpen}
-        authorName={newAuthorName}
         creating={creatingAuthor}
         error={createAuthorError}
-        onAuthorNameChange={setNewAuthorName}
         onClose={() => closeCreateAuthorDialog()}
-        onSubmit={() => void handleConfirmCreateAuthor()}
+        onSubmit={(value) => void handleConfirmCreateAuthor(value)}
       />
 
       <RenameAuthorDirectoryDialog
         open={renameAuthorDialogOpen}
         target={renameAuthorTarget}
-        value={renameAuthorInput}
         renaming={renamingAuthor}
-        onValueChange={setRenameAuthorInput}
         onClose={closeRenameAuthorDialog}
-        onSubmit={() => void handleConfirmRenameAuthorDirectory()}
+        onSubmit={(value) => void handleConfirmRenameAuthorDirectory(value)}
       />
 
       <DeleteMangaDialog
@@ -251,28 +247,21 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
       <RenameMangaDialog
         open={renameDialogOpen}
         target={renameTarget}
-        value={renameInput}
         renaming={renaming}
-        onValueChange={setRenameInput}
         onClose={closeRenameDialog}
-        onSubmit={() => void handleConfirmRenameManga()}
+        onSubmit={(value) => void handleConfirmRenameManga(value)}
       />
 
       <AddTagPopover
         open={addTagDialogOpen}
         anchor={addTagAnchor}
         mangaTitle={addTagTarget?.title ?? null}
-        draftTags={addTagDraft}
-        inputTagName={addTagInput}
+        initialTags={addTagTarget?.tags.map((tag) => tag.name) ?? []}
         availableTags={availableTagNames}
         saving={addTagSaving}
         error={addTagError}
-        onInputTagNameChange={setAddTagInput}
-        onAppendInputTag={appendInputTag}
-        onAppendTag={appendDraftTag}
-        onRemoveTag={removeDraftTag}
         onClose={() => closeAddTagDialog()}
-        onSubmit={() => void handleConfirmAddTag()}
+        onSubmit={(values) => void handleConfirmAddTag(values)}
       />
     </main>
   );

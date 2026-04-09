@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import type { SortKey } from '../types';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
@@ -14,6 +14,7 @@ export function useLibraryFilters({ mangas, artistDirectories, selectedTags }: U
   const [sortBy, setSortBy] = useState<SortKey>('addedAtDesc');
   const [activeMenu, setActiveMenu] = useState<string>('all');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
     if (activeMenu === 'all') {
@@ -33,16 +34,44 @@ export function useLibraryFilters({ mangas, artistDirectories, selectedTags }: U
         ? mangas.filter((manga) => manga.folderPath.startsWith(`${activeArtistPath}/`) || manga.folderPath.startsWith(`${activeArtistPath}\\`))
         : mangas;
 
-    const byTags =
-      selectedTags.length === 0
+    const keyword = deferredSearch.trim().toLocaleLowerCase();
+    const bySearch =
+      keyword.length === 0
         ? byArtist
         : byArtist.filter((manga) => {
+            if (manga.title.toLocaleLowerCase().includes(keyword)) {
+              return true;
+            }
+            if (manga.folderPath.toLocaleLowerCase().includes(keyword)) {
+              return true;
+            }
+            return manga.tags.some((tag) => tag.name.toLocaleLowerCase().includes(keyword));
+          });
+
+    const byTags =
+      selectedTags.length === 0
+        ? bySearch
+        : bySearch.filter((manga) => {
             const mangaTagIds = new Set((manga.tags ?? []).map((tag) => tag.id));
             return selectedTags.every((tagId) => mangaTagIds.has(tagId));
           });
 
-    return byTags;
-  }, [activeMenu, mangas, selectedTags]);
+    return [...byTags].sort((first, second) => {
+      if (sortBy === 'lastReadAtDesc') {
+        return (second.lastReadAt ?? second.addedAt).localeCompare(first.lastReadAt ?? first.addedAt);
+      }
+      if (sortBy === 'addedAtAsc') {
+        return first.addedAt.localeCompare(second.addedAt);
+      }
+      if (sortBy === 'titleAsc') {
+        return first.title.localeCompare(second.title, 'zh-Hans-CN');
+      }
+      if (sortBy === 'titleDesc') {
+        return second.title.localeCompare(first.title, 'zh-Hans-CN');
+      }
+      return second.addedAt.localeCompare(first.addedAt);
+    });
+  }, [activeMenu, deferredSearch, mangas, selectedTags, sortBy]);
 
   const sourceMangaCountByPath = useMemo(() => {
     const counts: Record<string, number> = {};

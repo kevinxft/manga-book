@@ -3,7 +3,11 @@ import path from 'node:path';
 import { shell } from 'electron';
 import type { IpcContext } from './context';
 import { fail, ok, registerHandler } from './helpers';
-import { readAuthorAliasMetadata, writeAuthorAliasMetadata } from './organizer.alias.ipc';
+import {
+  readAuthorAliasMetadata,
+  updateCachedCanonicalName,
+  writeAuthorAliasMetadata
+} from './organizer.alias.ipc';
 import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath } from '@main/utils/pathUtils';
@@ -94,8 +98,9 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
   registerHandler('organizer.listAuthorDirectories', async () => {
     const artistsRoots = await listArtistsRoots(library);
     const directories: string[] = [];
+    const normalizedRoots = artistsRoots.map((rootPath) => normalizeAbsolutePath(rootPath));
 
-    for (const rootPath of artistsRoots) {
+    for (const rootPath of normalizedRoots) {
       if (!(await directoryExists(rootPath))) {
         continue;
       }
@@ -107,16 +112,37 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
 
     const mangaBooks = manga.list();
     const uniqueDirectories = Array.from(new Set(directories)).sort((a, b) => a.localeCompare(b));
+    const countByDirectory = new Map(uniqueDirectories.map((directory) => [directory, 0]));
+
+    for (const book of mangaBooks) {
+      const bookFolderPath = normalizeAbsolutePath(book.folderPath);
+
+      for (const rootPath of normalizedRoots) {
+        const prefix = `${rootPath}${path.sep}`;
+        if (!bookFolderPath.startsWith(prefix)) {
+          continue;
+        }
+
+        const relativePath = path.relative(rootPath, bookFolderPath);
+        const authorName = relativePath.split(path.sep).filter(Boolean)[0];
+        if (!authorName) {
+          break;
+        }
+
+        const authorDirectory = normalizeAbsolutePath(path.join(rootPath, authorName));
+        countByDirectory.set(authorDirectory, (countByDirectory.get(authorDirectory) ?? 0) + 1);
+        break;
+      }
+    }
+
     const usageByPath = new Map(
       directoryUsage.listByPaths(uniqueDirectories).map((item) => [normalizeAbsolutePath(item.directoryPath), item.lastMovedAt])
     );
     const summaries = uniqueDirectories.map((directory) => {
       const normalizedDirectory = normalizeAbsolutePath(directory);
-      const prefix = `${normalizedDirectory}${path.sep}`;
-      const mangaCount = mangaBooks.filter((book) => book.folderPath.startsWith(prefix)).length;
       return {
         directory: normalizedDirectory,
-        mangaCount,
+        mangaCount: countByDirectory.get(normalizedDirectory) ?? 0,
         lastMovedAt: usageByPath.get(normalizedDirectory) ?? null
       };
     });
@@ -209,6 +235,7 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     }
 
     alias.updateCanonicalName(previousName, nextName);
+    updateCachedCanonicalName(previousName, nextName);
 
     return ok({ path: nextPath });
   });

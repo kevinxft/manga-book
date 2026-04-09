@@ -21,7 +21,6 @@ export function useCreateAuthorMutation({
   setMoveError
 }: UseCreateAuthorMutationArgs) {
   const [createAuthorDialogOpen, setCreateAuthorDialogOpen] = useState(false);
-  const [newAuthorName, setNewAuthorName] = useState('');
   const [creatingAuthor, setCreatingAuthor] = useState(false);
   const [createAuthorError, setCreateAuthorError] = useState<string | null>(null);
 
@@ -30,23 +29,21 @@ export function useCreateAuthorMutation({
       return;
     }
     setCreateAuthorDialogOpen(false);
-    setNewAuthorName('');
     setCreateAuthorError(null);
   };
 
   const handleRequestCreateAuthor = () => {
     setMoveError(null);
     setCreateAuthorError(null);
-    setNewAuthorName('');
     setCreateAuthorDialogOpen(true);
   };
 
-  const handleConfirmCreateAuthor = async () => {
+  const handleConfirmCreateAuthor = async (nextAuthorName: string) => {
     if (!hasIpcBridge || creatingAuthor) {
       return;
     }
 
-    const trimmed = newAuthorName.trim();
+    const trimmed = nextAuthorName.trim();
     if (!trimmed) {
       setCreateAuthorError('请输入作者名称');
       return;
@@ -81,8 +78,6 @@ export function useCreateAuthorMutation({
 
   return {
     createAuthorDialogOpen,
-    newAuthorName,
-    setNewAuthorName,
     creatingAuthor,
     createAuthorError,
     closeCreateAuthorDialog,

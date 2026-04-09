@@ -32,9 +32,7 @@ export function useOrganizerMoveActions({
   const {
     renameDialogOpen,
     renameTarget,
-    renameInput,
     renaming,
-    setRenameInput,
     handleRequestRenameManga,
     closeRenameDialog,
     handleConfirmRenameManga
@@ -137,9 +135,7 @@ export function useOrganizerMoveActions({
     handleQuickMoveSingle,
     renameDialogOpen,
     renameTarget,
-    renameInput,
     renaming,
-    setRenameInput,
     handleRequestRenameManga,
     closeRenameDialog,
     handleConfirmRenameManga

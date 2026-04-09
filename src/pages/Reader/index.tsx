@@ -193,6 +193,7 @@ export function ReaderPage({
           canDecreaseWidth={fixedWidthPercent > MIN_FIXED_WIDTH_PERCENT}
           canIncreaseWidth={fixedWidthPercent < MAX_FIXED_WIDTH_PERCENT}
           onSliderChange={handleSliderChange}
+          onBack={onBack}
           onPrev={() => movePage(-pageStep)}
           onNext={() => movePage(pageStep)}
           onReaderModeChange={onReaderModeChange}

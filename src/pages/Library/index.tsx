@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import type { MangaBookWithCover } from '@shared/types';
 import { useLibraryStore } from '@renderer/stores/libraryStore';
+import { useShallow } from 'zustand/react/shallow';
 import { LibraryHeader } from './components/LibraryHeader';
 import { LibraryScanOverlay } from './components/LibraryScanOverlay';
 import { LibrarySidebar } from './components/LibrarySidebar';
@@ -82,10 +83,29 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     pickAndAddSources,
     removeSource,
     syncSources,
+    fetchCoverPaths,
     refreshScanProgress,
     updateMangaLocal,
     removeMangaLocal
-  } = useLibraryStore();
+  } = useLibraryStore(
+    useShallow((state) => ({
+      sources: state.sources,
+      mangas: state.mangas,
+      loading: state.loading,
+      error: state.error,
+      progress: state.progress,
+      clearError: state.clearError,
+      fetchSources: state.fetchSources,
+      fetchMangas: state.fetchMangas,
+      pickAndAddSources: state.pickAndAddSources,
+      removeSource: state.removeSource,
+      syncSources: state.syncSources,
+      fetchCoverPaths: state.fetchCoverPaths,
+      refreshScanProgress: state.refreshScanProgress,
+      updateMangaLocal: state.updateMangaLocal,
+      removeMangaLocal: state.removeMangaLocal
+    }))
+  );
 
   const { artistDirectories, quickMoveCategories } = useLibraryOrganizerCategories({
     hasIpcBridge,
@@ -111,13 +131,15 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
 
   const { scanRunning } = useLibraryDataLifecycle({
     hasIpcBridge,
-    search,
-    sortBy,
     fetchSources,
     fetchMangas,
     refreshScanProgress,
     progress
   });
+
+  const handleVisibleMangasChange = useCallback((items: MangaBookWithCover[]) => {
+    void fetchCoverPaths(items.map((item) => item.folderPath));
+  }, [fetchCoverPaths]);
 
   const {
     operationError,
@@ -125,9 +147,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     handleQuickMoveManga,
     renameDialogOpen,
     renameTarget,
-    renameInput,
     renaming,
-    setRenameInput,
     handleRequestRenameManga,
     closeRenameDialog,
     handleConfirmRenameManga,
@@ -149,16 +169,10 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     addTagDialogOpen,
     addTagTarget,
     addTagAnchor,
-    addTagInput,
-    addTagDraft,
     addTagSaving,
     addTagError,
-    setAddTagInput,
     openAddTagDialog,
     closeAddTagDialog,
-    appendDraftTag,
-    removeDraftTag,
-    appendInputTag,
     handleConfirmAddTag
   } = useMangaTagEditor({
     hasIpcBridge,
@@ -344,6 +358,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
               totalMangaCount={mangas.length}
               loading={loading}
               quickMoveCategories={quickMoveCategories}
+              onVisibleItemsChange={handleVisibleMangasChange}
               onQuickMoveManga={(mangaId, destinationPath) => void handleQuickMoveManga(mangaId, destinationPath)}
               onAddTagManga={(item, anchor) => openAddTagDialog(item, anchor)}
               onRenameManga={handleRequestRenameManga}
@@ -378,28 +393,21 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       <RenameMangaDialog
         open={renameDialogOpen}
         target={renameTarget}
-        value={renameInput}
         renaming={renaming}
-        onValueChange={setRenameInput}
         onClose={closeRenameDialog}
-        onSubmit={() => void handleConfirmRenameManga()}
+        onSubmit={(value) => void handleConfirmRenameManga(value)}
       />
 
       <AddTagPopover
         open={addTagDialogOpen}
         anchor={addTagAnchor}
         mangaTitle={addTagTarget?.title ?? null}
-        draftTags={addTagDraft}
-        inputTagName={addTagInput}
+        initialTags={addTagTarget?.tags.map((tag) => tag.name) ?? []}
         availableTags={tags.map((tag) => tag.label)}
         saving={addTagSaving}
         error={addTagError}
-        onInputTagNameChange={setAddTagInput}
-        onAppendInputTag={appendInputTag}
-        onAppendTag={appendDraftTag}
-        onRemoveTag={removeDraftTag}
         onClose={() => closeAddTagDialog()}
-        onSubmit={() => void handleConfirmAddTag()}
+        onSubmit={(values) => void handleConfirmAddTag(values)}
       />
     </main>
   );

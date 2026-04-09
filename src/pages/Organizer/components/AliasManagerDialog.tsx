@@ -1,4 +1,5 @@
 import type { DirectoryAlias } from '@shared/types';
+import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
@@ -8,13 +9,11 @@ interface AliasManagerDialogProps {
   open: boolean;
   targetCategory: OrganizerCategory | null;
   aliasItems: DirectoryAlias[];
-  aliasInput: string;
   aliasSaving: boolean;
   aliasRemoving: string | null;
   aliasError: string | null;
-  onAliasInputChange: (value: string) => void;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (value: string) => void;
   onRemoveAlias: (alias: string) => void;
 }
 
@@ -22,15 +21,22 @@ export function AliasManagerDialog({
   open,
   targetCategory,
   aliasItems,
-  aliasInput,
   aliasSaving,
   aliasRemoving,
   aliasError,
-  onAliasInputChange,
   onClose,
   onSubmit,
   onRemoveAlias
 }: AliasManagerDialogProps) {
+  const [aliasInput, setAliasInput] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setAliasInput('');
+  }, [open, targetCategory?.path]);
+
   if (!open || !targetCategory) {
     return null;
   }
@@ -76,12 +82,12 @@ export function AliasManagerDialog({
           className="mt-3 space-y-2"
           onSubmit={(event) => {
             event.preventDefault();
-            onSubmit();
+            onSubmit(aliasInput);
           }}
         >
           <Input
             value={aliasInput}
-            onChange={(event) => onAliasInputChange(event.target.value)}
+            onChange={(event) => setAliasInput(event.target.value)}
             className="h-9 rounded-lg border-[#d5deea] bg-white text-[13px]"
             placeholder="输入别名，例如：浅葱"
             autoFocus

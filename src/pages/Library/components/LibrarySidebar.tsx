@@ -11,7 +11,6 @@ import {
   X
 } from 'lucide-react';
 import type { LibraryFolder } from '@shared/types';
-import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
@@ -309,30 +308,30 @@ export function LibrarySidebar({
               sidebarCollapsed ? 'grid-cols-1' : sources.length > 0 ? 'grid-cols-2' : 'grid-cols-1'
             )}
           >
-            <Button
+            <button
               className={cn(
-                'h-9 rounded-lg bg-[#2f6cf6] text-[12px] font-semibold text-white hover:bg-[#255de0]',
-                sidebarCollapsed && 'h-9 w-full px-0'
+                'flex h-9 w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] transition hover:bg-[#e7ebf2]',
+                sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
               )}
               onClick={onPickAndAddSources}
               disabled={!hasIpcBridge}
               title="导入目录"
             >
-              <Import className={cn('h-3.5 w-3.5', !sidebarCollapsed && 'mr-1.5')} />
+              <Import className="h-3.5 w-3.5" />
               {!sidebarCollapsed ? '导入' : null}
-            </Button>
+            </button>
 
             {sources.length > 0 ? (
               <button
                 className={cn(
-                  'inline-flex h-9 w-full items-center justify-center rounded-lg border border-[#d7deea] bg-white px-2.5 text-[#5a6880] transition hover:bg-[#e7ebf2]',
-                  sidebarCollapsed && 'h-9 w-full px-0'
+                  'flex h-9 w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] transition hover:bg-[#e7ebf2]',
+                  sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
                 )}
                 title="管理已导入目录"
                 onClick={() => setSourceManagerOpen(true)}
               >
                 <FolderCog className="h-3.5 w-3.5" />
-                {!sidebarCollapsed ? <span className="ml-1 text-[11px] font-semibold">{sources.length}</span> : null}
+                {!sidebarCollapsed ? <span>{sources.length}</span> : null}
               </button>
             ) : null}
           </div>

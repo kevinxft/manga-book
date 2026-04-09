@@ -1,25 +1,31 @@
+import { useEffect, useState } from 'react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 
 interface CreateAuthorDialogProps {
   open: boolean;
-  authorName: string;
   creating: boolean;
   error: string | null;
-  onAuthorNameChange: (value: string) => void;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (value: string) => void;
 }
 
 export function CreateAuthorDialog({
   open,
-  authorName,
   creating,
   error,
-  onAuthorNameChange,
   onClose,
   onSubmit
 }: CreateAuthorDialogProps) {
+  const [authorName, setAuthorName] = useState('');
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setAuthorName('');
+  }, [open]);
+
   if (!open) {
     return null;
   }
@@ -34,12 +40,12 @@ export function CreateAuthorDialog({
           className="mt-3 space-y-2"
           onSubmit={(event) => {
             event.preventDefault();
-            onSubmit();
+            onSubmit(authorName);
           }}
         >
           <Input
             value={authorName}
-            onChange={(event) => onAuthorNameChange(event.target.value)}
+            onChange={(event) => setAuthorName(event.target.value)}
             className="h-9 rounded-lg border-[#d5deea] bg-white text-[13px]"
             placeholder="输入作者名"
             autoFocus

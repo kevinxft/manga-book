@@ -9,6 +9,8 @@ type LibraryFetchOptions = {
   sortBy?: SortKey;
 };
 
+const resolvedCoverFolderPaths = new Set<string>();
+
 interface LibraryState {
   sources: LibraryFolder[];
   mangas: MangaBookWithCover[];
@@ -24,6 +26,7 @@ interface LibraryState {
   pickAndAddSources: () => Promise<void>;
   removeSource: (id: string) => Promise<void>;
   syncSources: (paths?: string[]) => Promise<void>;
+  fetchCoverPaths: (folderPaths: string[]) => Promise<void>;
   monitorScanTask: (taskId: string) => Promise<void>;
   refreshScanProgress: () => Promise<void>;
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
@@ -111,6 +114,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
         sourceFolderPaths: effectiveOptions.sourceFolderPaths,
         sortBy: effectiveOptions.sortBy
       });
+      resolvedCoverFolderPaths.clear();
       set({
         mangas,
         loading: false,
@@ -217,6 +221,42 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       await get().refreshScanProgress();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to sync sources' });
+    }
+  },
+
+  async fetchCoverPaths(folderPaths) {
+    const uniqueFolderPaths = Array.from(
+      new Set(
+        folderPaths
+          .map((item) => item.trim())
+          .filter((item) => item.length > 0)
+      )
+    );
+
+    if (uniqueFolderPaths.length === 0) {
+      return;
+    }
+
+    const missingFolderPaths = uniqueFolderPaths.filter((folderPath) => !resolvedCoverFolderPaths.has(folderPath));
+    if (missingFolderPaths.length === 0) {
+      return;
+    }
+
+    try {
+      const coverPathByFolder = await ipcInvoke('library.listCoverPaths', { folderPaths: missingFolderPaths });
+      missingFolderPaths.forEach((folderPath) => resolvedCoverFolderPaths.add(folderPath));
+      set((state) => ({
+        mangas: state.mangas.map((manga) => {
+          if (!(manga.folderPath in coverPathByFolder)) {
+            return manga;
+          }
+
+          const nextCoverPath = coverPathByFolder[manga.folderPath] ?? null;
+          return manga.coverPath === nextCoverPath ? manga : { ...manga, coverPath: nextCoverPath };
+        })
+      }));
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to load cover paths' });
     }
   },
 

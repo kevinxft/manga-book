@@ -7,17 +7,12 @@ interface AddTagPopoverProps {
   open: boolean;
   anchor: { x: number; y: number } | null;
   mangaTitle: string | null;
-  draftTags: string[];
-  inputTagName: string;
+  initialTags: string[];
   availableTags: string[];
   saving: boolean;
   error: string | null;
-  onInputTagNameChange: (value: string) => void;
-  onAppendInputTag: () => void;
-  onAppendTag: (value: string) => void;
-  onRemoveTag: (value: string) => void;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (values: string[]) => void;
 }
 
 const POPOVER_OFFSET = 10;
@@ -27,21 +22,26 @@ export function AddTagPopover({
   open,
   anchor,
   mangaTitle,
-  draftTags,
-  inputTagName,
+  initialTags,
   availableTags,
   saving,
   error,
-  onInputTagNameChange,
-  onAppendInputTag,
-  onAppendTag,
-  onRemoveTag,
   onClose,
   onSubmit
 }: AddTagPopoverProps) {
   const popoverRef = useRef<HTMLDivElement | null>(null);
   const [position, setPosition] = useState({ left: 0, top: 0 });
   const [ready, setReady] = useState(false);
+  const [inputTagName, setInputTagName] = useState('');
+  const [draftTags, setDraftTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    setInputTagName('');
+    setDraftTags(initialTags);
+  }, [initialTags, open]);
 
   useLayoutEffect(() => {
     if (!open || !anchor) {
@@ -103,7 +103,27 @@ export function AddTagPopover({
     return null;
   }
 
-  const quickTagCandidates = availableTags.filter((name) => !draftTags.some((tag) => tag.toLocaleLowerCase() === name.toLocaleLowerCase()));
+  const appendDraftTag = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      return;
+    }
+    setDraftTags((prev) => {
+      if (prev.some((item) => item.toLocaleLowerCase() === trimmed.toLocaleLowerCase())) {
+        return prev;
+      }
+      return [...prev, trimmed];
+    });
+  };
+
+  const removeDraftTag = (name: string) => {
+    const target = name.trim().toLocaleLowerCase();
+    setDraftTags((prev) => prev.filter((item) => item.toLocaleLowerCase() !== target));
+  };
+
+  const quickTagCandidates = availableTags.filter(
+    (name) => !draftTags.some((tag) => tag.toLocaleLowerCase() === name.toLocaleLowerCase())
+  );
 
   return (
     <div
@@ -133,7 +153,7 @@ export function AddTagPopover({
                 <span className="max-w-[160px] truncate">{name}</span>
                 <button
                   className="inline-flex h-3.5 w-3.5 items-center justify-center rounded text-[#607593] transition hover:bg-[#d6e0ef] hover:text-[#29425f]"
-                  onClick={() => onRemoveTag(name)}
+                  onClick={() => removeDraftTag(name)}
                   title="删除标签"
                 >
                   <X className="h-3 w-3" />
@@ -146,28 +166,40 @@ export function AddTagPopover({
         )}
       </div>
 
-      <form
-        className="mt-2 space-y-2"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit();
-        }}
-      >
-        <div className="grid grid-cols-[1fr_auto] gap-1.5">
-          <Input
-            value={inputTagName}
-            onChange={(event) => onInputTagNameChange(event.target.value)}
-            className="h-8 rounded-md border-[#d7deeb] bg-[#f3f6fb] text-[12px]"
-            placeholder="输入标签名称"
-            autoFocus
-          />
-          <Button
-            type="button"
-            className="h-8 rounded-md border border-[#d2dbe8] bg-white px-2.5 text-[11px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
-            onClick={onAppendInputTag}
-            disabled={saving}
-          >
-            增加
+        <form
+          className="mt-2 space-y-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSubmit(
+              Array.from(
+                new Map(
+                  [...draftTags, inputTagName]
+                    .map((name) => name.trim())
+                    .filter((name) => name.length > 0)
+                    .map((name) => [name.toLocaleLowerCase(), name] as const)
+                ).values()
+              )
+            );
+          }}
+        >
+          <div className="grid grid-cols-[1fr_auto] gap-1.5">
+            <Input
+              value={inputTagName}
+              onChange={(event) => setInputTagName(event.target.value)}
+              className="h-8 rounded-md border-[#d7deeb] bg-[#f3f6fb] text-[12px]"
+              placeholder="输入标签名称"
+              autoFocus
+            />
+            <Button
+              type="button"
+              className="h-8 rounded-md border border-[#d2dbe8] bg-white px-2.5 text-[11px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
+              onClick={() => {
+                appendDraftTag(inputTagName);
+                setInputTagName('');
+              }}
+              disabled={saving}
+            >
+              增加
           </Button>
         </div>
 
@@ -179,7 +211,7 @@ export function AddTagPopover({
                   key={name}
                   type="button"
                   className="rounded-md bg-[#e8eef8] px-2 py-1 text-[11px] font-semibold text-[#355173] transition hover:bg-[#dbe6f6]"
-                  onClick={() => onAppendTag(name)}
+                  onClick={() => appendDraftTag(name)}
                   title={name}
                 >
                   {name}

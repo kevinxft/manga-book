@@ -20,8 +20,6 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
   const [addTagDialogOpen, setAddTagDialogOpen] = useState(false);
   const [addTagTarget, setAddTagTarget] = useState<MangaBookWithCover | null>(null);
   const [addTagAnchor, setAddTagAnchor] = useState<{ x: number; y: number } | null>(null);
-  const [addTagInput, setAddTagInput] = useState('');
-  const [addTagDraft, setAddTagDraft] = useState<string[]>([]);
   const [addTagSaving, setAddTagSaving] = useState(false);
   const [addTagError, setAddTagError] = useState<string | null>(null);
 
@@ -43,8 +41,6 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
     setError(null);
     setAddTagTarget(item);
     setAddTagAnchor(anchor);
-    setAddTagInput('');
-    setAddTagDraft(Array.from(new Set(item.tags.map((tag) => tag.name.trim()).filter((name) => name.length > 0))));
     setAddTagError(null);
     setAddTagDialogOpen(true);
   };
@@ -56,55 +52,22 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
     setAddTagDialogOpen(false);
     setAddTagTarget(null);
     setAddTagAnchor(null);
-    setAddTagInput('');
-    setAddTagDraft([]);
     setAddTagError(null);
   };
 
-  const appendDraftTag = (name: string) => {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      return;
-    }
-    setAddTagDraft((prev) => {
-      if (prev.some((item) => item.toLocaleLowerCase() === trimmed.toLocaleLowerCase())) {
-        return prev;
-      }
-      return [...prev, trimmed];
-    });
-  };
-
-  const removeDraftTag = (name: string) => {
-    const target = name.trim().toLocaleLowerCase();
-    setAddTagDraft((prev) => prev.filter((item) => item.toLocaleLowerCase() !== target));
-  };
-
-  const appendInputTag = () => {
-    const trimmed = addTagInput.trim();
-    if (!trimmed) {
-      return;
-    }
-    appendDraftTag(trimmed);
-    setAddTagInput('');
-  };
-
-  const handleConfirmAddTag = async () => {
+  const handleConfirmAddTag = async (nextTagNames: string[]) => {
     if (!addTagTarget || addTagSaving) {
       return;
     }
 
-    const pendingInput = addTagInput.trim();
-    const finalTagNames =
-      pendingInput.length > 0
-        ? Array.from(
-            new Map(
-              [...addTagDraft, pendingInput]
-                .map((name) => name.trim())
-                .filter((name) => name.length > 0)
-                .map((name) => [name.toLocaleLowerCase(), name] as const)
-            ).values()
-          )
-        : addTagDraft;
+    const finalTagNames = Array.from(
+      new Map(
+        nextTagNames
+          .map((name) => name.trim())
+          .filter((name) => name.length > 0)
+          .map((name) => [name.toLocaleLowerCase(), name] as const)
+      ).values()
+    );
     const currentTagNames = Array.from(
       new Map(
         (addTagTarget.tags ?? [])
@@ -176,17 +139,11 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
     addTagDialogOpen,
     addTagTarget,
     addTagAnchor,
-    addTagInput,
-    addTagDraft,
     addTagSaving,
     addTagError,
     availableTagNames,
-    setAddTagInput,
     openAddTagDialog,
     closeAddTagDialog,
-    appendDraftTag,
-    removeDraftTag,
-    appendInputTag,
     handleConfirmAddTag
   };
 }

@@ -14,7 +14,6 @@ interface UseAliasMutationsArgs {
 export function useAliasMutations({ aliases, upsertAlias, removeAliasLocal, setMoveError }: UseAliasMutationsArgs) {
   const [aliasDialogOpen, setAliasDialogOpen] = useState(false);
   const [aliasTargetCategory, setAliasTargetCategory] = useState<OrganizerCategory | null>(null);
-  const [aliasInput, setAliasInput] = useState('');
   const [aliasSaving, setAliasSaving] = useState(false);
   const [aliasRemoving, setAliasRemoving] = useState<string | null>(null);
   const [aliasError, setAliasError] = useState<string | null>(null);
@@ -33,7 +32,6 @@ export function useAliasMutations({ aliases, upsertAlias, removeAliasLocal, setM
     }
     setAliasDialogOpen(false);
     setAliasTargetCategory(null);
-    setAliasInput('');
     setAliasRemoving(null);
     setAliasError(null);
   };
@@ -41,17 +39,16 @@ export function useAliasMutations({ aliases, upsertAlias, removeAliasLocal, setM
   const handleRequestAddAlias = (canonicalCategory: OrganizerCategory) => {
     setMoveError(null);
     setAliasError(null);
-    setAliasInput('');
     setAliasTargetCategory(canonicalCategory);
     setAliasDialogOpen(true);
   };
 
-  const handleConfirmAddAlias = async () => {
+  const handleConfirmAddAlias = async (nextAlias: string) => {
     if (!aliasTargetCategory || aliasSaving) {
       return;
     }
 
-    const trimmed = aliasInput.trim();
+    const trimmed = nextAlias.trim();
     if (!trimmed) {
       setAliasError('请输入别名');
       return;
@@ -117,8 +114,6 @@ export function useAliasMutations({ aliases, upsertAlias, removeAliasLocal, setM
     aliasDialogOpen,
     aliasTargetCategory,
     aliasTargetItems,
-    aliasInput,
-    setAliasInput,
     aliasSaving,
     aliasRemoving,
     aliasError,

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
@@ -6,28 +6,27 @@ import { Input } from '@renderer/components/ui/input';
 interface RenameMangaDialogProps {
   open: boolean;
   target: MangaBookWithCover | null;
-  value: string;
   renaming: boolean;
-  onValueChange: (value: string) => void;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: (value: string) => void;
 }
 
 export function RenameMangaDialog({
   open,
   target,
-  value,
   renaming,
-  onValueChange,
   onClose,
   onSubmit
 }: RenameMangaDialogProps) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const [value, setValue] = useState('');
 
   useEffect(() => {
     if (!open || !target) {
       return;
     }
+
+    setValue(target.title);
 
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
@@ -51,13 +50,13 @@ export function RenameMangaDialog({
           <Input
             ref={inputRef}
             value={value}
-            onChange={(event) => onValueChange(event.target.value)}
+            onChange={(event) => setValue(event.target.value)}
             placeholder="请输入新的漫画名称"
             disabled={renaming}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
                 event.preventDefault();
-                void onSubmit();
+                onSubmit(value);
               }
             }}
           />
@@ -77,7 +76,7 @@ export function RenameMangaDialog({
           <Button
             type="button"
             className="h-8 rounded-lg bg-[#2f6cf6] px-3 text-[12px] font-semibold text-white hover:bg-[#2458cc]"
-            onClick={onSubmit}
+            onClick={() => onSubmit(value)}
             disabled={renaming || value.trim().length === 0}
           >
             {renaming ? '重命名中...' : '确认重命名'}

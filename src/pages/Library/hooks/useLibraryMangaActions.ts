@@ -17,9 +17,7 @@ export function useLibraryMangaActions({ hasIpcBridge, updateMangaLocal, removeM
   const {
     renameDialogOpen,
     renameTarget,
-    renameInput,
     renaming,
-    setRenameInput,
     handleRequestRenameManga,
     closeRenameDialog,
     handleConfirmRenameManga
@@ -66,9 +64,7 @@ export function useLibraryMangaActions({ hasIpcBridge, updateMangaLocal, removeM
     handleQuickMoveManga,
     renameDialogOpen,
     renameTarget,
-    renameInput,
     renaming,
-    setRenameInput,
     handleRequestRenameManga,
     closeRenameDialog,
     handleConfirmRenameManga,

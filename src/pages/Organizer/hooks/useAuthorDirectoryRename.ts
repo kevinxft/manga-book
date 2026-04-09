@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ipcInvoke } from '@renderer/ipc/client';
 import type { OrganizerCategory } from '../types';
 
@@ -19,19 +19,10 @@ export function useAuthorDirectoryRename({
 }: UseAuthorDirectoryRenameArgs) {
   const [renameAuthorDialogOpen, setRenameAuthorDialogOpen] = useState(false);
   const [renameAuthorTarget, setRenameAuthorTarget] = useState<OrganizerCategory | null>(null);
-  const [renameAuthorInput, setRenameAuthorInput] = useState('');
   const [renamingAuthor, setRenamingAuthor] = useState(false);
-
-  useEffect(() => {
-    if (!renameAuthorDialogOpen) {
-      setRenameAuthorInput('');
-      setRenamingAuthor(false);
-    }
-  }, [renameAuthorDialogOpen]);
 
   const handleRequestRenameAuthorDirectory = (category: OrganizerCategory) => {
     setRenameAuthorTarget(category);
-    setRenameAuthorInput(category.label);
     setRenameAuthorDialogOpen(true);
   };
 
@@ -43,12 +34,12 @@ export function useAuthorDirectoryRename({
     setRenameAuthorTarget(null);
   };
 
-  const handleConfirmRenameAuthorDirectory = async () => {
+  const handleConfirmRenameAuthorDirectory = async (nextName: string) => {
     if (!hasIpcBridge || !renameAuthorTarget || renamingAuthor) {
       return;
     }
 
-    const trimmed = renameAuthorInput.trim();
+    const trimmed = nextName.trim();
     if (!trimmed || trimmed === renameAuthorTarget.label) {
       closeRenameAuthorDialog();
       return;
@@ -76,9 +67,7 @@ export function useAuthorDirectoryRename({
   return {
     renameAuthorDialogOpen,
     renameAuthorTarget,
-    renameAuthorInput,
     renamingAuthor,
-    setRenameAuthorInput,
     handleRequestRenameAuthorDirectory,
     closeRenameAuthorDialog,
     handleConfirmRenameAuthorDirectory

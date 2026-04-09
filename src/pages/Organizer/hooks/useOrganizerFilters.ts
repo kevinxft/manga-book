@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useDeferredValue, useEffect, useMemo, useState } from 'react';
 import type { OrganizerItem, OrganizerSortKey, OrganizerSourceFilterOption, OrganizerStatusFilter } from '../types';
 import { filterAndSortOrganizerItems } from '../utils';
 
@@ -11,6 +11,7 @@ export function useOrganizerFilters({ organizerItems }: UseOrganizerFiltersArgs)
   const [statusFilter, setStatusFilter] = useState<OrganizerStatusFilter>('unorganized');
   const [sortBy, setSortBy] = useState<OrganizerSortKey>('addedAt');
   const [sourceFilter, setSourceFilter] = useState('all');
+  const deferredQuery = useDeferredValue(query);
 
   const sourceOptions = useMemo<OrganizerSourceFilterOption[]>(() => {
     const segmentsByPath = new Map<string, string[]>();
@@ -55,13 +56,13 @@ export function useOrganizerFilters({ organizerItems }: UseOrganizerFiltersArgs)
 
   const visibleItems = useMemo(() => {
     return filterAndSortOrganizerItems(
-      organizerItems,
-      query,
+        organizerItems,
+      deferredQuery,
       statusFilter,
       sortBy,
       sourceFilter === 'all' ? null : sourceFilter
     );
-  }, [organizerItems, query, sortBy, sourceFilter, statusFilter]);
+  }, [deferredQuery, organizerItems, sortBy, sourceFilter, statusFilter]);
 
   return {
     query,

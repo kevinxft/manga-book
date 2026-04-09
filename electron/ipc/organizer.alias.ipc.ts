@@ -15,6 +15,9 @@ interface AuthorAliasMetadata {
   updatedAt: string;
 }
 
+let cachedAliases: DirectoryAlias[] | null = null;
+let cachedAliasesPromise: Promise<DirectoryAlias[]> | null = null;
+
 function getAuthorAliasMetadataPath(directoryPath: string): string {
   return path.join(normalizeAbsolutePath(directoryPath), AUTHOR_ALIAS_METADATA_FILENAME);
 }
@@ -95,6 +98,80 @@ async function listFileBackedAliases(context: IpcContext): Promise<DirectoryAlia
   return aliases;
 }
 
+function sortAliases(items: DirectoryAlias[]): DirectoryAlias[] {
+  return [...items].sort((a, b) => a.alias.localeCompare(b.alias, 'zh-Hans-CN'));
+}
+
+export function invalidateAliasListCache(): void {
+  cachedAliases = null;
+  cachedAliasesPromise = null;
+}
+
+export function updateCachedAlias(storedAlias: DirectoryAlias): void {
+  if (!cachedAliases) {
+    return;
+  }
+
+  const next = cachedAliases.filter((item) => toKey(item.alias) !== toKey(storedAlias.alias));
+  next.push(storedAlias);
+  cachedAliases = sortAliases(next);
+}
+
+export function removeCachedAlias(aliasName: string): void {
+  if (!cachedAliases) {
+    return;
+  }
+
+  cachedAliases = cachedAliases.filter((item) => toKey(item.alias) !== toKey(aliasName));
+}
+
+export function updateCachedCanonicalName(previousName: string, nextName: string): void {
+  if (!cachedAliases) {
+    return;
+  }
+
+  const previousKey = toKey(previousName);
+  cachedAliases = cachedAliases.map((item) =>
+    toKey(item.canonicalName) === previousKey ? { ...item, canonicalName: nextName } : item
+  );
+}
+
+async function loadAliases(context: IpcContext, force = false): Promise<DirectoryAlias[]> {
+  if (!force && cachedAliases) {
+    return cachedAliases;
+  }
+
+  if (!force && cachedAliasesPromise) {
+    return cachedAliasesPromise;
+  }
+
+  cachedAliasesPromise = (async () => {
+    const dbAliases = context.repositories.alias.list();
+    await syncDbAliasesToAuthorFiles(context, dbAliases);
+    const combined = new Map<string, DirectoryAlias>();
+
+    for (const item of dbAliases) {
+      combined.set(toKey(item.alias), item);
+    }
+
+    for (const item of await listFileBackedAliases(context)) {
+      combined.set(toKey(item.alias), item);
+    }
+
+    const nextAliases = sortAliases(Array.from(combined.values()));
+    cachedAliases = nextAliases;
+    cachedAliasesPromise = null;
+    return nextAliases;
+  })();
+
+  try {
+    return await cachedAliasesPromise;
+  } catch (error) {
+    cachedAliasesPromise = null;
+    throw error;
+  }
+}
+
 async function syncDbAliasesToAuthorFiles(context: IpcContext, dbAliases: DirectoryAlias[]): Promise<void> {
   if (dbAliases.length === 0) {
     return;
@@ -161,25 +238,12 @@ export function registerOrganizerAliasIpc(context: IpcContext): void {
       const nextAliases = [...(metadata?.aliases ?? []), inputAlias];
       await writeAuthorAliasMetadata(canonicalPath, canonicalName, nextAliases);
     }
+    updateCachedAlias(stored);
     return ok(stored);
   });
 
-  registerHandler('organizer.listAliases', async () => {
-    const dbAliases = alias.list();
-    await syncDbAliasesToAuthorFiles(context, dbAliases);
-    const combined = new Map<string, DirectoryAlias>();
-
-    for (const item of dbAliases) {
-      combined.set(toKey(item.alias), item);
-    }
-
-    for (const item of await listFileBackedAliases(context)) {
-      combined.set(toKey(item.alias), item);
-    }
-
-    return ok(
-      Array.from(combined.values()).sort((a, b) => a.alias.localeCompare(b.alias, 'zh-Hans-CN'))
-    );
+  registerHandler('organizer.listAliases', async (request) => {
+    return ok(await loadAliases(context, request?.force ?? false));
   });
 
   registerHandler('organizer.removeAlias', async (request) => {
@@ -199,6 +263,7 @@ export function registerOrganizerAliasIpc(context: IpcContext): void {
       }
     }
 
+    removeCachedAlias(inputAlias);
     return ok({ removed });
   });
 }

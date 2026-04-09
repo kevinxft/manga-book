@@ -33,6 +33,17 @@ export function createTagQueries(db: Database.Database) {
       WHERE mbt.manga_id = ?
       ORDER BY t.name COLLATE NOCASE ASC`
   );
+  const listByMangaIdsStatement = db.prepare(
+    `SELECT
+      mbt.manga_id,
+      t.id,
+      t.name,
+      t.created_at
+    FROM manga_book_tags mbt
+    JOIN manga_tags t ON t.id = mbt.tag_id
+    WHERE mbt.manga_id IN (SELECT value FROM json_each(?))
+    ORDER BY t.name COLLATE NOCASE ASC`
+  );
   const linkToMangaStatement = db.prepare(
     `INSERT OR IGNORE INTO manga_book_tags (manga_id, tag_id, created_at)
       VALUES (@manga_id, @tag_id, @created_at)`
@@ -72,6 +83,25 @@ export function createTagQueries(db: Database.Database) {
   function list(): MangaTag[] {
     const rows = listStatement.all() as MangaTagRow[];
     return rows.map(mapRow);
+  }
+
+  function listByMangaIds(mangaIds: string[]): Record<string, MangaTag[]> {
+    if (mangaIds.length === 0) {
+      return {};
+    }
+
+    const rows = listByMangaIdsStatement.all(JSON.stringify(mangaIds)) as Array<MangaTagRow & { manga_id: string }>;
+    const result: Record<string, MangaTag[]> = {};
+
+    for (const row of rows) {
+      const mangaId = row.manga_id;
+      if (!result[mangaId]) {
+        result[mangaId] = [];
+      }
+      result[mangaId]?.push(mapRow(row));
+    }
+
+    return result;
   }
 
   function addToManga(mangaId: string, tagName: string): TagAddToMangaResult {
@@ -141,6 +171,7 @@ export function createTagQueries(db: Database.Database) {
     upsert,
     list,
     listByManga,
+    listByMangaIds,
     addToManga,
     setForManga,
     removeFromManga,

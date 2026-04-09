@@ -1,21 +1,16 @@
 import { useEffect } from 'react';
-import type { ScanProgress } from '@shared/types';
-import type { SortKey } from '../types';
+import type { MangaFilter, ScanProgress } from '@shared/types';
 
 interface UseLibraryDataLifecycleInput {
   hasIpcBridge: boolean;
-  search: string;
-  sortBy: SortKey;
   fetchSources: () => Promise<void>;
-  fetchMangas: (options?: { query?: string; sourceFolderPaths?: string[]; sortBy?: SortKey }) => Promise<void>;
+  fetchMangas: (options?: MangaFilter) => Promise<void>;
   refreshScanProgress: () => Promise<void>;
   progress: ScanProgress;
 }
 
 export function useLibraryDataLifecycle({
   hasIpcBridge,
-  search,
-  sortBy,
   fetchSources,
   fetchMangas,
   refreshScanProgress,
@@ -32,8 +27,8 @@ export function useLibraryDataLifecycle({
     if (!hasIpcBridge) {
       return;
     }
-    void fetchMangas({ query: search, sortBy });
-  }, [fetchMangas, hasIpcBridge, search, sortBy]);
+    void fetchMangas();
+  }, [fetchMangas, hasIpcBridge]);
 
   useEffect(() => {
     if (!hasIpcBridge) {

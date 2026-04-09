@@ -181,15 +181,22 @@ export function registerLibraryIpc(context: IpcContext): void {
   registerHandler('library.listMangas', async (request) => {
     const filter = request ?? undefined;
     const books = manga.list(filter);
-    const booksWithCover = await Promise.all(
-      books.map(async (book) => {
-        const coverPath = await resolveCoverPath(book.folderPath);
-        const tags = tag.listByManga(book.id);
-        return { ...book, coverPath, tags };
-      })
-    );
+    const tagsByMangaId = tag.listByMangaIds(books.map((book) => book.id));
+    const booksWithCover = books.map((book) => ({
+      ...book,
+      coverPath: null,
+      tags: tagsByMangaId[book.id] ?? []
+    }));
 
     return ok(booksWithCover);
+  });
+
+  registerHandler('library.listCoverPaths', async (request) => {
+    const folderPaths = Array.from(new Set((request?.folderPaths ?? []).map((item) => normalizeAbsolutePath(item))));
+    const entries = await Promise.all(
+      folderPaths.map(async (folderPath) => [folderPath, await resolveCoverPath(folderPath)] as const)
+    );
+    return ok(Object.fromEntries(entries));
   });
 
   registerHandler('library.getScanProgress', () => {

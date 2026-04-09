@@ -17,9 +17,9 @@ interface OrganizerMetadataState {
 
 let organizerMetadataPromise: Promise<void> | null = null;
 
-async function fetchOrganizerMetadata() {
+async function fetchOrganizerMetadata(force = false) {
   const [aliases, authorDirectories] = await Promise.all([
-    ipcInvoke('organizer.listAliases', undefined),
+    ipcInvoke('organizer.listAliases', force ? { force: true } : undefined),
     ipcInvoke('organizer.listAuthorDirectories', undefined)
   ]);
 
@@ -36,7 +36,29 @@ export const useOrganizerMetadataStore = create<OrganizerMetadataState>((set, ge
     if (get().loaded) {
       return;
     }
-    await get().refreshOrganizerMetadata();
+    if (organizerMetadataPromise) {
+      return organizerMetadataPromise;
+    }
+
+    organizerMetadataPromise = (async () => {
+      try {
+        const { aliases, authorDirectories } = await fetchOrganizerMetadata(false);
+        set({
+          aliases,
+          authorDirectories,
+          loaded: true,
+          error: null
+        });
+      } catch (error) {
+        set({
+          error: error instanceof Error ? error.message : 'Failed to load organizer metadata'
+        });
+      } finally {
+        organizerMetadataPromise = null;
+      }
+    })();
+
+    return organizerMetadataPromise;
   },
 
   async refreshOrganizerMetadata() {
@@ -46,7 +68,7 @@ export const useOrganizerMetadataStore = create<OrganizerMetadataState>((set, ge
 
     organizerMetadataPromise = (async () => {
       try {
-        const { aliases, authorDirectories } = await fetchOrganizerMetadata();
+        const { aliases, authorDirectories } = await fetchOrganizerMetadata(true);
         set({
           aliases,
           authorDirectories,

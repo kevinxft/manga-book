@@ -118,6 +118,10 @@ export interface LibrarySyncSourcesRequest {
   forceRescan?: boolean;
 }
 
+export interface LibraryListCoverPathsRequest {
+  folderPaths: string[];
+}
+
 export interface ReaderSaveProgressRequest {
   mangaId: string;
   chapterIndex: number;
@@ -171,6 +175,10 @@ export interface OrganizerAddAliasRequest {
 export interface OrganizerRemoveAliasRequest {
   alias: string;
   canonicalPath?: string;
+}
+
+export interface OrganizerListAliasesRequest {
+  force?: boolean;
 }
 
 export interface OrganizerCreateAuthorDirectoryRequest {
@@ -237,6 +245,7 @@ export interface IpcChannels {
   'library.listSources': { req: void; res: LibraryFolder[] };
   'library.syncSources': { req: LibrarySyncSourcesRequest | void; res: { taskId: string } };
   'library.listMangas': { req: MangaFilter | void; res: MangaBookWithCover[] };
+  'library.listCoverPaths': { req: LibraryListCoverPathsRequest; res: Record<string, string | null> };
   'library.getScanProgress': { req: void; res: ScanProgress };
   'library.getScanTaskStatus': { req: { taskId: string }; res: ScanTaskStatus };
 
@@ -244,7 +253,7 @@ export interface IpcChannels {
   'organizer.openMangaFolder': { req: OrganizerOpenMangaFolderRequest; res: { opened: boolean } };
   'organizer.renameManga': { req: OrganizerRenameMangaRequest; res: MangaBook };
   'organizer.addAlias': { req: OrganizerAddAliasRequest; res: DirectoryAlias };
-  'organizer.listAliases': { req: void; res: DirectoryAlias[] };
+  'organizer.listAliases': { req: OrganizerListAliasesRequest | void; res: DirectoryAlias[] };
   'organizer.removeAlias': { req: OrganizerRemoveAliasRequest; res: { removed: boolean } };
   'organizer.listAuthorDirectories': { req: void; res: TargetDirectorySummary[] };
   'organizer.createAuthorDirectory': { req: OrganizerCreateAuthorDirectoryRequest; res: { path: string; created: boolean } };
