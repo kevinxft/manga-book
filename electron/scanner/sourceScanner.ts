@@ -5,7 +5,8 @@ import type { Repositories } from '@main/db';
 import { directoryExists, listDirectories } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath } from '@main/utils/pathUtils';
 import { invalidateCoverPath } from './coverFinder';
-import { detectAuthorRootDirectory } from '@main/ipc/organizer.common';
+import { findArtistsDirectoryPath } from '@main/ipc/organizer.common';
+import { isMetadataDirectoryPath } from '@main/db/sourceMetadata';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const MIN_MANGA_IMAGE_COUNT = 4;
@@ -114,7 +115,15 @@ async function inspectFolderAsManga(folderPath: string, allowChildDirectories = 
   return null;
 }
 
-async function discoverMangaEntries(rootPath: string, sourceIsTarget: boolean, signal?: AbortSignal): Promise<MangaEntry[]> {
+function isInsidePath(targetPath: string, parentPath: string): boolean {
+  return targetPath === parentPath || targetPath.startsWith(`${parentPath}${path.sep}`);
+}
+
+async function discoverMangaEntries(
+  rootPath: string,
+  artistsRootPath: string | null,
+  signal?: AbortSignal
+): Promise<MangaEntry[]> {
   const discovered: MangaEntry[] = [];
   const stack: string[] = [rootPath];
 
@@ -132,14 +141,20 @@ async function discoverMangaEntries(rootPath: string, sourceIsTarget: boolean, s
     const relativePath = path.relative(rootPath, currentPath);
     const relativeSegments = relativePath === '' ? [] : relativePath.split(path.sep).filter(Boolean);
 
-    // Only an auto-detected author-root source is treated as an author container tree.
-    // Everything else is scanned recursively and any directory with enough direct images
-    // is considered the manga itself, using that directory name as the title.
+    const withinArtistsRoot = artistsRootPath ? isInsidePath(currentPath, artistsRootPath) : false;
+    const artistsRelativeSegments =
+      withinArtistsRoot && artistsRootPath
+        ? path.relative(artistsRootPath, currentPath).split(path.sep).filter(Boolean)
+        : [];
+
+    // The source root is always a container. When an `Artists` directory exists, we only treat
+    // `Artists` itself and its direct child author directories as containers; manga detection starts
+    // below `Artists/<author>/...`.
     const shouldSkipAsContainer =
       relativeSegments.length === 0 ||
-      (sourceIsTarget && relativeSegments.length === 1);
+      (withinArtistsRoot && artistsRelativeSegments.length <= 1);
 
-    const allowChildDirectoriesAsMultiVolume = sourceIsTarget;
+    const allowChildDirectoriesAsMultiVolume = withinArtistsRoot && artistsRelativeSegments.length >= 2;
 
     if (!shouldSkipAsContainer) {
       const inspection = await inspectFolderAsManga(currentPath, allowChildDirectoriesAsMultiVolume);
@@ -164,6 +179,9 @@ async function discoverMangaEntries(rootPath: string, sourceIsTarget: boolean, s
     for (let index = childDirectories.length - 1; index >= 0; index -= 1) {
       const childDirectory = childDirectories[index];
       if (!childDirectory) {
+        continue;
+      }
+      if (isMetadataDirectoryPath(childDirectory)) {
         continue;
       }
       stack.push(normalizeAbsolutePath(childDirectory));
@@ -197,8 +215,8 @@ export function createSourceScanner(repositories: Repositories): SourceScanner {
     const dbMangas = manga.listBySource(normalizedSourcePath);
     const dbPathSet = new Set(dbMangas.map((book) => book.folderPath));
 
-    const sourceIsAuthorRoot = await detectAuthorRootDirectory(normalizedSourcePath);
-    const discoveredEntries = await discoverMangaEntries(normalizedSourcePath, sourceIsAuthorRoot, signal);
+    const artistsRootPath = await findArtistsDirectoryPath(normalizedSourcePath);
+    const discoveredEntries = await discoverMangaEntries(normalizedSourcePath, artistsRootPath, signal);
     const fsPathSet = new Set(discoveredEntries.map((entry) => entry.folderPath));
 
     for (let index = 0; index < discoveredEntries.length; index += 1) {

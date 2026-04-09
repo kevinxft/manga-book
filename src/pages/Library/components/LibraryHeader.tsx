@@ -78,7 +78,7 @@ export function LibraryHeader({
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            className="h-[34px] rounded-lg border-[#dce2ec] bg-[#eceff4] pl-8 pr-8 text-[12px]"
+            className="h-[34px] rounded-lg border-[#dce2ec] bg-[#eceff4] py-1.5 pl-8 pr-8 text-[12px] leading-[1.1]"
             placeholder="搜索漫画、作者或标签..."
           />
           {search.trim().length > 0 ? (

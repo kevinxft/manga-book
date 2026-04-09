@@ -33,6 +33,7 @@ interface LibrarySidebarProps {
   onClearSelectedTags: () => void;
   onOpenTagDialog: () => void;
   onPickAndAddSources: () => void;
+  onOpenSourceFolder: (sourcePath: string) => void;
   onSyncSource: (sourcePath: string) => void;
   onRemoveSource: (sourceId: string) => void;
   onOpenSettings?: () => void;
@@ -54,6 +55,7 @@ export function LibrarySidebar({
   onClearSelectedTags,
   onOpenTagDialog,
   onPickAndAddSources,
+  onOpenSourceFolder,
   onSyncSource,
   onRemoveSource,
   onOpenSettings,
@@ -141,7 +143,7 @@ export function LibrarySidebar({
                   <Input
                     value={artistSearch}
                     onChange={(event) => setArtistSearch(event.target.value)}
-                    className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] pl-9 pr-9 text-[12px]"
+                    className="h-9 rounded-lg border-[#d6deea] bg-[#eef2f8] py-1.5 pl-9 pr-9 text-[12px] leading-[1.1]"
                     placeholder="搜索目录..."
                   />
                   {artistSearch.trim().length > 0 ? (
@@ -376,6 +378,7 @@ export function LibrarySidebar({
         hasIpcBridge={hasIpcBridge}
         scanRunning={scanRunning}
         onClose={() => setSourceManagerOpen(false)}
+        onOpenSourceFolder={onOpenSourceFolder}
         onSyncSource={onSyncSource}
         onRemoveSource={onRemoveSource}
       />

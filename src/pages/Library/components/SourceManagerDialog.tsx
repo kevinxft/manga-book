@@ -1,4 +1,4 @@
-import { RefreshCw, Trash2, X } from 'lucide-react';
+import { FolderOpen, RefreshCw, Trash2, X } from 'lucide-react';
 import type { LibraryFolder } from '@shared/types';
 
 interface SourceManagerDialogProps {
@@ -8,6 +8,7 @@ interface SourceManagerDialogProps {
   hasIpcBridge: boolean;
   scanRunning: boolean;
   onClose: () => void;
+  onOpenSourceFolder: (sourcePath: string) => void;
   onSyncSource: (sourcePath: string) => void;
   onRemoveSource: (sourceId: string) => void;
 }
@@ -19,6 +20,7 @@ export function SourceManagerDialog({
   hasIpcBridge,
   scanRunning,
   onClose,
+  onOpenSourceFolder,
   onSyncSource,
   onRemoveSource
 }: SourceManagerDialogProps) {
@@ -63,6 +65,14 @@ export function SourceManagerDialog({
                       ) : null}
                     </div>
                     <div className="flex items-center gap-1">
+                      <button
+                        className="rounded-md p-1 text-[#7a879a] transition hover:bg-[#e8eef9] hover:text-[#2f6cf6] disabled:opacity-50"
+                        disabled={!hasIpcBridge}
+                        onClick={() => onOpenSourceFolder(source.path)}
+                        title="打开这个目录"
+                      >
+                        <FolderOpen className="h-4 w-4" />
+                      </button>
                       <button
                         className="rounded-md p-1 text-[#7a879a] transition hover:bg-[#e8eef9] hover:text-[#2f6cf6] disabled:opacity-50"
                         disabled={!hasIpcBridge || scanRunning}

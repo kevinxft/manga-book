@@ -114,6 +114,10 @@ export interface LibraryRemoveSourceRequest {
   id: string;
 }
 
+export interface LibraryOpenSourceFolderRequest {
+  path: string;
+}
+
 export interface LibrarySyncSourcesRequest {
   paths?: string[];
   forceRescan?: boolean;
@@ -253,6 +257,7 @@ export interface IpcChannels {
   'library.addSources': { req: LibraryAddSourcesRequest; res: LibraryAddSourcesResult };
   'library.pickSourceDirectories': { req: void; res: { paths: string[] } };
   'library.removeSource': { req: LibraryRemoveSourceRequest; res: { removed: boolean } };
+  'library.openSourceFolder': { req: LibraryOpenSourceFolderRequest; res: { opened: boolean } };
   'library.listSources': { req: void; res: LibraryFolder[] };
   'library.syncSources': { req: LibrarySyncSourcesRequest | void; res: { taskId: string } };
   'library.listMangas': { req: MangaFilter | void; res: MangaBookWithCover[] };

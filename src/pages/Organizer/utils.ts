@@ -2,6 +2,20 @@ import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory, OrganizerItem, OrganizerSortKey, OrganizerStatusFilter } from './types';
 import { getMangaDisplayPath, getMangaPathCategory } from '@renderer/pages/Library/utils';
 
+export interface AuthorAliasLookupContext {
+  canonicalByAnyName: Map<string, string>;
+  aliasesByCanonicalName: Map<string, string[]>;
+}
+
+export interface MangaAuthorInfo {
+  directoryName: string;
+  directoryPath: string;
+  canonicalName: string | null;
+  aliases: string[];
+  tooltipText: string;
+  ownerBadge: string;
+}
+
 function normalizePath(value: string): string {
   return value.replace(/\\/g, '/').replace(/\/+$/, '');
 }
@@ -89,12 +103,7 @@ function toLookupKey(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
-interface AliasLookupContext {
-  canonicalByAnyName: Map<string, string>;
-  aliasesByCanonicalName: Map<string, string[]>;
-}
-
-function createAliasLookup(aliases: DirectoryAlias[]): AliasLookupContext {
+export function createAuthorAliasLookup(aliases: DirectoryAlias[]): AuthorAliasLookupContext {
   const canonicalByAnyName = new Map<string, string>();
   const aliasesByCanonicalName = new Map<string, string[]>();
 
@@ -123,41 +132,121 @@ function createAliasLookup(aliases: DirectoryAlias[]): AliasLookupContext {
   };
 }
 
-function getOwnerBadge(
+function resolveAuthorDirectory(
   manga: MangaBookWithCover,
-  aliasLookup: AliasLookupContext | null,
   targetSourcePaths: string[],
   directoryPaths: string[] = []
-): string | null {
+): { directoryName: string; directoryPath: string } | null {
   const explicitDirectory = getExplicitAuthorDirectory(manga.folderPath, directoryPaths);
-  const sourceKind = explicitDirectory ? 'artists' : getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths);
-  if (sourceKind === 'other' && !explicitDirectory) {
+  if (explicitDirectory) {
+    return {
+      directoryName: getPathLabel(explicitDirectory),
+      directoryPath: explicitDirectory
+    };
+  }
+
+  const sourceKind = getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths);
+  if (sourceKind === 'other') {
     return null;
   }
 
-  const ownerName = explicitDirectory
-    ? getPathLabel(explicitDirectory)
-    : (() => {
-        const source = normalizePath(manga.sourceFolderPath);
-        const target = normalizePath(manga.folderPath);
-        return target.startsWith(`${source}/`) ? target.slice(source.length + 1).split('/').filter(Boolean)[0] : null;
-      })();
-
-  if (!ownerName) {
+  const source = normalizePath(manga.sourceFolderPath);
+  const target = normalizePath(manga.folderPath);
+  if (!target.startsWith(`${source}/`)) {
     return null;
   }
 
-  const canonicalName = aliasLookup?.canonicalByAnyName.get(toLookupKey(ownerName)) ?? ownerName;
-  const canonicalKey = toLookupKey(canonicalName);
-  const aliases = (aliasLookup?.aliasesByCanonicalName.get(canonicalKey) ?? []).filter(
-    (alias) => toLookupKey(alias) !== canonicalKey
+  const { hasLeadingSlash } = splitPath(target);
+  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
+  const directoryName = relativeSegments[0];
+  if (!directoryName) {
+    return null;
+  }
+
+  const sourceSegments = splitPath(source).segments;
+  return {
+    directoryName,
+    directoryPath: joinPath([...sourceSegments, directoryName], hasLeadingSlash)
+  };
+}
+
+function dedupeNames(values: string[]): string[] {
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const value of values) {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      continue;
+    }
+
+    const key = toLookupKey(trimmed);
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    deduped.push(trimmed);
+  }
+
+  return deduped;
+}
+
+function buildOwnerBadge(directoryName: string, canonicalName: string | null, aliases: string[]): string {
+  if (canonicalName) {
+    const detailNames = dedupeNames([directoryName, ...aliases]);
+    return detailNames.length > 0 ? `${canonicalName} (${detailNames.join(' / ')})` : canonicalName;
+  }
+
+  return aliases.length > 0 ? `${directoryName} (${aliases.join(' / ')})` : directoryName;
+}
+
+function buildTooltipText(directoryName: string, canonicalName: string | null, aliases: string[]): string {
+  const lines: string[] = [];
+
+  if (canonicalName) {
+    lines.push(`规范名：${canonicalName}`);
+  }
+  lines.push(`目录名：${directoryName}`);
+  if (aliases.length > 0) {
+    lines.push(`别名：${aliases.join(' / ')}`);
+  }
+
+  return lines.join('\n');
+}
+
+export function resolveMangaAuthorInfo(
+  manga: MangaBookWithCover,
+  aliasLookup: AuthorAliasLookupContext | null,
+  targetSourcePaths: string[],
+  directoryPaths: string[] = []
+): MangaAuthorInfo | null {
+  const authorDirectory = resolveAuthorDirectory(manga, targetSourcePaths, directoryPaths);
+  if (!authorDirectory) {
+    return null;
+  }
+
+  const resolvedCanonicalName = aliasLookup?.canonicalByAnyName.get(toLookupKey(authorDirectory.directoryName)) ?? null;
+  const canonicalName =
+    resolvedCanonicalName && toLookupKey(resolvedCanonicalName) !== toLookupKey(authorDirectory.directoryName)
+      ? resolvedCanonicalName
+      : null;
+  const lookupKey = toLookupKey(canonicalName ?? authorDirectory.directoryName);
+  const aliases = dedupeNames(
+    (aliasLookup?.aliasesByCanonicalName.get(lookupKey) ?? []).filter((alias) => {
+      const aliasKey = toLookupKey(alias);
+      return aliasKey !== toLookupKey(authorDirectory.directoryName) && aliasKey !== toLookupKey(canonicalName ?? '');
+    })
   );
 
-  if (aliases.length === 0) {
-    return canonicalName;
-  }
-
-  return `${canonicalName} (${aliases.join(' / ')})`;
+  return {
+    directoryName: authorDirectory.directoryName,
+    directoryPath: authorDirectory.directoryPath,
+    canonicalName,
+    aliases,
+    tooltipText: buildTooltipText(authorDirectory.directoryName, canonicalName, aliases),
+    ownerBadge: buildOwnerBadge(authorDirectory.directoryName, canonicalName, aliases)
+  };
 }
 
 export function buildOrganizerCategories(
@@ -238,13 +327,13 @@ export function buildOrganizerItems(
   targetSourcePaths: string[] = [],
   directoryPaths: string[] = []
 ): OrganizerItem[] {
-  const aliasLookup = aliases.length > 0 ? createAliasLookup(aliases) : null;
+  const aliasLookup = aliases.length > 0 ? createAuthorAliasLookup(aliases) : null;
   const normalizedDirectoryPaths = normalizeDirectoryPaths(directoryPaths);
 
   return mangas.map((manga) => ({
     ...manga,
     displayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
-    ownerBadge: getOwnerBadge(manga, aliasLookup, targetSourcePaths, normalizedDirectoryPaths),
+    ownerBadge: resolveMangaAuthorInfo(manga, aliasLookup, targetSourcePaths, normalizedDirectoryPaths)?.ownerBadge ?? null,
     organizeStatus:
       getExplicitAuthorDirectory(manga.folderPath, normalizedDirectoryPaths) ||
       getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths) !== 'other'

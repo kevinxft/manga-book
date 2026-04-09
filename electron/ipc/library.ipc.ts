@@ -1,4 +1,4 @@
-import { dialog } from 'electron';
+import { dialog, shell } from 'electron';
 import type { IpcContext } from './context';
 import { registerHandler, ok, fail } from './helpers';
 import { directoryExists } from '@main/utils/fsUtils';
@@ -9,9 +9,19 @@ import { detectAuthorRootDirectory, findAuthorRootSources } from './organizer.co
 
 type AddSourceSkipReason = 'DUPLICATE' | 'NOT_FOUND' | 'INVALID' | 'ORGANIZER_ROOT_CONFLICT';
 
+function formatAuthorRootConflictMessage(paths: string[]): string {
+  const uniquePaths = Array.from(new Set(paths.map((item) => normalizeAbsolutePath(item))));
+  if (uniquePaths.length === 0) {
+    return '检测到多个作者目录来源，请移除多余的导入目录后再同步。';
+  }
+
+  const joined = uniquePaths.join('；');
+  return `检测到多个作者目录来源：${joined}。请只保留一个作者目录来源后再同步。`;
+}
+
 export function registerLibraryIpc(context: IpcContext): void {
   const { repositories, scanner, scanQueue } = context;
-  const { library, manga, tag } = repositories;
+  const { library, manga, tag, sourceMetadata } = repositories;
 
   const addSourcesInternal = async (rawPaths: string[]) => {
     const existingPaths = new Set(library.list().map((source) => source.path));
@@ -45,6 +55,7 @@ export function registerLibraryIpc(context: IpcContext): void {
       }
 
       const source = library.add(normalizedPath, pathToDisplayName(normalizedPath));
+      sourceMetadata.ensureSourceMetadataDb(normalizedPath);
       existingPaths.add(normalizedPath);
       acceptedScanPaths.push(normalizedPath);
       added.push(source);
@@ -103,13 +114,17 @@ export function registerLibraryIpc(context: IpcContext): void {
     }
 
     const firstSkip = result.skipped[0];
+    const conflictPaths = [
+      ...(firstSkip?.reason === 'ORGANIZER_ROOT_CONFLICT' && firstSkip?.path ? [firstSkip.path] : []),
+      ...(await findAuthorRootSources(library))
+    ];
     const message =
       firstSkip?.reason === 'DUPLICATE'
         ? 'Source already exists'
         : firstSkip?.reason === 'NOT_FOUND'
           ? `Directory does not exist: ${firstSkip.path}`
           : firstSkip?.reason === 'ORGANIZER_ROOT_CONFLICT'
-            ? 'Detected more than one author-root directory. Please keep only one imported source that contains author folders.'
+            ? formatAuthorRootConflictMessage(conflictPaths)
           : 'Invalid source path';
 
     return fail('ADD_SOURCE_FAILED', message);
@@ -122,11 +137,23 @@ export function registerLibraryIpc(context: IpcContext): void {
     }
 
     const removed = library.remove(request.id);
-    if (removed) {
-      manga.deleteBySource(source.path);
+    return ok({ removed });
+  });
+
+  registerHandler('library.openSourceFolder', async (request) => {
+    const sourcePath = request?.path?.trim();
+    if (!sourcePath) {
+      return fail('VALIDATION', 'Source path is required');
     }
 
-    return ok({ removed });
+    const normalizedPath = normalizeAbsolutePath(sourcePath);
+    const exists = await directoryExists(normalizedPath);
+    if (!exists) {
+      return fail('NOT_FOUND', `Directory does not exist: ${normalizedPath}`);
+    }
+
+    await shell.openPath(normalizedPath);
+    return ok({ opened: true });
   });
 
   registerHandler('library.listSources', async () => {
@@ -152,7 +179,11 @@ export function registerLibraryIpc(context: IpcContext): void {
 
     const authorRootPaths = await findAuthorRootSources(library);
     if (authorRootPaths.length > 1) {
-      return fail('AUTHOR_ROOT_CONFLICT', '检测到多个作者目录来源，请移除多余的导入目录后再同步。');
+      return fail('AUTHOR_ROOT_CONFLICT', formatAuthorRootConflictMessage(authorRootPaths));
+    }
+
+    for (const sourcePath of paths) {
+      sourceMetadata.ensureSourceMetadataDb(sourcePath);
     }
 
     const taskId = scanQueue.enqueue({

@@ -3,8 +3,7 @@ import path from 'node:path';
 import type { DirectoryAlias } from '@shared/types';
 import type { IpcContext } from './context';
 import { fail, ok, registerHandler } from './helpers';
-import { listArtistsRoots } from './organizer.common';
-import { listDirectories, pathExists } from '@main/utils/fsUtils';
+import { pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath, toKey } from '@main/utils/pathUtils';
 
 const AUTHOR_ALIAS_METADATA_FILENAME = '.mangabook-author.json';
@@ -67,37 +66,6 @@ export async function writeAuthorAliasMetadata(directoryPath: string, canonicalN
   await fs.writeFile(metadataPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
 }
 
-async function listFileBackedAliases(context: IpcContext): Promise<DirectoryAlias[]> {
-  const roots = await listArtistsRoots(context.repositories.library);
-  const aliases: DirectoryAlias[] = [];
-
-  for (const rootPath of roots) {
-    const authorDirectories = await listDirectories(rootPath).catch(() => [] as string[]);
-    for (const directoryPath of authorDirectories) {
-      const normalizedDirectoryPath = normalizeAbsolutePath(directoryPath);
-      const metadata = await readAuthorAliasMetadata(normalizedDirectoryPath);
-      if (!metadata) {
-        continue;
-      }
-
-      for (const aliasName of metadata.aliases) {
-        const aliasKey = toKey(aliasName);
-        if (!aliasKey) {
-          continue;
-        }
-        aliases.push({
-          id: `file:${toKey(normalizedDirectoryPath)}:${aliasKey}`,
-          alias: aliasName,
-          canonicalName: metadata.canonicalName,
-          createdAt: metadata.updatedAt
-        });
-      }
-    }
-  }
-
-  return aliases;
-}
-
 function sortAliases(items: DirectoryAlias[]): DirectoryAlias[] {
   return [...items].sort((a, b) => a.alias.localeCompare(b.alias, 'zh-Hans-CN'));
 }
@@ -146,19 +114,7 @@ async function loadAliases(context: IpcContext, force = false): Promise<Director
   }
 
   cachedAliasesPromise = (async () => {
-    const dbAliases = context.repositories.alias.list();
-    await syncDbAliasesToAuthorFiles(context, dbAliases);
-    const combined = new Map<string, DirectoryAlias>();
-
-    for (const item of dbAliases) {
-      combined.set(toKey(item.alias), item);
-    }
-
-    for (const item of await listFileBackedAliases(context)) {
-      combined.set(toKey(item.alias), item);
-    }
-
-    const nextAliases = sortAliases(Array.from(combined.values()));
+    const nextAliases = sortAliases(context.repositories.alias.list());
     cachedAliases = nextAliases;
     cachedAliasesPromise = null;
     return nextAliases;
@@ -169,54 +125,6 @@ async function loadAliases(context: IpcContext, force = false): Promise<Director
   } catch (error) {
     cachedAliasesPromise = null;
     throw error;
-  }
-}
-
-async function syncDbAliasesToAuthorFiles(context: IpcContext, dbAliases: DirectoryAlias[]): Promise<void> {
-  if (dbAliases.length === 0) {
-    return;
-  }
-
-  const roots = await listArtistsRoots(context.repositories.library);
-  const directoryPathByCanonicalKey = new Map<string, string>();
-
-  for (const rootPath of roots) {
-    const authorDirectories = await listDirectories(rootPath).catch(() => [] as string[]);
-    for (const directoryPath of authorDirectories) {
-      const normalizedDirectoryPath = normalizeAbsolutePath(directoryPath);
-      const canonicalKey = toKey(path.basename(normalizedDirectoryPath));
-      if (!canonicalKey || directoryPathByCanonicalKey.has(canonicalKey)) {
-        continue;
-      }
-      directoryPathByCanonicalKey.set(canonicalKey, normalizedDirectoryPath);
-    }
-  }
-
-  const aliasesByCanonicalKey = new Map<string, DirectoryAlias[]>();
-  for (const item of dbAliases) {
-    const canonicalKey = toKey(item.canonicalName);
-    if (!canonicalKey) {
-      continue;
-    }
-    const current = aliasesByCanonicalKey.get(canonicalKey) ?? [];
-    current.push(item);
-    aliasesByCanonicalKey.set(canonicalKey, current);
-  }
-
-  for (const [canonicalKey, items] of aliasesByCanonicalKey) {
-    const directoryPath = directoryPathByCanonicalKey.get(canonicalKey);
-    if (!directoryPath) {
-      continue;
-    }
-
-    const metadata = await readAuthorAliasMetadata(directoryPath);
-    const canonicalName = items[0]?.canonicalName ?? metadata?.canonicalName ?? path.basename(directoryPath);
-    const nextAliases = new Set([...(metadata?.aliases ?? [])]);
-    for (const item of items) {
-      nextAliases.add(item.alias);
-    }
-
-    await writeAuthorAliasMetadata(directoryPath, canonicalName, Array.from(nextAliases));
   }
 }
 
@@ -232,12 +140,7 @@ export function registerOrganizerAliasIpc(context: IpcContext): void {
       return fail('VALIDATION', 'Alias and canonical name are required');
     }
 
-    const stored = alias.insert(inputAlias, canonicalName);
-    if (canonicalPath) {
-      const metadata = await readAuthorAliasMetadata(canonicalPath);
-      const nextAliases = [...(metadata?.aliases ?? []), inputAlias];
-      await writeAuthorAliasMetadata(canonicalPath, canonicalName, nextAliases);
-    }
+    const stored = alias.insert(inputAlias, canonicalName, canonicalPath);
     updateCachedAlias(stored);
     return ok(stored);
   });
@@ -253,15 +156,7 @@ export function registerOrganizerAliasIpc(context: IpcContext): void {
       return fail('VALIDATION', 'Alias is required');
     }
 
-    const removed = alias.remove(inputAlias);
-
-    if (canonicalPath) {
-      const metadata = await readAuthorAliasMetadata(canonicalPath);
-      if (metadata) {
-        const nextAliases = metadata.aliases.filter((item) => toKey(item) !== toKey(inputAlias));
-        await writeAuthorAliasMetadata(canonicalPath, metadata.canonicalName, nextAliases);
-      }
-    }
+    const removed = alias.remove(inputAlias, canonicalPath);
 
     removeCachedAlias(inputAlias);
     return ok({ removed });

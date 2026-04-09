@@ -1,14 +1,13 @@
 import { memo, useCallback, useMemo, useState, type MouseEvent } from 'react';
 import { Copy, ImageOff, Tag } from 'lucide-react';
-import type { MangaBookWithCover } from '@shared/types';
+import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import { CoverContextMenu, type CoverContextMenuState } from '@renderer/components/manga/CoverContextMenu';
 import { VirtualCardGrid } from '@renderer/components/virtual/VirtualCardGrid';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
+import { createAuthorAliasLookup, resolveMangaAuthorInfo } from '@renderer/pages/Organizer/utils';
 import {
-  getArtistNameFromMangaPath,
   getConflictBaseTitle,
   getMangaDisplayPath,
-  getMangaPathCategory,
   getParentDirectoryPath,
   toCoverSrc
 } from '../utils';
@@ -19,6 +18,8 @@ interface MangaGridProps {
   loading: boolean;
   quickMoveCategories: OrganizerCategory[];
   targetSourcePaths: string[];
+  authorDirectoryPaths: string[];
+  aliases: DirectoryAlias[];
   onQuickMoveManga: (mangaId: string, destinationPath: string) => void;
   onAddTagManga: (item: MangaBookWithCover, anchor: { x: number; y: number }) => void;
   onEditManga: (item: MangaBookWithCover) => void;
@@ -33,6 +34,7 @@ interface MangaGridProps {
 interface LibraryGridCardData {
   manga: MangaBookWithCover;
   artistName: string | null;
+  artistTooltip: string | null;
   missingArtistDirectory: boolean;
   duplicateConflict: boolean;
   fullDisplayPath: string;
@@ -82,7 +84,7 @@ const LibraryGridCard = memo(function LibraryGridCard({
           {item.artistName ? (
             <span
               className="min-w-0 max-w-[70%] truncate rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white"
-              title={item.artistName}
+              title={item.artistTooltip ?? item.artistName}
             >
               {item.artistName}
             </span>
@@ -171,6 +173,8 @@ export function MangaGrid({
   loading,
   quickMoveCategories,
   targetSourcePaths,
+  authorDirectoryPaths,
+  aliases,
   onQuickMoveManga,
   onAddTagManga,
   onEditManga,
@@ -208,16 +212,19 @@ export function MangaGrid({
 
     return markedIds;
   }, [mangas]);
+  const aliasLookup = useMemo(() => (aliases.length > 0 ? createAuthorAliasLookup(aliases) : null), [aliases]);
 
   const gridItems = useMemo<LibraryGridCardData[]>(
     () =>
       mangas.map((manga) => {
+        const authorInfo = resolveMangaAuthorInfo(manga, aliasLookup, targetSourcePaths, authorDirectoryPaths);
         const tagNames = manga.tags.map((tag) => tag.name).filter((name) => name.trim().length > 0);
         const visibleTagNames = tagNames.slice(0, 2);
         return {
           manga,
-          artistName: getArtistNameFromMangaPath(manga.folderPath, manga.sourceFolderPath, targetSourcePaths),
-          missingArtistDirectory: getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths) !== 'artists',
+          artistName: authorInfo?.directoryName ?? null,
+          artistTooltip: authorInfo?.tooltipText ?? null,
+          missingArtistDirectory: authorInfo === null,
           duplicateConflict: duplicateConflictIds.has(manga.id),
           fullDisplayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
           visibleTagNames,
@@ -226,7 +233,7 @@ export function MangaGrid({
           tagCount: tagNames.length
         };
       }),
-    [duplicateConflictIds, mangas, targetSourcePaths]
+    [aliasLookup, authorDirectoryPaths, duplicateConflictIds, mangas, targetSourcePaths]
   );
 
   const handleContextMenuOpen = useCallback((event: MouseEvent<HTMLDivElement>, manga: MangaBookWithCover) => {

@@ -94,6 +94,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
     fetchMangas,
     pickAndAddSources,
     removeSource,
+    openSourceFolder,
     syncSources,
     fetchCoverPaths,
     refreshScanProgress,
@@ -111,6 +112,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       fetchMangas: state.fetchMangas,
       pickAndAddSources: state.pickAndAddSources,
       removeSource: state.removeSource,
+      openSourceFolder: state.openSourceFolder,
       syncSources: state.syncSources,
       fetchCoverPaths: state.fetchCoverPaths,
       refreshScanProgress: state.refreshScanProgress,
@@ -118,7 +120,12 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       removeMangaLocal: state.removeMangaLocal
     }))
   );
-  const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
+  const { aliases, authorDirectories } = useOrganizerMetadataStore(
+    useShallow((state) => ({
+      aliases: state.aliases,
+      authorDirectories: state.authorDirectories
+    }))
+  );
 
   const targetSourcePaths = useMemo(
     () => resolveTargetSourcePaths(sources, authorDirectories.map((item) => item.directory)),
@@ -424,6 +431,7 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
             onClearSelectedTags={clearSelectedTags}
             onOpenTagDialog={openTagDialog}
             onPickAndAddSources={() => void pickAndAddSources()}
+            onOpenSourceFolder={(sourcePath) => void openSourceFolder(sourcePath)}
             onSyncSource={(sourcePath) => void syncSources([sourcePath])}
             onRemoveSource={(sourceId) => {
               void removeSource(sourceId);
@@ -500,6 +508,8 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
               loading={loading}
               quickMoveCategories={quickMoveCategories}
               targetSourcePaths={targetSourcePaths}
+              authorDirectoryPaths={authorDirectories.map((item) => item.directory)}
+              aliases={aliases}
               onVisibleItemsChange={handleVisibleMangasChange}
               onQuickMoveManga={(mangaId, destinationPath) => void handleQuickMoveManga(mangaId, destinationPath)}
               onAddTagManga={(item, anchor) => openAddTagDialog(item, anchor)}

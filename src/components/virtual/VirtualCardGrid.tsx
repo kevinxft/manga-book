@@ -91,9 +91,10 @@ export function VirtualCardGrid<T>({
 
     const nextVisibleItems: T[] = [];
     for (const row of virtualRows) {
-      const startIndex = row.index * columnCount;
-      const endIndex = Math.min(startIndex + columnCount, items.length);
-      for (let index = startIndex; index < endIndex; index += 1) {
+      const rowStartIndex = row.index * columnCount;
+      const rowEndIndex = Math.min(rowStartIndex + columnCount, items.length);
+
+      for (let index = rowStartIndex; index < rowEndIndex; index += 1) {
         const item = items[index];
         if (item) {
           nextVisibleItems.push(item);

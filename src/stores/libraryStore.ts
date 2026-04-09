@@ -26,6 +26,7 @@ interface LibraryState {
   addSources: (sourcePaths: string[]) => Promise<void>;
   pickAndAddSources: () => Promise<void>;
   removeSource: (id: string) => Promise<void>;
+  openSourceFolder: (path: string) => Promise<void>;
   syncSources: (paths?: string[]) => Promise<void>;
   fetchCoverPaths: (folderPaths: string[], options?: { force?: boolean }) => Promise<void>;
   monitorScanTask: (taskId: string) => Promise<void>;
@@ -170,7 +171,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
             firstSkip.reason === 'NOT_FOUND'
                 ? `目录不存在: ${firstSkip.path}`
                 : firstSkip.reason === 'ORGANIZER_ROOT_CONFLICT'
-                  ? '检测到 Artists + Inbox 的整理根目录已存在，仅允许导入一个。'
+                  ? '检测到多个作者目录来源，仅允许导入一个作者目录来源。'
                 : '目录无效';
           set({ error: message });
         }
@@ -201,6 +202,15 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to remove source' });
+    }
+  },
+
+  async openSourceFolder(path) {
+    set({ error: null });
+    try {
+      await ipcInvoke('library.openSourceFolder', { path });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to open source folder' });
     }
   },
 

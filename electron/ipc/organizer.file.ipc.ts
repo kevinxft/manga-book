@@ -3,15 +3,12 @@ import path from 'node:path';
 import { shell } from 'electron';
 import type { IpcContext } from './context';
 import { fail, ok, registerHandler } from './helpers';
-import {
-  readAuthorAliasMetadata,
-  updateCachedCanonicalName,
-  writeAuthorAliasMetadata
-} from './organizer.alias.ipc';
+import { updateCachedCanonicalName } from './organizer.alias.ipc';
 import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath } from '@main/utils/pathUtils';
 import { invalidateCoverPath } from '@main/scanner/coverFinder';
+import { isMetadataDirectoryPath } from '@main/db/sourceMetadata';
 
 async function getAvailableDirectoryPath(
   destinationRoot: string,
@@ -104,7 +101,7 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
       if (!(await directoryExists(rootPath))) {
         continue;
       }
-      const children = await listDirectories(rootPath);
+      const children = (await listDirectories(rootPath)).filter((childPath) => !isMetadataDirectoryPath(childPath));
       for (const childPath of children) {
         directories.push(normalizeAbsolutePath(childPath));
       }
@@ -161,7 +158,7 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
 
     const artistsRoots = await listArtistsRoots(library);
     if (artistsRoots.length === 0) {
-      return fail('NO_TARGET_ROOT', 'No target directory found. Please set one imported directory as the target first.');
+      return fail('NO_TARGET_ROOT', 'No author-root directory found. Please keep exactly one imported source that contains author folders.');
     }
 
     let targetRoot = artistsRoots[0] as string;
@@ -213,12 +210,7 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
       return fail('CONFLICT', 'Author directory already exists');
     }
 
-    const aliasMetadata = await readAuthorAliasMetadata(currentPath);
     await movePath(currentPath, nextPath);
-
-    if (aliasMetadata) {
-      await writeAuthorAliasMetadata(nextPath, nextName, aliasMetadata.aliases);
-    }
 
     const prefix = `${currentPath}${path.sep}`;
     for (const book of manga.list()) {
@@ -234,7 +226,7 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
       manga.updatePath(book.id, book.title, nextFolderPath, book.sourceFolderPath);
     }
 
-    alias.updateCanonicalName(previousName, nextName);
+    alias.updateCanonicalName(previousName, nextName, nextPath);
     updateCachedCanonicalName(previousName, nextName);
 
     return ok({ path: nextPath });

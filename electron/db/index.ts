@@ -2,12 +2,8 @@ import path from 'node:path';
 import Database from 'better-sqlite3';
 import { app } from 'electron';
 import { initializeSchema } from './schema';
-import { createMangaQueries } from './queries/manga';
 import { createLibraryQueries } from './queries/library';
-import { createBookmarkQueries } from './queries/bookmark';
-import { createTagQueries } from './queries/tag';
-import { createAliasQueries } from './queries/alias';
-import { createDirectoryUsageQueries } from './queries/directoryUsage';
+import { createSourceMetadataRepositories } from './sourceMetadata';
 
 let dbInstance: Database.Database | null = null;
 
@@ -28,21 +24,13 @@ export function getDatabase(): Database.Database {
 export function createRepositories() {
   const db = getDatabase();
 
-  const manga = createMangaQueries(db);
   const library = createLibraryQueries(db);
-  const bookmark = createBookmarkQueries(db);
-  const tag = createTagQueries(db);
-  const alias = createAliasQueries(db);
-  const directoryUsage = createDirectoryUsageQueries(db);
+  const sourceRepositories = createSourceMetadataRepositories(library, db);
 
   return {
     db,
-    manga,
     library,
-    bookmark,
-    tag,
-    alias,
-    directoryUsage
+    ...sourceRepositories
   };
 }
 
