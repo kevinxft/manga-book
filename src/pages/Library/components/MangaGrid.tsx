@@ -18,8 +18,10 @@ interface MangaGridProps {
   totalMangaCount: number;
   loading: boolean;
   quickMoveCategories: OrganizerCategory[];
+  targetSourcePaths: string[];
   onQuickMoveManga: (mangaId: string, destinationPath: string) => void;
   onAddTagManga: (item: MangaBookWithCover, anchor: { x: number; y: number }) => void;
+  onEditManga: (item: MangaBookWithCover) => void;
   onRenameManga: (item: MangaBookWithCover) => void;
   onSearchWeb: (item: MangaBookWithCover, provider: 'hitomi' | 'exhentai' | 'google') => void;
   onOpenInFolder: (mangaId: string) => void;
@@ -168,8 +170,10 @@ export function MangaGrid({
   totalMangaCount,
   loading,
   quickMoveCategories,
+  targetSourcePaths,
   onQuickMoveManga,
   onAddTagManga,
+  onEditManga,
   onRenameManga,
   onSearchWeb,
   onOpenInFolder,
@@ -212,8 +216,8 @@ export function MangaGrid({
         const visibleTagNames = tagNames.slice(0, 2);
         return {
           manga,
-          artistName: getArtistNameFromMangaPath(manga.folderPath),
-          missingArtistDirectory: getMangaPathCategory(manga.folderPath, manga.sourceFolderPath) !== 'artists',
+          artistName: getArtistNameFromMangaPath(manga.folderPath, manga.sourceFolderPath, targetSourcePaths),
+          missingArtistDirectory: getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths) !== 'artists',
           duplicateConflict: duplicateConflictIds.has(manga.id),
           fullDisplayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
           visibleTagNames,
@@ -222,7 +226,7 @@ export function MangaGrid({
           tagCount: tagNames.length
         };
       }),
-    [duplicateConflictIds, mangas]
+    [duplicateConflictIds, mangas, targetSourcePaths]
   );
 
   const handleContextMenuOpen = useCallback((event: MouseEvent<HTMLDivElement>, manga: MangaBookWithCover) => {
@@ -276,6 +280,7 @@ export function MangaGrid({
         onClose={() => setContextMenu(null)}
         onQuickMove={onQuickMoveManga}
         onAddTag={onAddTagManga}
+        onEditPages={onEditManga}
         onRename={onRenameManga}
         onSearchWeb={onSearchWeb}
         onOpenInFolder={onOpenInFolder}

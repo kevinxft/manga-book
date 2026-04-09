@@ -21,6 +21,7 @@ interface CoverContextMenuProps<T extends CoverContextMenuItem> {
   onClose: () => void;
   onQuickMove: (mangaId: string, destinationPath: string) => void;
   onAddTag: (item: T, anchor: { x: number; y: number }) => void;
+  onEditPages?: (item: T) => void;
   onRename: (item: T) => void;
   onSearchWeb: (item: T, provider: 'hitomi' | 'exhentai' | 'google') => void;
   onOpenInFolder: (mangaId: string) => void;
@@ -83,6 +84,7 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
   onClose,
   onQuickMove,
   onAddTag,
+  onEditPages,
   onRename,
   onSearchWeb,
   onOpenInFolder,
@@ -190,6 +192,7 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
         item={menu.item}
         menuAnchor={{ x: position.left, y: position.top }}
         onAddTag={onAddTag}
+        onEditPages={onEditPages}
         onRename={onRename}
         onSearchWeb={onSearchWeb}
         onOpenInFolder={onOpenInFolder}

@@ -1,4 +1,4 @@
-import { ExternalLink, FolderInput, FolderOpen, Tag, Trash2 } from 'lucide-react';
+import { ExternalLink, FolderInput, FolderOpen, Images, Tag, Trash2 } from 'lucide-react';
 
 interface CoverContextMenuItemLike {
   id: string;
@@ -9,6 +9,7 @@ interface CoverActionSectionProps<T extends CoverContextMenuItemLike> {
   item: T;
   menuAnchor: { x: number; y: number };
   onAddTag: (item: T, anchor: { x: number; y: number }) => void;
+  onEditPages?: (item: T) => void;
   onRename: (item: T) => void;
   onSearchWeb: (item: T, provider: 'hitomi' | 'exhentai' | 'google') => void;
   onOpenInFolder: (mangaId: string) => void;
@@ -20,6 +21,7 @@ export function CoverActionSection<T extends CoverContextMenuItemLike>({
   item,
   menuAnchor,
   onAddTag,
+  onEditPages,
   onRename,
   onSearchWeb,
   onOpenInFolder,
@@ -93,6 +95,19 @@ export function CoverActionSection<T extends CoverContextMenuItemLike>({
         <FolderOpen className="h-3.5 w-3.5 text-[#5f708a]" />
         在文件夹中打开
       </button>
+
+      {onEditPages ? (
+        <button
+          className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#304763] transition hover:bg-[#edf2f9]"
+          onClick={() => {
+            onEditPages(item);
+            onClose();
+          }}
+        >
+          <Images className="h-3.5 w-3.5 text-[#5f708a]" />
+          编辑漫画
+        </button>
+      ) : null}
 
       <button
         className="mt-1 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold text-[#ab2f2f] transition hover:bg-[#fff0f0]"

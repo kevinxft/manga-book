@@ -17,6 +17,7 @@ export function SettingsPage({
   widthMode,
   fixedWidthPercent,
   pageAnimationEnabled,
+  boundarySuggestionCount,
   onSave,
   onClose
 }: SettingsPageProps) {
@@ -25,10 +26,12 @@ export function SettingsPage({
     draftWidthMode,
     draftFixedWidthPercent,
     draftPageAnimationEnabled,
+    draftBoundarySuggestionCount,
     setDraftReaderMode,
     setDraftWidthMode,
     setDraftFixedWidthPercent,
     setDraftPageAnimationEnabled,
+    setDraftBoundarySuggestionCount,
     dirty,
     buildPayload
   } = useSettingsDraft({
@@ -36,7 +39,8 @@ export function SettingsPage({
     readerMode,
     widthMode,
     fixedWidthPercent,
-    pageAnimationEnabled
+    pageAnimationEnabled,
+    boundarySuggestionCount
   });
 
   useEffect(() => {
@@ -143,6 +147,32 @@ export function SettingsPage({
               description="开启后滚动模式切页会使用平滑动画。"
               onToggle={() => setDraftPageAnimationEnabled((prev) => !prev)}
             />
+          </section>
+
+          <section className="border-t border-[#dbe2ee] pt-3">
+            <p className="text-[12px] font-bold tracking-wide text-[#1f2b3d]">边界候选漫画数量</p>
+            <div className="mt-2 rounded-xl border border-[#d8e0ec] bg-[#eef2f8] px-4 py-3">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-[13px] font-semibold text-[#3c4d66]">第一页/最后一页继续翻页时显示的候选数</p>
+                <span className="rounded-md bg-[#dce8fb] px-2.5 py-1 text-[13px] font-bold text-[#2f6cf6]">
+                  {draftBoundarySuggestionCount} 本
+                </span>
+              </div>
+              <input
+                type="range"
+                min={3}
+                max={12}
+                step={1}
+                value={draftBoundarySuggestionCount}
+                onChange={(event) => setDraftBoundarySuggestionCount(Number(event.target.value))}
+                className="h-1.5 w-full cursor-pointer accent-[#2f6cf6]"
+              />
+              <div className="mt-1.5 flex items-center justify-between text-[12px] font-semibold text-[#8294af]">
+                <span>3 本</span>
+                <span>7 本</span>
+                <span>12 本</span>
+              </div>
+            </div>
           </section>
         </div>
 

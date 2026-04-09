@@ -46,7 +46,7 @@ export function AliasManagerDialog({
       <div className="w-full max-w-[440px] rounded-xl border border-[#d3dced] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
         <p className="text-[15px] font-semibold text-[#1f2f48]">管理别名</p>
         <p className="mt-1 text-[12px] text-[#647792]">
-          目标目录：<span className="font-semibold text-[#2e4360]">{targetCategory.label}</span>
+          作者目录：<span className="font-semibold text-[#2e4360]">{targetCategory.label}</span>
         </p>
 
         <div className="mt-3 rounded-lg border border-[#dde5f1] bg-white/75 p-2.5">

@@ -31,6 +31,10 @@ export function normalizeDirectoryName(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+function normalizeSourcePaths(sourcePaths: string[]): string[] {
+  return sourcePaths.map((value) => normalizePath(value));
+}
+
 function hexToRgb(color: string): { r: number; g: number; b: number } | null {
   const normalized = color.trim().replace('#', '');
   if (!/^[0-9a-fA-F]{6}$/.test(normalized)) {
@@ -62,57 +66,44 @@ export function getTagTextColor(color: string): string {
   return brightness > 168 ? '#162234' : '#f8fafc';
 }
 
-export function getMangaPathCategory(folderPath: string, sourceFolderPath: string): MangaPathCategory {
+export function getMangaPathCategory(folderPath: string, sourceFolderPath: string, targetSourcePaths: string[] = []): MangaPathCategory {
   const source = normalizePath(sourceFolderPath);
   const target = normalizePath(folderPath);
-  const sourceBase = normalizeDirectoryName(source.split('/').filter(Boolean).pop() ?? '');
-
-  if (sourceBase === 'artists' || sourceBase === 'artist') {
-    return 'artists';
-  }
-  if (sourceBase === 'series') {
-    return 'series';
-  }
+  const normalizedTargetSources = normalizeSourcePaths(targetSourcePaths);
 
   if (!target.startsWith(`${source}/`)) {
     return 'other';
   }
 
   const relPath = target.slice(source.length + 1);
-  const firstSegment = relPath.split('/').filter(Boolean)[0] ?? '';
-  const firstKey = normalizeDirectoryName(firstSegment);
+  const relativeSegments = relPath.split('/').filter(Boolean);
 
-  if (firstKey === 'artists' || firstKey === 'artist') {
+  if (normalizedTargetSources.includes(source) && relativeSegments.length >= 2) {
     return 'artists';
   }
-  if (firstKey === 'series') {
-    return 'series';
-  }
+
   return 'other';
 }
 
-export function getArtistNameFromMangaPath(folderPath: string): string | null {
-  const segments = folderPath.replace(/\\/g, '/').split('/').filter(Boolean);
-  if (segments.length < 3) {
+export function getArtistNameFromMangaPath(
+  folderPath: string,
+  sourceFolderPath: string,
+  targetSourcePaths: string[] = []
+): string | null {
+  const source = normalizePath(sourceFolderPath);
+  const target = normalizePath(folderPath);
+  const normalizedTargetSources = normalizeSourcePaths(targetSourcePaths);
+
+  if (!normalizedTargetSources.includes(source) || !target.startsWith(`${source}/`)) {
     return null;
   }
 
-  const artistsIndex = segments.findIndex((segment) => {
-    const key = normalizeDirectoryName(segment);
-    return key === 'artists' || key === 'artist';
-  });
-
-  if (artistsIndex < 0) {
+  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
+  if (relativeSegments.length < 2) {
     return null;
   }
 
-  const artistIndex = artistsIndex + 1;
-  const mangaIndex = artistsIndex + 2;
-  if (artistIndex >= segments.length || mangaIndex >= segments.length) {
-    return null;
-  }
-
-  return segments[artistIndex] ?? null;
+  return relativeSegments[0] ?? null;
 }
 
 export function getParentDirectoryPath(folderPath: string): string {
@@ -124,6 +115,39 @@ export function getParentDirectoryPath(folderPath: string): string {
 
   const parentSegments = segments.slice(0, -1);
   return `${normalized.startsWith('/') ? '/' : ''}${parentSegments.join('/')}`;
+}
+
+type SourceLike = {
+  path: string;
+  isTarget: boolean;
+};
+
+export function resolveTargetSourcePaths(
+  sources: SourceLike[],
+  authorDirectoryPaths: string[] = []
+): string[] {
+  const explicitTargets = Array.from(
+    new Set(
+      sources
+        .filter((source) => source.isTarget)
+        .map((source) => normalizePath(source.path))
+        .filter((value) => value.length > 0)
+    )
+  );
+  if (explicitTargets.length > 0) {
+    return explicitTargets;
+  }
+
+  const inferredParents = Array.from(
+    new Set(
+      authorDirectoryPaths
+        .map((directoryPath) => getParentDirectoryPath(directoryPath))
+        .map((directoryPath) => normalizePath(directoryPath))
+        .filter((value) => value.length > 0)
+    )
+  );
+
+  return inferredParents.length === 1 ? inferredParents : [];
 }
 
 export function getConflictBaseTitle(title: string): { baseTitle: string; hasConflictSuffix: boolean } {

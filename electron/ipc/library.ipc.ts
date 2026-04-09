@@ -1,50 +1,24 @@
-import path from 'node:path';
 import { dialog } from 'electron';
 import type { IpcContext } from './context';
 import { registerHandler, ok, fail } from './helpers';
-import { directoryExists, listDirectories } from '@main/utils/fsUtils';
+import { directoryExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath, pathToDisplayName } from '@main/utils/pathUtils';
 import { clearCoverPathCache, resolveCoverPath } from '@main/scanner/coverFinder';
 import type { LibraryFolder } from '@shared/types';
+import { detectAuthorRootDirectory, findAuthorRootSources } from './organizer.common';
 
 type AddSourceSkipReason = 'DUPLICATE' | 'NOT_FOUND' | 'INVALID' | 'ORGANIZER_ROOT_CONFLICT';
-
-function normalizeDirectoryName(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]/g, '');
-}
 
 export function registerLibraryIpc(context: IpcContext): void {
   const { repositories, scanner, scanQueue } = context;
   const { library, manga, tag } = repositories;
-
-  const isOrganizerRootDirectory = async (candidatePath: string): Promise<boolean> => {
-    try {
-      const childDirectoryNames = (await listDirectories(candidatePath)).map((directoryPath) =>
-        normalizeDirectoryName(path.basename(directoryPath))
-      );
-      const hasArtists = childDirectoryNames.includes('artists') || childDirectoryNames.includes('artist');
-      return hasArtists && childDirectoryNames.includes('inbox');
-    } catch {
-      return false;
-    }
-  };
-
-  const findExistingOrganizerRoot = async (): Promise<string | null> => {
-    const sources = library.list();
-    for (const source of sources) {
-      if (await isOrganizerRootDirectory(source.path)) {
-        return source.path;
-      }
-    }
-    return null;
-  };
 
   const addSourcesInternal = async (rawPaths: string[]) => {
     const existingPaths = new Set(library.list().map((source) => source.path));
     const added: LibraryFolder[] = [];
     const skipped: Array<{ path: string; reason: AddSourceSkipReason }> = [];
     const acceptedScanPaths: string[] = [];
-    let organizerRootPath = await findExistingOrganizerRoot();
+    const detectedAuthorRootPaths = new Set(await findAuthorRootSources(library));
 
     for (const rawPath of rawPaths) {
       if (!rawPath?.trim()) {
@@ -64,8 +38,8 @@ export function registerLibraryIpc(context: IpcContext): void {
         continue;
       }
 
-      const isOrganizerRoot = await isOrganizerRootDirectory(normalizedPath);
-      if (isOrganizerRoot && organizerRootPath && organizerRootPath !== normalizedPath) {
+      const isAuthorRoot = await detectAuthorRootDirectory(normalizedPath);
+      if (isAuthorRoot && detectedAuthorRootPaths.size > 0 && !detectedAuthorRootPaths.has(normalizedPath)) {
         skipped.push({ path: normalizedPath, reason: 'ORGANIZER_ROOT_CONFLICT' });
         continue;
       }
@@ -74,8 +48,8 @@ export function registerLibraryIpc(context: IpcContext): void {
       existingPaths.add(normalizedPath);
       acceptedScanPaths.push(normalizedPath);
       added.push(source);
-      if (isOrganizerRoot) {
-        organizerRootPath = normalizedPath;
+      if (isAuthorRoot) {
+        detectedAuthorRootPaths.add(normalizedPath);
       }
     }
 
@@ -135,7 +109,7 @@ export function registerLibraryIpc(context: IpcContext): void {
         : firstSkip?.reason === 'NOT_FOUND'
           ? `Directory does not exist: ${firstSkip.path}`
           : firstSkip?.reason === 'ORGANIZER_ROOT_CONFLICT'
-            ? 'Only one organizer root is allowed (must contain Artists + Inbox).'
+            ? 'Detected more than one author-root directory. Please keep only one imported source that contains author folders.'
           : 'Invalid source path';
 
     return fail('ADD_SOURCE_FAILED', message);
@@ -155,7 +129,18 @@ export function registerLibraryIpc(context: IpcContext): void {
     return ok({ removed });
   });
 
-  registerHandler('library.listSources', () => ok(library.list()));
+  registerHandler('library.listSources', async () => {
+    const sources = library.list();
+    const authorRootPaths = await findAuthorRootSources(library);
+    const hasSingleAuthorRoot = authorRootPaths.length === 1;
+    const authorRootSet = new Set(authorRootPaths);
+    return ok(
+      sources.map((source) => ({
+        ...source,
+        isTarget: hasSingleAuthorRoot && authorRootSet.has(normalizeAbsolutePath(source.path))
+      }))
+    );
+  });
 
   registerHandler('library.syncSources', async (request) => {
     const paths = request?.paths?.length ? request.paths : library.list().map((item) => item.path);
@@ -163,6 +148,11 @@ export function registerLibraryIpc(context: IpcContext): void {
 
     if (paths.length === 0) {
       return fail('NO_SOURCES', '请先添加至少一个漫画来源目录。');
+    }
+
+    const authorRootPaths = await findAuthorRootSources(library);
+    if (authorRootPaths.length > 1) {
+      return fail('AUTHOR_ROOT_CONFLICT', '检测到多个作者目录来源，请移除多余的导入目录后再同步。');
     }
 
     const taskId = scanQueue.enqueue({

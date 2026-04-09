@@ -56,6 +56,11 @@ export function SourceManagerDialog({
                       <p className="mt-1 text-[12px] font-semibold text-[#4f7bd8]">
                         {sourceMangaCountByPath[source.path] ?? 0} 本漫画
                       </p>
+                      {source.isTarget ? (
+                        <div className="mt-2 inline-flex items-center rounded-md bg-[#dfe9fb] px-2 py-1 text-[11px] font-semibold text-[#2f6cf6]">
+                          作者目录
+                        </div>
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-1">
                       <button

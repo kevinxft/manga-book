@@ -1,6 +1,6 @@
 import type Database from 'better-sqlite3';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 const DDL = [
   `CREATE TABLE IF NOT EXISTS manga_books (
@@ -20,7 +20,8 @@ const DDL = [
     id TEXT PRIMARY KEY,
     path TEXT NOT NULL UNIQUE,
     display_name TEXT NOT NULL,
-    added_at TEXT NOT NULL
+    added_at TEXT NOT NULL,
+    is_target INTEGER NOT NULL DEFAULT 0
   )`,
   `CREATE TABLE IF NOT EXISTS manga_tags (
     id TEXT PRIMARY KEY,
@@ -86,6 +87,15 @@ export function initializeSchema(db: Database.Database): void {
     for (const statement of DDL) {
       db.prepare(statement).run();
     }
+
+    if (currentVersion < 3) {
+      const columns = db.prepare('PRAGMA table_info(library_folders)').all() as Array<{ name: string }>;
+      const hasIsTargetColumn = columns.some((column) => column.name === 'is_target');
+      if (!hasIsTargetColumn) {
+        db.prepare('ALTER TABLE library_folders ADD COLUMN is_target INTEGER NOT NULL DEFAULT 0').run();
+      }
+    }
+
     db.pragma(`user_version = ${SCHEMA_VERSION}`);
   });
 

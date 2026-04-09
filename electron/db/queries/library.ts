@@ -7,6 +7,7 @@ interface LibraryFolderRow {
   path: string;
   display_name: string;
   added_at: string;
+  is_target: number;
 }
 
 function mapRow(row: LibraryFolderRow): LibraryFolder {
@@ -14,19 +15,22 @@ function mapRow(row: LibraryFolderRow): LibraryFolder {
     id: row.id,
     path: row.path,
     displayName: row.display_name,
-    addedAt: row.added_at
+    addedAt: row.added_at,
+    isTarget: row.is_target === 1
   };
 }
 
 export function createLibraryQueries(db: Database.Database) {
   const insertOrIgnoreStatement = db.prepare(
-    `INSERT OR IGNORE INTO library_folders (id, path, display_name, added_at)
-      VALUES (@id, @path, @display_name, @added_at)`
+    `INSERT OR IGNORE INTO library_folders (id, path, display_name, added_at, is_target)
+      VALUES (@id, @path, @display_name, @added_at, 0)`
   );
   const selectByPathStatement = db.prepare('SELECT * FROM library_folders WHERE path = ?');
   const selectByIdStatement = db.prepare('SELECT * FROM library_folders WHERE id = ?');
   const listStatement = db.prepare('SELECT * FROM library_folders ORDER BY added_at ASC');
   const removeStatement = db.prepare('DELETE FROM library_folders WHERE id = ?');
+  const clearTargetStatement = db.prepare('UPDATE library_folders SET is_target = 0');
+  const setTargetStatement = db.prepare('UPDATE library_folders SET is_target = 1 WHERE id = ?');
 
   function add(path: string, displayName: string): LibraryFolder {
     const now = new Date().toISOString();
@@ -63,11 +67,25 @@ export function createLibraryQueries(db: Database.Database) {
     return result.changes > 0;
   }
 
+  function setTarget(id: string | null): boolean {
+    const transaction = db.transaction((targetId: string | null) => {
+      clearTargetStatement.run();
+      if (!targetId) {
+        return true;
+      }
+      const result = setTargetStatement.run(targetId);
+      return result.changes > 0;
+    });
+
+    return transaction(id);
+  }
+
   return {
     add,
     getById,
     getByPath,
     list,
-    remove
+    remove,
+    setTarget
   };
 }

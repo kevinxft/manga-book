@@ -12,14 +12,18 @@ import { DeleteMangaDialog } from '@renderer/pages/Organizer/components/DeleteMa
 import { useMangaTagEditor } from '@renderer/hooks/manga/useMangaTagEditor';
 import { useTagEditor } from './hooks/useTagEditor';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
+import { MangaPageEditorDialog } from '@renderer/components/manga/MangaPageEditorDialog';
 import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
 import { useLibraryFilters } from './hooks/useLibraryFilters';
 import { useLibraryMangaActions } from './hooks/useLibraryMangaActions';
 import { useLibraryOrganizerCategories } from './hooks/useLibraryOrganizerCategories';
 import { useLibraryDataLifecycle } from './hooks/useLibraryDataLifecycle';
+import { ipcInvoke } from '@renderer/ipc/client';
+import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
+import { resolveTargetSourcePaths } from './utils';
 
 interface LibraryPageProps {
-  onOpenManga?: (manga: MangaBookWithCover) => void;
+  onOpenManga?: (manga: MangaBookWithCover, queueIds?: string[]) => void;
   onOpenSettings?: () => void;
   onOpenOrganizer?: () => void;
 }
@@ -53,8 +57,16 @@ function clampSidebarWidth(width: number, containerWidth?: number): number {
 export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: LibraryPageProps) {
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const pageEditorLoadRequestRef = useRef(0);
   const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebarWidth(readStoredSidebarWidth() ?? LIBRARY_SIDEBAR_DEFAULT_WIDTH));
   const [sidebarWidthHydrated, setSidebarWidthHydrated] = useState(false);
+  const [pageEditorOpen, setPageEditorOpen] = useState(false);
+  const [pageEditorTarget, setPageEditorTarget] = useState<MangaBookWithCover | null>(null);
+  const [pageEditorPaths, setPageEditorPaths] = useState<string[]>([]);
+  const [pageEditorSelectedPaths, setPageEditorSelectedPaths] = useState<string[]>([]);
+  const [pageEditorLoading, setPageEditorLoading] = useState(false);
+  const [pageEditorDeleting, setPageEditorDeleting] = useState(false);
+  const [pageEditorError, setPageEditorError] = useState<string | null>(null);
 
   const {
     tags,
@@ -106,10 +118,17 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
       removeMangaLocal: state.removeMangaLocal
     }))
   );
+  const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
+
+  const targetSourcePaths = useMemo(
+    () => resolveTargetSourcePaths(sources, authorDirectories.map((item) => item.directory)),
+    [authorDirectories, sources]
+  );
 
   const { artistDirectories, quickMoveCategories } = useLibraryOrganizerCategories({
     hasIpcBridge,
-    mangas
+    mangas,
+    targetSourcePaths
   });
 
   const {
@@ -140,6 +159,128 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
   const handleVisibleMangasChange = useCallback((items: MangaBookWithCover[]) => {
     void fetchCoverPaths(items.map((item) => item.folderPath));
   }, [fetchCoverPaths]);
+
+  const closePageEditor = useCallback(() => {
+    if (pageEditorDeleting) {
+      return;
+    }
+    pageEditorLoadRequestRef.current += 1;
+    setPageEditorOpen(false);
+    setPageEditorTarget(null);
+    setPageEditorPaths([]);
+    setPageEditorSelectedPaths([]);
+    setPageEditorError(null);
+    setPageEditorLoading(false);
+  }, [pageEditorDeleting]);
+
+  const handleRequestEditMangaPages = useCallback(
+    async (item: MangaBookWithCover) => {
+      if (!hasIpcBridge) {
+        setPageEditorError('当前运行在普通浏览器环境，无法编辑漫画页面。');
+        return;
+      }
+
+      const requestId = pageEditorLoadRequestRef.current + 1;
+      pageEditorLoadRequestRef.current = requestId;
+      setPageEditorOpen(true);
+      setPageEditorTarget(item);
+      setPageEditorPaths([]);
+      setPageEditorSelectedPaths([]);
+      setPageEditorError(null);
+      setPageEditorLoading(true);
+
+      try {
+        const pages = await ipcInvoke('reader.listPages', { mangaId: item.id });
+        if (requestId !== pageEditorLoadRequestRef.current) {
+          return;
+        }
+        setPageEditorPaths(pages);
+      } catch (error) {
+        if (requestId !== pageEditorLoadRequestRef.current) {
+          return;
+        }
+        setPageEditorError(error instanceof Error ? error.message : '加载漫画页面失败');
+      } finally {
+        if (requestId === pageEditorLoadRequestRef.current) {
+          setPageEditorLoading(false);
+        }
+      }
+    },
+    [hasIpcBridge]
+  );
+
+  const togglePageEditorSelection = useCallback((pagePath: string) => {
+    setPageEditorSelectedPaths((current) =>
+      current.includes(pagePath) ? current.filter((item) => item !== pagePath) : [...current, pagePath]
+    );
+  }, []);
+
+  const handleDeleteSelectedPages = useCallback(async () => {
+    if (!pageEditorTarget || pageEditorSelectedPaths.length === 0) {
+      return;
+    }
+
+    if (pageEditorSelectedPaths.length >= pageEditorPaths.length) {
+      setPageEditorError('至少需要保留 1 页漫画。');
+      return;
+    }
+
+    setPageEditorDeleting(true);
+    setPageEditorError(null);
+    const selectedPageSet = new Set(pageEditorSelectedPaths);
+
+    try {
+      const result = await ipcInvoke('reader.deletePages', {
+        mangaId: pageEditorTarget.id,
+        pagePaths: pageEditorSelectedPaths
+      });
+
+      const remainingPagePaths = pageEditorPaths.filter((pagePath) => !selectedPageSet.has(pagePath));
+      setPageEditorPaths(remainingPagePaths);
+      setPageEditorSelectedPaths([]);
+
+      updateMangaLocal(pageEditorTarget.id, (current) => ({
+        ...current,
+        totalPages: result.totalPages,
+        lastPageIndex: (() => {
+          const lastReadPagePath = pageEditorPaths[current.lastPageIndex] ?? null;
+          if (lastReadPagePath && !selectedPageSet.has(lastReadPagePath)) {
+            const nextIndex = remainingPagePaths.indexOf(lastReadPagePath);
+            if (nextIndex >= 0) {
+              return nextIndex;
+            }
+          }
+          return Math.min(current.lastPageIndex, Math.max(result.totalPages - 1, 0));
+        })(),
+        coverPath: current.coverPath && selectedPageSet.has(current.coverPath) ? null : current.coverPath
+      }));
+
+      setPageEditorTarget((current) =>
+        current
+          ? {
+              ...current,
+              totalPages: result.totalPages,
+              lastPageIndex: (() => {
+                const lastReadPagePath = pageEditorPaths[current.lastPageIndex] ?? null;
+                if (lastReadPagePath && !selectedPageSet.has(lastReadPagePath)) {
+                  const nextIndex = remainingPagePaths.indexOf(lastReadPagePath);
+                  if (nextIndex >= 0) {
+                    return nextIndex;
+                  }
+                }
+                return Math.min(current.lastPageIndex, Math.max(result.totalPages - 1, 0));
+              })()
+            }
+          : current
+      );
+
+      await fetchCoverPaths([pageEditorTarget.folderPath], { force: true });
+    } catch (error) {
+      setPageEditorError(error instanceof Error ? error.message : '删除漫画页面失败');
+    } finally {
+      setPageEditorDeleting(false);
+    }
+  }, [fetchCoverPaths, pageEditorPaths, pageEditorSelectedPaths, pageEditorTarget, updateMangaLocal]);
 
   const {
     operationError,
@@ -358,14 +499,20 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
               totalMangaCount={mangas.length}
               loading={loading}
               quickMoveCategories={quickMoveCategories}
+              targetSourcePaths={targetSourcePaths}
               onVisibleItemsChange={handleVisibleMangasChange}
               onQuickMoveManga={(mangaId, destinationPath) => void handleQuickMoveManga(mangaId, destinationPath)}
               onAddTagManga={(item, anchor) => openAddTagDialog(item, anchor)}
+              onEditManga={handleRequestEditMangaPages}
               onRenameManga={handleRequestRenameManga}
               onSearchWeb={(item, provider) => void handleSearchWeb(item, provider)}
               onOpenInFolder={(mangaId) => void handleOpenInFolder(mangaId)}
               onDeleteManga={handleRequestDeleteManga}
-              onOpenManga={onOpenManga}
+              onOpenManga={
+                onOpenManga
+                  ? (manga) => onOpenManga(manga, visibleMangas.map((item) => item.id))
+                  : undefined
+              }
             />
           </section>
         </div>
@@ -408,6 +555,20 @@ export function LibraryPage({ onOpenManga, onOpenSettings, onOpenOrganizer }: Li
         error={addTagError}
         onClose={() => closeAddTagDialog()}
         onSubmit={(values) => void handleConfirmAddTag(values)}
+      />
+
+      <MangaPageEditorDialog
+        open={pageEditorOpen}
+        title={pageEditorTarget?.title ?? null}
+        pagePaths={pageEditorPaths}
+        selectedPagePaths={pageEditorSelectedPaths}
+        loading={pageEditorLoading}
+        deleting={pageEditorDeleting}
+        error={pageEditorError}
+        onClose={closePageEditor}
+        onTogglePage={togglePageEditorSelection}
+        onDeleteSelected={() => void handleDeleteSelectedPages()}
+        onClearSelection={() => setPageEditorSelectedPaths([])}
       />
     </main>
   );

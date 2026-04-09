@@ -6,9 +6,10 @@ import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataSto
 interface UseLibraryOrganizerCategoriesInput {
   hasIpcBridge: boolean;
   mangas: MangaBookWithCover[];
+  targetSourcePaths: string[];
 }
 
-export function useLibraryOrganizerCategories({ hasIpcBridge, mangas }: UseLibraryOrganizerCategoriesInput) {
+export function useLibraryOrganizerCategories({ hasIpcBridge, mangas, targetSourcePaths }: UseLibraryOrganizerCategoriesInput) {
   const aliases = useOrganizerMetadataStore((state) => state.aliases);
   const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
   const ensureLoaded = useOrganizerMetadataStore((state) => state.ensureLoaded);
@@ -35,13 +36,14 @@ export function useLibraryOrganizerCategories({ hasIpcBridge, mangas }: UseLibra
 
     return buildOrganizerCategories(
       mangas,
-      authorDirectories.map((item) => item.directory)
+      authorDirectories.map((item) => item.directory),
+      targetSourcePaths
     ).map((category) => ({
       ...category,
       aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? [],
       lastMovedAt: movedAtByPath.get(category.path) ?? null
     }));
-  }, [aliases, authorDirectories, mangas]);
+  }, [aliases, authorDirectories, mangas, targetSourcePaths]);
 
   return {
     artistDirectories: quickMoveCategories,

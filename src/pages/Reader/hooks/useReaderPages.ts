@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import type { ReaderMode } from '../types';
@@ -16,10 +16,60 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Array<HTMLDivElement | null>>([]);
+  const loadRequestIdRef = useRef(0);
 
   useEffect(() => {
     pageRefs.current = [];
   }, [manga.id]);
+
+  const reloadPages = useCallback(
+    async (options?: { preferredPagePath?: string; fallbackPageIndex?: number }) => {
+      const requestId = loadRequestIdRef.current + 1;
+      loadRequestIdRef.current = requestId;
+
+      if (!hasIpcBridge) {
+        setLoading(false);
+        setError('当前运行在普通浏览器环境，无法读取漫画页面。请使用 bun run dev 启动 Electron。');
+        return [] as string[];
+      }
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const pages = await ipcInvoke('reader.listPages', { mangaId: manga.id });
+        if (requestId !== loadRequestIdRef.current) {
+          return pages;
+        }
+
+        setPagePaths(pages);
+
+        const initialIndex = Math.max(0, Math.min(manga.lastPageIndex, Math.max(pages.length - 1, 0)));
+        const fallbackIndex =
+          typeof options?.fallbackPageIndex === 'number'
+            ? Math.max(0, Math.min(options.fallbackPageIndex, Math.max(pages.length - 1, 0)))
+            : initialIndex;
+        const preferredIndex =
+          options?.preferredPagePath && pages.length > 0 ? pages.indexOf(options.preferredPagePath) : -1;
+
+        setCurrentPageIndex(preferredIndex >= 0 ? preferredIndex : fallbackIndex);
+        return pages;
+      } catch (loadError) {
+        if (requestId !== loadRequestIdRef.current) {
+          return [] as string[];
+        }
+
+        setError(loadError instanceof Error ? loadError.message : '加载漫画页面失败');
+        setPagePaths([]);
+        return [] as string[];
+      } finally {
+        if (requestId === loadRequestIdRef.current) {
+          setLoading(false);
+        }
+      }
+    },
+    [hasIpcBridge, manga.id, manga.lastPageIndex]
+  );
 
   useEffect(() => {
     if (!hasIpcBridge) {
@@ -28,33 +78,11 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
       return;
     }
 
-    let cancelled = false;
-
-    const loadPages = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const pages = await ipcInvoke('reader.listPages', { mangaId: manga.id });
-        if (cancelled) return;
-        setPagePaths(pages);
-        const initialIndex = Math.max(0, Math.min(manga.lastPageIndex, Math.max(pages.length - 1, 0)));
-        setCurrentPageIndex(initialIndex);
-      } catch (loadError) {
-        if (cancelled) return;
-        setError(loadError instanceof Error ? loadError.message : '加载漫画页面失败');
-        setPagePaths([]);
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    };
-
-    void loadPages();
+    void reloadPages();
     return () => {
-      cancelled = true;
+      loadRequestIdRef.current += 1;
     };
-  }, [hasIpcBridge, manga.id, manga.lastPageIndex]);
+  }, [hasIpcBridge, reloadPages]);
 
   useEffect(() => {
     if (readerMode !== 'scroll' || pagePaths.length === 0) return;
@@ -124,6 +152,7 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
     currentPageIndex,
     setCurrentPageIndex,
     scrollContainerRef,
-    pageRefs
+    pageRefs,
+    reloadPages
   };
 }

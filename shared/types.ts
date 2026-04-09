@@ -24,6 +24,7 @@ export interface LibraryFolder {
   path: string;
   displayName: string;
   addedAt: string;
+  isTarget: boolean;
 }
 
 export interface MangaTag {
@@ -131,6 +132,16 @@ export interface ReaderSaveProgressRequest {
 
 export interface ReaderListPagesRequest {
   mangaId: string;
+}
+
+export interface ReaderDeletePagesRequest {
+  mangaId: string;
+  pagePaths: string[];
+}
+
+export interface ReaderDeletePagesResult {
+  deletedCount: number;
+  totalPages: number;
 }
 
 export interface BookmarkCreateRequest {
@@ -249,6 +260,10 @@ export interface IpcChannels {
   'library.getScanProgress': { req: void; res: ScanProgress };
   'library.getScanTaskStatus': { req: { taskId: string }; res: ScanTaskStatus };
 
+  'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
+  'reader.deletePages': { req: ReaderDeletePagesRequest; res: ReaderDeletePagesResult };
+  'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };
+
   'organizer.moveManga': { req: OrganizerMoveMangaRequest; res: OrganizerMoveMangaResult };
   'organizer.openMangaFolder': { req: OrganizerOpenMangaFolderRequest; res: { opened: boolean } };
   'organizer.renameManga': { req: OrganizerRenameMangaRequest; res: MangaBook };
@@ -269,9 +284,6 @@ export interface IpcChannels {
   'tag.setForManga': { req: TagSetForMangaRequest; res: MangaTag[] };
   'tag.removeFromManga': { req: TagRemoveFromMangaRequest; res: { removed: boolean } };
   'tag.clearAll': { req: void; res: TagClearAllResult };
-
-  'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
-  'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };
 
   'bookmark.create': { req: BookmarkCreateRequest; res: Bookmark };
   'bookmark.update': { req: BookmarkUpdateRequest; res: Bookmark };

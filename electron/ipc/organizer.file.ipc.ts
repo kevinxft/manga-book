@@ -161,7 +161,7 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
 
     const artistsRoots = await listArtistsRoots(library);
     if (artistsRoots.length === 0) {
-      return fail('NO_TARGET_ROOT', 'No Artists root found. Please import organizer root first.');
+      return fail('NO_TARGET_ROOT', 'No target directory found. Please set one imported directory as the target first.');
     }
 
     let targetRoot = artistsRoots[0] as string;

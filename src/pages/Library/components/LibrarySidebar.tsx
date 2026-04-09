@@ -222,17 +222,22 @@ export function LibrarySidebar({
                           key={directory.key}
                           onClick={() => onActiveMenuChange(itemKey)}
                           className={cn(
-                            'flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold leading-[1.15] transition',
+                            'flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left text-[11px] font-semibold leading-normal transition',
                             active
                               ? 'bg-[#2f6cf6] text-white shadow-[0_6px_18px_rgba(47,108,246,0.2)]'
                               : 'text-[#3a4a62] hover:bg-[#e7ebf2]'
                           )}
                           title={aliasText ? `${directory.path}\n${directory.aliases.join(' / ')}` : directory.path}
                         >
-                          <span className="inline-flex min-w-0 items-baseline gap-0.5">
-                            <span className="min-w-0 truncate">{directory.label}</span>
+                          <span className="inline-flex min-w-0 items-center gap-0.5">
+                            <span className="min-w-0 truncate leading-normal">{directory.label}</span>
                             {aliasText ? (
-                              <span className={cn('min-w-0 truncate text-[9px]', active ? 'text-white/80' : 'text-[#6f7f98]')}>
+                              <span
+                                className={cn(
+                                  'min-w-0 truncate text-[9px] leading-normal',
+                                  active ? 'text-white/80' : 'text-[#6f7f98]'
+                                )}
+                              >
                                 {aliasText}
                               </span>
                             ) : null}
@@ -342,11 +347,11 @@ export function LibrarySidebar({
                 'flex w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
                 sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
               )}
-              title="漫画整理"
-              onClick={onOpenOrganizer}
+              title="设置"
+              onClick={onOpenSettings}
             >
-              <FolderTree className="h-3.5 w-3.5" />
-              {!sidebarCollapsed ? '整理' : null}
+              <Settings className="h-3.5 w-3.5" />
+              {!sidebarCollapsed ? '设置' : null}
             </button>
 
             <button
@@ -354,11 +359,11 @@ export function LibrarySidebar({
                 'flex w-full items-center rounded-lg py-1.5 text-[12px] font-semibold text-[#2f3b4c] hover:bg-[#e7ebf2]',
                 sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-2.5'
               )}
-              title="设置"
-              onClick={onOpenSettings}
+              title="漫画整理"
+              onClick={onOpenOrganizer}
             >
-              <Settings className="h-3.5 w-3.5" />
-              {!sidebarCollapsed ? '设置' : null}
+              <FolderTree className="h-3.5 w-3.5" />
+              {!sidebarCollapsed ? '整理' : null}
             </button>
           </div>
         </div>

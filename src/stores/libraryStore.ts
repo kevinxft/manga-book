@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { LibraryFolder, MangaBookWithCover, ScanProgress } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import type { SortKey } from '@renderer/pages/Library/types';
+import { useOrganizerMetadataStore } from './organizerMetadataStore';
 
 type LibraryFetchOptions = {
   query?: string;
@@ -26,7 +27,7 @@ interface LibraryState {
   pickAndAddSources: () => Promise<void>;
   removeSource: (id: string) => Promise<void>;
   syncSources: (paths?: string[]) => Promise<void>;
-  fetchCoverPaths: (folderPaths: string[]) => Promise<void>;
+  fetchCoverPaths: (folderPaths: string[], options?: { force?: boolean }) => Promise<void>;
   monitorScanTask: (taskId: string) => Promise<void>;
   refreshScanProgress: () => Promise<void>;
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
@@ -85,6 +86,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
         if (status.status === 'completed') {
           await Promise.all([get().fetchSources(), get().fetchMangas()]);
+          await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
         } else if (status.status === 'failed') {
           set({ error: status.error ?? 'Library sync failed' });
         }
@@ -196,6 +198,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     try {
       await ipcInvoke('library.removeSource', { id });
       await Promise.all([get().fetchSources(), get().fetchMangas()]);
+      await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to remove source' });
     }
@@ -224,7 +227,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
   },
 
-  async fetchCoverPaths(folderPaths) {
+  async fetchCoverPaths(folderPaths, options) {
     const uniqueFolderPaths = Array.from(
       new Set(
         folderPaths
@@ -237,14 +240,17 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       return;
     }
 
-    const missingFolderPaths = uniqueFolderPaths.filter((folderPath) => !resolvedCoverFolderPaths.has(folderPath));
-    if (missingFolderPaths.length === 0) {
+    const targetFolderPaths = options?.force
+      ? uniqueFolderPaths
+      : uniqueFolderPaths.filter((folderPath) => !resolvedCoverFolderPaths.has(folderPath));
+
+    if (targetFolderPaths.length === 0) {
       return;
     }
 
     try {
-      const coverPathByFolder = await ipcInvoke('library.listCoverPaths', { folderPaths: missingFolderPaths });
-      missingFolderPaths.forEach((folderPath) => resolvedCoverFolderPaths.add(folderPath));
+      const coverPathByFolder = await ipcInvoke('library.listCoverPaths', { folderPaths: targetFolderPaths });
+      targetFolderPaths.forEach((folderPath) => resolvedCoverFolderPaths.add(folderPath));
       set((state) => ({
         mangas: state.mangas.map((manga) => {
           if (!(manga.folderPath in coverPathByFolder)) {

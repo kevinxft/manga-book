@@ -1,6 +1,6 @@
 import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory, OrganizerItem, OrganizerSortKey, OrganizerStatusFilter } from './types';
-import { getMangaDisplayPath, getMangaPathCategory, normalizeDirectoryName } from '@renderer/pages/Library/utils';
+import { getMangaDisplayPath, getMangaPathCategory } from '@renderer/pages/Library/utils';
 
 function normalizePath(value: string): string {
   return value.replace(/\\/g, '/').replace(/\/+$/, '');
@@ -26,39 +26,63 @@ function joinPath(segments: string[], hasLeadingSlash: boolean): string {
   return `${hasLeadingSlash ? '/' : ''}${segments.join('/')}`;
 }
 
-function getCategoryLocation(
-  manga: MangaBookWithCover,
-  pathCategory: 'artists' | 'series'
-): { label: string; path: string } | null {
-  const { segments, hasLeadingSlash } = splitPath(manga.folderPath);
-  const marker = pathCategory === 'artists' ? ['artists', 'artist'] : ['series'];
-  const markerIndex = segments.findIndex((segment) => marker.includes(normalizeDirectoryName(segment)));
+function normalizeDirectoryPaths(directoryPaths: string[]): string[] {
+  return Array.from(
+    new Set(
+      directoryPaths
+        .map((value) => normalizePath(value))
+        .filter((value) => value.length > 0)
+    )
+  ).sort((a, b) => b.length - a.length);
+}
 
-  if (markerIndex >= 0 && markerIndex + 1 < segments.length) {
-    const label = segments[markerIndex + 1] ?? '未命名目录';
-    return {
-      label,
-      path: joinPath(segments.slice(0, markerIndex + 2), hasLeadingSlash)
-    };
-  }
+function getExplicitAuthorDirectory(folderPath: string, directoryPaths: string[]): string | null {
+  const normalizedFolderPath = normalizePath(folderPath);
+  const normalizedDirectories = normalizeDirectoryPaths(directoryPaths);
 
-  if (segments.length >= 2) {
-    const label = segments[segments.length - 2] ?? '未命名目录';
-    return {
-      label,
-      path: joinPath(segments.slice(0, -1), hasLeadingSlash)
-    };
+  for (const directoryPath of normalizedDirectories) {
+    if (normalizedFolderPath === directoryPath || normalizedFolderPath.startsWith(`${directoryPath}/`)) {
+      return directoryPath;
+    }
   }
 
   return null;
 }
 
-function getSegmentAfterMarker(segments: string[], marker: string[]): string | null {
-  const markerIndex = segments.findIndex((segment) => marker.includes(normalizeDirectoryName(segment)));
-  if (markerIndex >= 0 && markerIndex + 1 < segments.length) {
-    return segments[markerIndex + 1] ?? null;
+function getCategoryLocation(
+  manga: MangaBookWithCover,
+  targetSourcePaths: string[],
+  directoryPaths: string[] = []
+): { label: string; path: string } | null {
+  const explicitDirectory = getExplicitAuthorDirectory(manga.folderPath, directoryPaths);
+  if (explicitDirectory) {
+    return {
+      label: getPathLabel(explicitDirectory),
+      path: explicitDirectory
+    };
   }
-  return null;
+
+  const source = normalizePath(manga.sourceFolderPath);
+  const target = normalizePath(manga.folderPath);
+  if (!targetSourcePaths.map((item) => normalizePath(item)).includes(source)) {
+    return null;
+  }
+  if (!target.startsWith(`${source}/`)) {
+    return null;
+  }
+
+  const { hasLeadingSlash } = splitPath(target);
+  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
+  const authorName = relativeSegments[0];
+  if (!authorName) {
+    return null;
+  }
+
+  const sourceSegments = splitPath(source).segments;
+  return {
+    label: authorName,
+    path: joinPath([...sourceSegments, authorName], hasLeadingSlash)
+  };
 }
 
 function toLookupKey(value: string): string {
@@ -99,22 +123,25 @@ function createAliasLookup(aliases: DirectoryAlias[]): AliasLookupContext {
   };
 }
 
-function getOwnerBadge(manga: MangaBookWithCover, aliasLookup: AliasLookupContext | null): string | null {
-  const sourceKind = getMangaPathCategory(manga.folderPath, manga.sourceFolderPath);
-  if (sourceKind === 'other') {
+function getOwnerBadge(
+  manga: MangaBookWithCover,
+  aliasLookup: AliasLookupContext | null,
+  targetSourcePaths: string[],
+  directoryPaths: string[] = []
+): string | null {
+  const explicitDirectory = getExplicitAuthorDirectory(manga.folderPath, directoryPaths);
+  const sourceKind = explicitDirectory ? 'artists' : getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths);
+  if (sourceKind === 'other' && !explicitDirectory) {
     return null;
   }
 
-  const markers = sourceKind === 'artists' ? ['artists', 'artist'] : ['series'];
-  const targetSegments = splitPath(manga.folderPath).segments;
-  const sourceSegments = splitPath(manga.sourceFolderPath).segments;
-
-  const fromMarker = getSegmentAfterMarker(targetSegments, markers);
-  const ownerName =
-    fromMarker ??
-    (markers.includes(normalizeDirectoryName(sourceSegments[sourceSegments.length - 1] ?? ''))
-      ? targetSegments[sourceSegments.length]
-      : null);
+  const ownerName = explicitDirectory
+    ? getPathLabel(explicitDirectory)
+    : (() => {
+        const source = normalizePath(manga.sourceFolderPath);
+        const target = normalizePath(manga.folderPath);
+        return target.startsWith(`${source}/`) ? target.slice(source.length + 1).split('/').filter(Boolean)[0] : null;
+      })();
 
   if (!ownerName) {
     return null;
@@ -133,16 +160,22 @@ function getOwnerBadge(manga: MangaBookWithCover, aliasLookup: AliasLookupContex
   return `${canonicalName} (${aliases.join(' / ')})`;
 }
 
-export function buildOrganizerCategories(mangas: MangaBookWithCover[], directoryPaths: string[] = []): OrganizerCategory[] {
+export function buildOrganizerCategories(
+  mangas: MangaBookWithCover[],
+  directoryPaths: string[] = [],
+  targetSourcePaths: string[] = []
+): OrganizerCategory[] {
   const bucket = new Map<string, OrganizerCategory>();
+  const normalizedDirectoryPaths = normalizeDirectoryPaths(directoryPaths);
 
   for (const manga of mangas) {
-    const sourceKind = getMangaPathCategory(manga.folderPath, manga.sourceFolderPath);
-    if (sourceKind === 'other') {
+    const explicitDirectory = getExplicitAuthorDirectory(manga.folderPath, normalizedDirectoryPaths);
+    const sourceKind = explicitDirectory ? 'artists' : getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths);
+    if (sourceKind === 'other' && !explicitDirectory) {
       continue;
     }
 
-    const location = getCategoryLocation(manga, sourceKind);
+    const location = getCategoryLocation(manga, targetSourcePaths, normalizedDirectoryPaths);
     if (!location) {
       continue;
     }
@@ -170,8 +203,7 @@ export function buildOrganizerCategories(mangas: MangaBookWithCover[], directory
     });
   }
 
-  for (const rawPath of directoryPaths) {
-    const normalizedPath = normalizePath(rawPath);
+  for (const normalizedPath of normalizedDirectoryPaths) {
     if (!normalizedPath) {
       continue;
     }
@@ -200,14 +232,24 @@ export function buildOrganizerCategories(mangas: MangaBookWithCover[], directory
   });
 }
 
-export function buildOrganizerItems(mangas: MangaBookWithCover[], aliases: DirectoryAlias[] = []): OrganizerItem[] {
+export function buildOrganizerItems(
+  mangas: MangaBookWithCover[],
+  aliases: DirectoryAlias[] = [],
+  targetSourcePaths: string[] = [],
+  directoryPaths: string[] = []
+): OrganizerItem[] {
   const aliasLookup = aliases.length > 0 ? createAliasLookup(aliases) : null;
+  const normalizedDirectoryPaths = normalizeDirectoryPaths(directoryPaths);
 
   return mangas.map((manga) => ({
     ...manga,
     displayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
-    ownerBadge: getOwnerBadge(manga, aliasLookup),
-    organizeStatus: getMangaPathCategory(manga.folderPath, manga.sourceFolderPath) === 'other' ? 'unorganized' : 'organized'
+    ownerBadge: getOwnerBadge(manga, aliasLookup, targetSourcePaths, normalizedDirectoryPaths),
+    organizeStatus:
+      getExplicitAuthorDirectory(manga.folderPath, normalizedDirectoryPaths) ||
+      getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths) !== 'other'
+        ? 'organized'
+        : 'unorganized'
   }));
 }
 

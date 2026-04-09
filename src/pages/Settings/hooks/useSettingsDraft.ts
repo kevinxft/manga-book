@@ -11,12 +11,14 @@ export function useSettingsDraft({
   readerMode,
   widthMode,
   fixedWidthPercent,
-  pageAnimationEnabled
+  pageAnimationEnabled,
+  boundarySuggestionCount
 }: UseSettingsDraftOptions) {
   const [draftReaderMode, setDraftReaderMode] = useState<ReaderMode>(readerMode);
   const [draftWidthMode, setDraftWidthMode] = useState<ReaderWidthMode>(widthMode);
   const [draftFixedWidthPercent, setDraftFixedWidthPercent] = useState(fixedWidthPercent);
   const [draftPageAnimationEnabled, setDraftPageAnimationEnabled] = useState(pageAnimationEnabled);
+  const [draftBoundarySuggestionCount, setDraftBoundarySuggestionCount] = useState(boundarySuggestionCount);
 
   useEffect(() => {
     if (!open) return;
@@ -24,15 +26,19 @@ export function useSettingsDraft({
     setDraftWidthMode(widthMode);
     setDraftFixedWidthPercent(fixedWidthPercent);
     setDraftPageAnimationEnabled(pageAnimationEnabled);
-  }, [fixedWidthPercent, open, pageAnimationEnabled, readerMode, widthMode]);
+    setDraftBoundarySuggestionCount(boundarySuggestionCount);
+  }, [boundarySuggestionCount, fixedWidthPercent, open, pageAnimationEnabled, readerMode, widthMode]);
 
   const dirty = useMemo(
     () =>
       draftReaderMode !== readerMode ||
       draftWidthMode !== widthMode ||
       draftFixedWidthPercent !== fixedWidthPercent ||
-      draftPageAnimationEnabled !== pageAnimationEnabled,
+      draftPageAnimationEnabled !== pageAnimationEnabled ||
+      draftBoundarySuggestionCount !== boundarySuggestionCount,
     [
+      boundarySuggestionCount,
+      draftBoundarySuggestionCount,
       draftFixedWidthPercent,
       draftPageAnimationEnabled,
       draftReaderMode,
@@ -49,17 +55,20 @@ export function useSettingsDraft({
     draftWidthMode,
     draftFixedWidthPercent,
     draftPageAnimationEnabled,
+    draftBoundarySuggestionCount,
     setDraftReaderMode,
     setDraftWidthMode,
     setDraftFixedWidthPercent,
     setDraftPageAnimationEnabled,
+    setDraftBoundarySuggestionCount,
     dirty,
     buildPayload(): ReaderSettingsPayload {
       return {
         readerMode: draftReaderMode,
         widthMode: draftWidthMode,
         fixedWidthPercent: draftFixedWidthPercent,
-        pageAnimationEnabled: draftPageAnimationEnabled
+        pageAnimationEnabled: draftPageAnimationEnabled,
+        boundarySuggestionCount: draftBoundarySuggestionCount
       };
     }
   };

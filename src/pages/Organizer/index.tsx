@@ -14,15 +14,18 @@ import { useOrganizerMutations } from './hooks/useOrganizerMutations';
 import { useOrganizerSelection } from './hooks/useOrganizerSelection';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
+import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
+import { resolveTargetSourcePaths } from '@renderer/pages/Library/utils';
 
 interface OrganizerPageProps {
   onBack?: () => void;
-  onOpenManga?: (manga: MangaBookWithCover) => void;
+  onOpenManga?: (manga: MangaBookWithCover, queueIds?: string[]) => void;
 }
 
 export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
-  const { mangas, loading, error, fetchMangas, fetchCoverPaths, updateMangaLocal, removeMangaLocal } = useLibraryStore(
+  const { sources, mangas, loading, error, fetchMangas, fetchCoverPaths, updateMangaLocal, removeMangaLocal } = useLibraryStore(
     useShallow((state) => ({
+      sources: state.sources,
       mangas: state.mangas,
       loading: state.loading,
       error: state.error,
@@ -33,6 +36,11 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
     }))
   );
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
+  const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
+  const targetSourcePaths = resolveTargetSourcePaths(
+    sources,
+    authorDirectories.map((item) => item.directory)
+  );
   const {
     aliases,
     categories,
@@ -47,7 +55,8 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
   } = useOrganizerData({
     mangas,
     hasIpcBridge,
-    fetchMangas
+    fetchMangas,
+    targetSourcePaths
   });
   const {
     query,
@@ -173,7 +182,7 @@ export function OrganizerPage({ onBack, onOpenManga }: OrganizerPageProps) {
               categories={categories}
               onVisibleItemsChange={handleVisibleItemsChange}
               onToggleItem={toggleItem}
-              onOpenManga={(item) => onOpenManga?.(item)}
+              onOpenManga={(item) => onOpenManga?.(item, visibleItems.map((visibleItem) => visibleItem.id))}
               onQuickMoveManga={handleQuickMoveSingle}
               onAddTagManga={(item, anchor) => void handleAddTagManga(item, anchor)}
               onRenameManga={handleRequestRenameManga}

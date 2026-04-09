@@ -5,4 +5,5 @@ export interface ReaderSettingsPayload {
   widthMode: ReaderWidthMode;
   fixedWidthPercent: number;
   pageAnimationEnabled: boolean;
+  boundarySuggestionCount: number;
 }

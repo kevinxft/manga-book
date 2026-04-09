@@ -9,6 +9,7 @@ interface UseOrganizerDataArgs {
   mangas: MangaBookWithCover[];
   hasIpcBridge: boolean;
   fetchMangas: (options?: { sortBy?: SortKey }) => Promise<void>;
+  targetSourcePaths: string[];
 }
 
 interface UseOrganizerDataResult {
@@ -24,7 +25,7 @@ interface UseOrganizerDataResult {
   addAuthorDirectoryLocal: (directoryPath: string) => void;
 }
 
-export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrganizerDataArgs): UseOrganizerDataResult {
+export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas, targetSourcePaths }: UseOrganizerDataArgs): UseOrganizerDataResult {
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
   const aliases = useOrganizerMetadataStore((state) => state.aliases);
   const authorDirectories = useOrganizerMetadataStore((state) => state.authorDirectories);
@@ -59,15 +60,19 @@ export function useOrganizerData({ mangas, hasIpcBridge, fetchMangas }: UseOrgan
 
     return buildOrganizerCategories(
       mangas,
-      authorDirectories.map((item) => item.directory)
+      authorDirectories.map((item) => item.directory),
+      targetSourcePaths
     ).map((category) => ({
       ...category,
       aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? [],
       lastMovedAt: movedAtByPath.get(category.path) ?? null
     }));
-  }, [aliases, authorDirectories, mangas]);
+  }, [aliases, authorDirectories, mangas, targetSourcePaths]);
 
-  const organizerItems = useMemo(() => buildOrganizerItems(mangas, aliases), [aliases, mangas]);
+  const organizerItems = useMemo(
+    () => buildOrganizerItems(mangas, aliases, targetSourcePaths, authorDirectories.map((item) => item.directory)),
+    [aliases, authorDirectories, mangas, targetSourcePaths]
+  );
 
   useEffect(() => {
     if (categories.length === 0) {
