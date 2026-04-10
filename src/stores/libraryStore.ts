@@ -11,6 +11,7 @@ type LibraryFetchOptions = {
 };
 
 const resolvedCoverFolderPaths = new Set<string>();
+const locallyCancelledScanTaskIds = new Set<string>();
 
 interface LibraryState {
   sources: LibraryFolder[];
@@ -64,6 +65,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   async handleScanTaskUpdate(payload) {
+    if (payload.taskId && locallyCancelledScanTaskIds.has(payload.taskId)) {
+      if (payload.status === 'queued' || payload.status === 'running') {
+        return;
+      }
+      locallyCancelledScanTaskIds.delete(payload.taskId);
+    }
+
     if (payload.status === 'queued' || payload.status === 'running') {
       set({
         progress: {
@@ -254,12 +262,34 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   async cancelSync() {
-    set({ error: null });
+    const previousProgress = get().progress;
+    if (previousProgress.taskId) {
+      locallyCancelledScanTaskIds.add(previousProgress.taskId);
+    }
+    set({
+      error: null,
+      progress: {
+        taskId: null,
+        status: 'idle',
+        current: 0,
+        total: 0,
+        message: 'Idle',
+        sourceCurrent: 0,
+        sourceTotal: 0,
+        sourceName: '',
+        itemCurrent: 0,
+        itemTotal: 0,
+        currentItemName: ''
+      }
+    });
     try {
       await ipcInvoke('library.cancelSync', {
-        taskId: get().progress.taskId ?? undefined
+        taskId: previousProgress.taskId ?? undefined
       });
     } catch (error) {
+      if (previousProgress.taskId) {
+        locallyCancelledScanTaskIds.delete(previousProgress.taskId);
+      }
       set({ error: error instanceof Error ? error.message : 'Failed to cancel sync' });
     }
   },

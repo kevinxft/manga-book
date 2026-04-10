@@ -91,13 +91,17 @@ export class TaskQueue {
 
     task.controller.abort();
 
-    if (task.state.status === 'queued') {
+    const previousStatus = task.state.status;
+    if (previousStatus === 'queued' || previousStatus === 'running') {
       task.state.status = 'cancelled';
       task.state.progress = {
         ...task.state.progress,
-        message: 'Cancelled before start'
+        message: previousStatus === 'queued' ? 'Cancelled before start' : 'Cancelled'
       };
       this.emitTaskUpdate(task.state);
+    }
+
+    if (task.state.status === 'cancelled') {
       const index = this.queue.findIndex((item) => item.state.id === taskId);
       if (index >= 0) {
         this.queue.splice(index, 1);
@@ -141,26 +145,33 @@ export class TaskQueue {
 
   private async execute(task: InternalTask): Promise<void> {
     this.runningCount += 1;
-    task.state.status = 'running';
-    task.state.progress = {
-      ...task.state.progress,
-      message: 'Running'
-    };
-    this.emitTaskUpdate(task.state);
+    if (task.state.status !== 'cancelled') {
+      task.state.status = 'running';
+      task.state.progress = {
+        ...task.state.progress,
+        message: 'Running'
+      };
+      this.emitTaskUpdate(task.state);
+    }
 
     try {
       await task.run(task.controller.signal, (progress) => {
+        if (task.controller.signal.aborted || task.state.status === 'cancelled') {
+          return;
+        }
         task.state.progress = progress;
         this.emitTaskUpdate(task.state);
       });
 
       if (task.controller.signal.aborted) {
-        task.state.status = 'cancelled';
-        task.state.progress = {
-          ...task.state.progress,
-          message: 'Cancelled'
-        };
-        this.emitTaskUpdate(task.state);
+        if (task.state.status !== 'cancelled') {
+          task.state.status = 'cancelled';
+          task.state.progress = {
+            ...task.state.progress,
+            message: 'Cancelled'
+          };
+          this.emitTaskUpdate(task.state);
+        }
       } else {
         task.state.status = 'completed';
         task.state.progress = {

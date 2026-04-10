@@ -76,7 +76,10 @@ export function OrganizerHeader({
           <Input
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            className="h-10 rounded-2xl border-slate-200/60 bg-white/60 pl-10 pr-10 text-[13px] font-medium text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+            className={cn(
+              'h-10 rounded-2xl border-slate-200/60 bg-white/60 pl-10 text-[13px] font-medium text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
+              query.trim().length > 0 ? '!pr-10' : 'pr-4'
+            )}
             placeholder="搜索您整理的漫画名或路径..."
           />
           {query.trim().length > 0 ? (

@@ -270,8 +270,11 @@ export function OrganizerCategoryPanel({
             <Input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              className="h-10 rounded-xl border-slate-200/60 bg-white/60 pl-10 pr-9 text-[13px] font-medium text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-              placeholder="搜索可用目录..."
+              className={cn(
+                'h-10 rounded-xl border-slate-200/60 bg-white/60 pl-10 text-[13px] font-medium text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
+                search.trim().length > 0 ? '!pr-8' : 'pr-4'
+              )}
+              placeholder="搜索"
             />
             {search.trim().length > 0 ? (
               <button

@@ -576,6 +576,7 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
               targetSourcePaths={targetSourcePaths}
               authorDirectoryPaths={authorDirectories.map((item) => item.directory)}
               aliases={aliases}
+              scrollToTopKey={activeMenu}
               onVisibleItemsChange={handleVisibleMangasChange}
               onQuickMoveManga={(mangaId, destinationPath) => void handleQuickMoveManga(mangaId, destinationPath)}
               onAddTagManga={(item, anchor) => openAddTagDialog(item, anchor)}

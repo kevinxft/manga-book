@@ -21,6 +21,7 @@ interface OrganizerFileGridProps {
   onDeleteManga: (item: OrganizerItem) => void;
   onOpenManga?: (item: OrganizerItem) => void;
   onVisibleItemsChange?: (items: OrganizerItem[]) => void;
+  scrollToTopKey?: string | number | null;
 }
 
 interface OrganizerGridCardData {
@@ -194,7 +195,8 @@ export function OrganizerFileGrid({
   onOpenInFolder,
   onDeleteManga,
   onOpenManga,
-  onVisibleItemsChange
+  onVisibleItemsChange,
+  scrollToTopKey
 }: OrganizerFileGridProps) {
   const [contextMenu, setContextMenu] = useState<CoverContextMenuState<OrganizerItem> | null>(null);
   const duplicateConflictIds = useMemo(() => {
@@ -278,6 +280,8 @@ export function OrganizerFileGrid({
           className="min-h-0 flex-1 overflow-auto"
           dataScrollRegion="organizer-file-grid"
           emptyState={emptyState}
+          showScrollToTopButton
+          scrollToTopKey={scrollToTopKey}
           onVisibleItemsChange={
             onVisibleItemsChange
               ? (items) => onVisibleItemsChange(items.map((item) => item.item))

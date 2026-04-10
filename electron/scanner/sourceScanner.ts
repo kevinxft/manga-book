@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { setImmediate as waitForImmediate } from 'node:timers/promises';
 import type { MangaStructure } from '@shared/types';
 import type { Repositories } from '@main/db';
 import { directoryExists, listDirectories } from '@main/utils/fsUtils';
@@ -55,9 +56,17 @@ function assertNotAborted(signal?: AbortSignal): void {
   }
 }
 
-async function listImageFiles(directoryPath: string): Promise<string[]> {
+async function yieldToEventLoop(signal?: AbortSignal): Promise<void> {
+  assertNotAborted(signal);
+  await waitForImmediate();
+  assertNotAborted(signal);
+}
+
+async function listImageFiles(directoryPath: string, signal?: AbortSignal): Promise<string[]> {
+  assertNotAborted(signal);
   try {
     const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+    assertNotAborted(signal);
     return entries
       .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
       .map((entry) => path.join(directoryPath, entry.name));
@@ -73,8 +82,9 @@ function buildScanProgressPayload(input: ScanProgressPayload): ScanProgressPaylo
   return input;
 }
 
-async function inspectFolderAsManga(folderPath: string, allowChildDirectories = true): Promise<FolderInspection | null> {
-  const directImages = await listImageFiles(folderPath);
+async function inspectFolderAsManga(folderPath: string, allowChildDirectories = true, signal?: AbortSignal): Promise<FolderInspection | null> {
+  assertNotAborted(signal);
+  const directImages = await listImageFiles(folderPath, signal);
   if (directImages.length >= MIN_MANGA_IMAGE_COUNT) {
     return {
       structure: 'singleVolume',
@@ -88,7 +98,9 @@ async function inspectFolderAsManga(folderPath: string, allowChildDirectories = 
 
   let childDirectories: string[];
   try {
+    assertNotAborted(signal);
     childDirectories = await listDirectories(folderPath);
+    assertNotAborted(signal);
   } catch (error) {
     if (isIgnorableDirectoryReadError(error)) {
       return null;
@@ -99,8 +111,16 @@ async function inspectFolderAsManga(folderPath: string, allowChildDirectories = 
   let hasChildVolume = false;
   let childVolumeCount = 0;
 
-  for (const childDirectory of childDirectories) {
-    const childImages = await listImageFiles(childDirectory);
+  for (let index = 0; index < childDirectories.length; index += 1) {
+    assertNotAborted(signal);
+    if (index > 0 && index % 25 === 0) {
+      await yieldToEventLoop(signal);
+    }
+    const childDirectory = childDirectories[index];
+    if (!childDirectory) {
+      continue;
+    }
+    const childImages = await listImageFiles(childDirectory, signal);
     if (childImages.length === 0) {
       continue;
     }
@@ -136,9 +156,14 @@ async function discoverMangaEntries(
 ): Promise<MangaEntry[]> {
   const discovered: MangaEntry[] = [];
   const stack: string[] = [rootPath];
+  let inspectedDirectoryCount = 0;
 
   while (stack.length > 0) {
     assertNotAborted(signal);
+    inspectedDirectoryCount += 1;
+    if (inspectedDirectoryCount % 25 === 0) {
+      await yieldToEventLoop(signal);
+    }
     const currentPath = stack.pop();
     if (!currentPath) {
       continue;
@@ -147,6 +172,7 @@ async function discoverMangaEntries(
     if (!(await directoryExists(currentPath))) {
       continue;
     }
+    assertNotAborted(signal);
 
     const relativePath = path.relative(rootPath, currentPath);
     const relativeSegments = relativePath === '' ? [] : relativePath.split(path.sep).filter(Boolean);
@@ -167,7 +193,7 @@ async function discoverMangaEntries(
     const allowChildDirectoriesAsMultiVolume = withinArtistsRoot && artistsRelativeSegments.length >= 2;
 
     if (!shouldSkipAsContainer) {
-      const inspection = await inspectFolderAsManga(currentPath, allowChildDirectoriesAsMultiVolume);
+      const inspection = await inspectFolderAsManga(currentPath, allowChildDirectoriesAsMultiVolume, signal);
       if (inspection) {
         discovered.push({
           folderPath: currentPath,
@@ -180,6 +206,7 @@ async function discoverMangaEntries(
     let childDirectories: string[];
     try {
       childDirectories = await listDirectories(currentPath);
+      assertNotAborted(signal);
     } catch (error) {
       if (isIgnorableDirectoryReadError(error)) {
         continue;
@@ -187,6 +214,7 @@ async function discoverMangaEntries(
       throw error;
     }
     for (let index = childDirectories.length - 1; index >= 0; index -= 1) {
+      assertNotAborted(signal);
       const childDirectory = childDirectories[index];
       if (!childDirectory) {
         continue;
@@ -219,6 +247,7 @@ export function createSourceScanner(repositories: Repositories): SourceScanner {
     const normalizedSourcePath = normalizeAbsolutePath(sourcePath);
     const sourceName = path.basename(normalizedSourcePath);
     const exists = await directoryExists(normalizedSourcePath);
+    assertNotAborted(signal);
 
     if (!exists) {
       manga.deleteBySource(normalizedSourcePath);
@@ -229,11 +258,15 @@ export function createSourceScanner(repositories: Repositories): SourceScanner {
     const dbPathSet = new Set(dbMangas.map((book) => book.folderPath));
 
     const artistsRootPath = await findArtistsDirectoryPath(normalizedSourcePath);
+    assertNotAborted(signal);
     const discoveredEntries = await discoverMangaEntries(normalizedSourcePath, artistsRootPath, signal);
     const fsPathSet = new Set(discoveredEntries.map((entry) => entry.folderPath));
 
     for (let index = 0; index < discoveredEntries.length; index += 1) {
       assertNotAborted(signal);
+      if (index > 0 && index % 20 === 0) {
+        await yieldToEventLoop(signal);
+      }
       const entry = discoveredEntries[index];
       if (!entry) {
         continue;
@@ -278,8 +311,13 @@ export function createSourceScanner(repositories: Repositories): SourceScanner {
       );
     }
 
+    let staleIndex = 0;
     for (const stalePath of dbPathSet) {
       assertNotAborted(signal);
+      if (staleIndex > 0 && staleIndex % 50 === 0) {
+        await yieldToEventLoop(signal);
+      }
+      staleIndex += 1;
       if (!fsPathSet.has(stalePath)) {
         manga.deleteByFolderPath(stalePath);
         invalidateCoverPath(stalePath);

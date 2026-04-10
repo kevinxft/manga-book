@@ -229,8 +229,11 @@ export function LibrarySidebar({
                   <Input
                     value={artistSearch}
                     onChange={(event) => setArtistSearch(event.target.value)}
-                    className="h-9 rounded-xl border-slate-200/60 bg-slate-100/50 py-0 pl-9 pr-9 text-[13px] leading-normal text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-                    placeholder="搜索目录名称或别名..."
+                    className={cn(
+                      'h-9 rounded-xl border-slate-200/60 bg-slate-100/50 py-0 pl-9 text-[13px] leading-normal text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
+                      artistSearch.trim().length > 0 ? '!pr-8' : 'pr-3'
+                    )}
+                    placeholder="搜索"
                   />
                   {artistSearch.trim().length > 0 ? (
                     <button

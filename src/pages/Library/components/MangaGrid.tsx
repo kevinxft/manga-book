@@ -30,6 +30,7 @@ interface MangaGridProps {
   onDeleteManga: (item: MangaBookWithCover) => void;
   onOpenManga?: (manga: MangaBookWithCover) => void;
   onVisibleItemsChange?: (items: MangaBookWithCover[]) => void;
+  scrollToTopKey?: string | number | null;
 }
 
 interface LibraryGridCardData {
@@ -184,7 +185,8 @@ export function MangaGrid({
   onOpenInFolder,
   onDeleteManga,
   onOpenManga,
-  onVisibleItemsChange
+  onVisibleItemsChange,
+  scrollToTopKey
 }: MangaGridProps) {
   const [contextMenu, setContextMenu] = useState<CoverContextMenuState<MangaBookWithCover> | null>(null);
   const duplicateConflictIds = useMemo(() => {
@@ -271,6 +273,8 @@ export function MangaGrid({
         className="min-h-0 flex-1 overflow-auto"
         dataScrollRegion="library-manga-grid"
         emptyState={emptyState}
+        showScrollToTopButton
+        scrollToTopKey={scrollToTopKey}
         onVisibleItemsChange={
           onVisibleItemsChange
             ? (items) => onVisibleItemsChange(items.map((item) => item.manga))

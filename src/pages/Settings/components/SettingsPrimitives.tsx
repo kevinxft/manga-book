@@ -11,8 +11,8 @@ export function SegmentButton({ active, label, onClick }: SegmentButtonProps) {
     <button
       onClick={onClick}
       className={cn(
-        'h-9 flex-1 rounded-lg text-[13px] font-semibold transition',
-        active ? 'bg-white text-[#2f6cf6] shadow-[0_2px_6px_rgba(47,108,246,0.12)]' : 'text-[#5d6d85] hover:bg-white/60'
+        'h-8 flex-1 rounded-full text-[12px] font-medium transition-all duration-200 focus:outline-none',
+        active ? 'bg-blue-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-800 hover:bg-slate-200/50'
       )}
     >
       {label}
@@ -20,27 +20,6 @@ export function SegmentButton({ active, label, onClick }: SegmentButtonProps) {
   );
 }
 
-interface OptionCardProps {
-  active: boolean;
-  title: string;
-  desc: string;
-  onClick: () => void;
-}
-
-export function OptionCard({ active, title, desc, onClick }: OptionCardProps) {
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        'rounded-xl border p-3 text-left transition',
-        active ? 'border-[#2f6cf6] bg-[#eef5ff]' : 'border-[#dbe2ee] bg-white hover:bg-[#f7f9fc]'
-      )}
-    >
-      <p className={cn('text-[13px] font-semibold', active ? 'text-[#2f6cf6]' : 'text-[#1f2b3d]')}>{title}</p>
-      <p className="mt-0.5 text-[12px] text-[#667892]">{desc}</p>
-    </button>
-  );
-}
 
 interface ToggleSwitchProps {
   checked: boolean;
@@ -53,18 +32,23 @@ export function ToggleSwitch({ checked, title, description, onToggle }: ToggleSw
   return (
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-[13px] font-bold text-[#1f2b3d]">{title}</p>
-        <p className="mt-0.5 text-[12px] text-[#6f819b]">{description}</p>
+        <p className="text-[13px] font-semibold tracking-wide text-slate-800">{title}</p>
+        <p className="mt-1 text-[11px] text-slate-500">{description}</p>
       </div>
       <button
         className={cn(
-          'relative h-7 w-[52px] rounded-full border border-[#bcc9dd] transition',
-          checked ? 'border-[#2f6cf6] bg-[#2f6cf6]' : 'bg-[#c8d2e0]'
+          'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
+          checked ? 'bg-blue-500' : 'bg-slate-200'
         )}
         onClick={onToggle}
         title={`切换${title}`}
       >
-        <span className={cn('absolute top-0.5 h-6 w-6 rounded-full bg-white shadow-sm transition', checked ? 'left-[26px]' : 'left-[2px]')} />
+        <span
+          className={cn(
+            'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out',
+            checked ? 'translate-x-5' : 'translate-x-0'
+          )}
+        />
       </button>
     </div>
   );

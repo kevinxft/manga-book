@@ -209,6 +209,7 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
               error={error}
               visibleItems={visibleItems}
               categories={categories}
+              scrollToTopKey={`${statusFilter}:${sourceFilter}:${query}`}
               onVisibleItemsChange={handleVisibleItemsChange}
               onToggleItem={toggleItem}
               onOpenManga={(item) => onOpenManga?.(item, visibleItems.map((visibleItem) => visibleItem.id))}

@@ -20,29 +20,30 @@ interface LibraryHeaderProps {
   onCancelSync: () => void;
 }
 
-function getScanStatusText(progress: ScanProgress): { primary: string; secondary: string } | null {
+function getScanPercent(progress: ScanProgress): number {
   if (progress.status !== 'running') {
-    return null;
+    return 0;
   }
 
-  const primary =
-    progress.sourceTotal > 0
-      ? `目录 ${Math.max(progress.sourceCurrent, 1)}/${progress.sourceTotal}${progress.sourceName ? ` · ${progress.sourceName}` : ''}`
-      : progress.sourceName
-        ? `正在准备同步 · ${progress.sourceName}`
-        : '正在准备同步...';
+  const sourceTotal = progress.sourceTotal > 0 ? progress.sourceTotal : progress.total;
+  const sourceCurrent = progress.sourceCurrent > 0 ? progress.sourceCurrent : progress.current;
+  if (sourceTotal <= 0) {
+    return 0;
+  }
 
-  const secondary = progress.currentItemName
-    ? `已扫描到 ${progress.currentItemName}${progress.itemTotal > 0 ? ` (${progress.itemCurrent}/${progress.itemTotal})` : ''}`
-    : progress.message === 'Queued'
-      ? '等待开始同步...'
+  if (progress.message === 'Scan finished') {
+    return 100;
+  }
+
+  const completedSources = Math.max(0, Math.min(sourceTotal, sourceCurrent - 1));
+  const currentSourceFraction =
+    progress.itemTotal > 0
+      ? Math.max(0, Math.min(1, progress.itemCurrent / progress.itemTotal))
       : progress.message.startsWith('No manga found')
-        ? '当前目录未发现漫画'
-        : progress.sourceName
-          ? `正在扫描 ${progress.sourceName}`
-          : '正在读取目录内容...';
+        ? 1
+        : 0;
 
-  return { primary, secondary };
+  return Math.max(0, Math.min(100, Math.round(((completedSources + currentSourceFraction) / sourceTotal) * 100)));
 }
 
 export function LibraryHeader({
@@ -60,7 +61,7 @@ export function LibraryHeader({
   onSyncSources,
   onCancelSync
 }: LibraryHeaderProps) {
-  const scanStatus = getScanStatusText(progress);
+  const scanPercent = getScanPercent(progress);
 
   return (
     <header className="flex h-[64px] items-center justify-between border-b border-slate-200/50 bg-white/40 px-5 backdrop-blur-2xl">
@@ -82,10 +83,11 @@ export function LibraryHeader({
           {scanRunning ? <Square className="h-4 w-4 fill-current transition-transform group-hover:scale-95" /> : <RefreshCw className={cn('h-4 w-4 transition-transform group-hover:rotate-180')} />}
         </button>
 
-        {scanStatus ? (
-          <div className="min-w-0 max-w-[280px]">
-            <p className="truncate text-[12px] font-bold text-blue-700">{scanStatus.primary}</p>
-            <p className="truncate text-[11px] font-medium text-slate-500">{scanStatus.secondary}</p>
+        {scanRunning ? (
+          <div className="min-w-0 rounded-full bg-blue-50 px-3 py-1 text-[12px] font-bold text-blue-700 ring-1 ring-blue-500/10">
+            <p className="truncate">
+              已扫描 {scanPercent}%
+            </p>
           </div>
         ) : null}
 
@@ -119,7 +121,10 @@ export function LibraryHeader({
           <Input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            className="h-10 rounded-2xl border-slate-200/60 bg-white/60 py-0 pl-10 pr-10 text-[13px] leading-normal text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+            className={cn(
+              'h-10 rounded-2xl border-slate-200/60 bg-white/60 py-0 pl-10 text-[13px] leading-normal text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
+              search.trim().length > 0 ? '!pr-10' : 'pr-4'
+            )}
             placeholder="搜索您想看的漫画、作者或标签..."
           />
           {search.trim().length > 0 ? (
