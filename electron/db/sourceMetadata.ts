@@ -853,6 +853,47 @@ export class SourceMetadataManager {
         return mapMangaRow(nextRow, destinationSourceRoot);
       },
 
+      renameDirectoryPrefix(previousDirectoryPath: string, nextDirectoryPath: string): number {
+        const previousPath = normalizeAbsolutePath(previousDirectoryPath);
+        const nextPath = normalizeAbsolutePath(nextDirectoryPath);
+        const sourceRoot = manager.resolveSourceRootForPath(previousPath);
+        if (!sourceRoot) {
+          return 0;
+        }
+
+        const nextSourceRoot = manager.resolveSourceRootForPath(nextPath, sourceRoot);
+        if (nextSourceRoot !== sourceRoot) {
+          throw new Error('Author directory rename must stay within the same source root');
+        }
+
+        const handle = manager.ensureSourceMetadataDb(sourceRoot);
+        const previousRelativePath = toRelativePath(sourceRoot, previousPath);
+        const nextRelativePath = toRelativePath(sourceRoot, nextPath);
+        const previousPrefix = `${previousRelativePath}${path.sep}`;
+        const nextPrefix = `${nextRelativePath}${path.sep}`;
+        const prefixLength = previousPrefix.length;
+
+        const result = handle.db
+          .prepare(
+            `UPDATE manga_books
+              SET relative_path = CASE
+                WHEN relative_path = @previousRelativePath THEN @nextRelativePath
+                ELSE @nextPrefix || substr(relative_path, @prefixLength + 1)
+              END
+              WHERE relative_path = @previousRelativePath
+                OR substr(relative_path, 1, @prefixLength) = @previousPrefix`
+          )
+          .run({
+            previousRelativePath,
+            nextRelativePath,
+            previousPrefix,
+            nextPrefix,
+            prefixLength
+          });
+
+        return result.changes;
+      },
+
       updateProgress(input: {
         mangaId: string;
         chapterIndex: number;

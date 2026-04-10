@@ -65,7 +65,7 @@ export function LibraryHeader({
 
   return (
     <header className="app-window-drag flex h-[64px] items-center justify-between border-b border-slate-200/50 bg-white/40 px-5 backdrop-blur-2xl">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <button
           className="group inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 text-slate-500 shadow-sm ring-1 ring-slate-200/60 transition-all hover:bg-white hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
           onClick={() => onSidebarCollapsedChange(!sidebarCollapsed)}
@@ -91,29 +91,26 @@ export function LibraryHeader({
           </div>
         ) : null}
 
-        <div className="flex items-center gap-3 ml-2">
-          <span className="text-[13px] font-bold tracking-wide text-slate-400">排序方式</span>
-          <div className="relative group">
-            <select
-              className="h-9 appearance-none rounded-xl bg-white/60 pl-4 pr-9 text-[13px] font-semibold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/60 transition-all hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500/20"
-              value={sortBy}
-              onChange={(event) => onSortByChange(event.target.value as SortKey)}
-            >
-              <option value="addedAtDesc">日期 (新到旧)</option>
-              <option value="addedAtAsc">日期 (旧到新)</option>
-              <option value="titleAsc">标题 (A-Z)</option>
-              <option value="titleDesc">标题 (Z-A)</option>
-              <option value="lastReadAtDesc">最近阅读优先</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-hover:text-blue-500" />
-          </div>
+        <div className="relative group">
+          <select
+            className="h-9 appearance-none rounded-xl bg-white/60 pl-4 pr-9 text-[13px] font-semibold text-slate-700 shadow-sm outline-none ring-1 ring-slate-200/60 transition-all hover:bg-white focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+            value={sortBy}
+            onChange={(event) => onSortByChange(event.target.value as SortKey)}
+          >
+            <option value="addedAtDesc">日期 (新到旧)</option>
+            <option value="addedAtAsc">日期 (旧到新)</option>
+            <option value="titleAsc">标题 (A-Z)</option>
+            <option value="titleDesc">标题 (Z-A)</option>
+            <option value="lastReadAtDesc">最近阅读优先</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-hover:text-blue-500" />
         </div>
 
         {loading ? <span className="text-[12px] font-bold text-slate-400 animate-pulse">正在加载...</span> : null}
       </div>
 
-      <div className="flex items-center gap-4">
-        <span className="shrink-0 rounded-full bg-white/80 px-3 py-1 text-[11px] font-bold tracking-wide text-slate-500 shadow-sm ring-1 ring-slate-200/50">
+      <div className="flex items-center gap-3">
+        <span className="shrink-0 text-[12px] font-bold tracking-wide text-slate-500">
           共 <span className="text-blue-600 font-black text-[12px]">{mangaCount}</span> 本典藏
         </span>
         <div className="relative w-[260px] max-w-[30vw] group">

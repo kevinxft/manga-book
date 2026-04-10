@@ -347,8 +347,6 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     handleConfirmRenameAuthorDirectory
   } = useAuthorDirectoryRename({
     hasIpcBridge,
-    fetchMangas,
-    refreshOrganizerMetadata: useOrganizerMetadataStore.getState().refreshOrganizerMetadata,
     setSelectedCategoryKey: (value) => setActiveMenu(value ? value.replace(/^artists:/, 'artist:') : 'all'),
     setMoveError: (message) => {
       setMoveError(message);

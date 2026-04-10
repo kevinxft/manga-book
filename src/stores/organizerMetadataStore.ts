@@ -13,6 +13,12 @@ interface OrganizerMetadataState {
   upsertAlias: (alias: DirectoryAlias) => void;
   removeAliasLocal: (aliasName: string) => void;
   addAuthorDirectoryLocal: (directoryPath: string) => void;
+  renameAuthorDirectoryLocal: (input: {
+    previousPath: string;
+    path: string;
+    previousName: string;
+    name: string;
+  }) => void;
 }
 
 let organizerMetadataPromise: Promise<void> | null = null;
@@ -136,6 +142,39 @@ export const useOrganizerMetadataStore = create<OrganizerMetadataState>((set, ge
 
       return {
         authorDirectories: [...state.authorDirectories, { directory: normalized, mangaCount: 0, lastMovedAt: null }],
+        loaded: true,
+        error: null
+      };
+    });
+  },
+
+  renameAuthorDirectoryLocal(input) {
+    set((state) => {
+      const previousPath = input.previousPath.trim();
+      const nextPath = input.path.trim();
+      const previousNameKey = input.previousName.trim().toLocaleLowerCase();
+      const nextName = input.name.trim();
+
+      if (!previousPath || !nextPath || !nextName) {
+        return state;
+      }
+
+      const existingSummary = state.authorDirectories.find((item) => item.directory === previousPath);
+      const nextAuthorDirectories = state.authorDirectories.map((item) =>
+        item.directory === previousPath ? { ...item, directory: nextPath } : item
+      );
+
+      if (!existingSummary && !nextAuthorDirectories.some((item) => item.directory === nextPath)) {
+        nextAuthorDirectories.push({ directory: nextPath, mangaCount: 0, lastMovedAt: null });
+      }
+
+      return {
+        aliases: state.aliases.map((alias) =>
+          alias.canonicalName.trim().toLocaleLowerCase() === previousNameKey
+            ? { ...alias, canonicalName: nextName }
+            : alias
+        ),
+        authorDirectories: nextAuthorDirectories,
         loaded: true,
         error: null
       };

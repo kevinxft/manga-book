@@ -67,8 +67,6 @@ export function useOrganizerMutations({
 
   const authorDirectoryRename = useAuthorDirectoryRename({
     hasIpcBridge,
-    fetchMangas,
-    refreshOrganizerMetadata,
     setSelectedCategoryKey,
     setMoveError
   });

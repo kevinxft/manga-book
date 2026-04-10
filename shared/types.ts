@@ -237,6 +237,14 @@ export interface OrganizerRenameAuthorDirectoryRequest {
   newName: string;
 }
 
+export interface OrganizerRenameAuthorDirectoryResult {
+  previousPath: string;
+  path: string;
+  previousName: string;
+  name: string;
+  updatedCount: number;
+}
+
 export interface OrganizerDeleteAuthorDirectoryRequest {
   directoryPath: string;
 }
@@ -313,7 +321,7 @@ export interface IpcChannels {
   'organizer.removeAlias': { req: OrganizerRemoveAliasRequest; res: { removed: boolean } };
   'organizer.listAuthorDirectories': { req: void; res: TargetDirectorySummary[] };
   'organizer.createAuthorDirectory': { req: OrganizerCreateAuthorDirectoryRequest; res: { path: string; created: boolean } };
-  'organizer.renameAuthorDirectory': { req: OrganizerRenameAuthorDirectoryRequest; res: { path: string } };
+  'organizer.renameAuthorDirectory': { req: OrganizerRenameAuthorDirectoryRequest; res: OrganizerRenameAuthorDirectoryResult };
   'organizer.deleteAuthorDirectory': { req: OrganizerDeleteAuthorDirectoryRequest; res: { deleted: boolean; path: string } };
   'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
   'organizer.searchGoogle': { req: OrganizerSearchGoogleRequest; res: { opened: boolean } };

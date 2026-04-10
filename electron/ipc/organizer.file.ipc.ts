@@ -7,7 +7,7 @@ import { updateCachedCanonicalName } from './organizer.alias.ipc';
 import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath, toKey } from '@main/utils/pathUtils';
-import { invalidateCoverPath } from '@main/scanner/coverFinder';
+import { clearCoverPathCache, invalidateCoverPath } from '@main/scanner/coverFinder';
 import { isMetadataDirectoryPath } from '@main/db/sourceMetadata';
 
 async function getAvailableDirectoryPath(
@@ -203,7 +203,13 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     const nextPath = normalizeAbsolutePath(path.join(path.dirname(currentPath), nextName));
 
     if (nextPath === currentPath) {
-      return ok({ path: currentPath });
+      return ok({
+        previousPath: currentPath,
+        path: currentPath,
+        previousName,
+        name: nextName,
+        updatedCount: 0
+      });
     }
 
     if (await pathExists(nextPath)) {
@@ -212,24 +218,19 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
 
     await movePath(currentPath, nextPath);
 
-    const prefix = `${currentPath}${path.sep}`;
-    for (const book of manga.list()) {
-      const normalizedFolderPath = normalizeAbsolutePath(book.folderPath);
-      if (!normalizedFolderPath.startsWith(prefix)) {
-        continue;
-      }
-
-      const relativeFolderPath = path.relative(currentPath, normalizedFolderPath);
-      const nextFolderPath = normalizeAbsolutePath(path.join(nextPath, relativeFolderPath));
-
-      invalidateCoverPath(book.folderPath);
-      manga.updatePath(book.id, book.title, nextFolderPath, book.sourceFolderPath);
-    }
+    const updatedCount = manga.renameDirectoryPrefix(currentPath, nextPath);
+    clearCoverPathCache();
 
     alias.updateCanonicalName(previousName, nextName, nextPath);
     updateCachedCanonicalName(previousName, nextName);
 
-    return ok({ path: nextPath });
+    return ok({
+      previousPath: currentPath,
+      path: nextPath,
+      previousName,
+      name: nextName,
+      updatedCount
+    });
   });
 
   registerHandler('organizer.deleteAuthorDirectory', async (request) => {
