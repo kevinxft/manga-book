@@ -38,44 +38,36 @@ const CategoryItem = memo(function CategoryItem({
   onContextMenu: (event: ReactMouseEvent, category: OrganizerCategory) => void;
 }) {
   const active = useOrganizerSelectionStore((state) => state.selectedCategoryKey === category.key);
-  const label = category.label;
-  const aliasText = category.aliases.length > 0 ? `(${category.aliases.join(' / ')})` : null;
 
   return (
     <button
       className={cn(
-        'group flex w-full items-center justify-between rounded-xl border px-2.5 py-1.5 text-left shadow-sm transition-all duration-200',
+        'group flex w-full items-center justify-between rounded-2xl border px-2.5 py-2 text-left transition-all duration-200 focus:outline-none',
         active
-          ? 'border-blue-500 bg-blue-500 shadow-blue-500/25'
-          : 'border-transparent bg-slate-50 hover:bg-white hover:border-slate-200/60 hover:-translate-y-0.5 hover:shadow-md'
+          ? 'border-blue-500/50 bg-blue-50 shadow-sm'
+          : 'border-transparent bg-transparent hover:border-slate-200/60 hover:bg-white hover:shadow-[0_4px_20px_rgba(30,41,59,0.04)]'
       )}
       onClick={() => onSelect(category.key)}
       onContextMenu={(event) => onContextMenu(event, category)}
       title={category.path}
     >
-      <span className="inline-flex min-w-0 items-center gap-2">
-        <Folder className={cn('h-4 w-4 transition-colors', active ? 'text-white' : 'text-blue-500 group-hover:text-blue-600')} />
-        <span className="inline-flex min-w-0 items-baseline gap-1">
-          <span className={cn('truncate text-[13px] font-bold tracking-wide transition-colors', active ? 'text-white' : 'text-slate-700 group-hover:text-blue-600')}>
-            {label}
+      <span className="inline-flex min-w-0 flex-1 items-center gap-2.5">
+        <Folder className={cn('h-4 w-4 shrink-0 transition-colors', active ? 'fill-blue-500/20 text-blue-600' : 'text-blue-400 group-hover:fill-blue-50 group-hover:text-blue-500')} />
+        <span className="inline-flex min-w-0 flex-1 flex-col justify-center">
+          <span className={cn('truncate text-[13px] font-bold tracking-wide transition-colors', active ? 'text-blue-700' : 'text-slate-700 group-hover:text-slate-900')}>
+            {category.label}
           </span>
-          {aliasText ? (
-            <span
-              className={cn(
-                'truncate text-[11px] font-medium tracking-wide transition-colors',
-                active ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-500'
-              )}
-              title={category.aliases.join(' / ')}
-            >
-              {aliasText}
+          {category.aliases.length > 0 ? (
+            <span className={cn('truncate text-[10px] font-semibold tracking-wide transition-colors', active ? 'text-blue-500/80' : 'text-slate-400 group-hover:text-slate-500')} title={category.aliases.join(' / ')}>
+              {category.aliases.join(' / ')}
             </span>
           ) : null}
         </span>
       </span>
       <span
         className={cn(
-          'rounded-lg px-1.5 py-0.5 text-[11px] font-bold shadow-sm transition-colors',
-          active ? 'bg-white/20 text-white shadow-none ring-1 ring-white/30' : 'bg-slate-200/70 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:ring-1 group-hover:ring-blue-200'
+          'ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold transition-all',
+          active ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20' : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'
         )}
       >
         {category.count}
@@ -103,14 +95,14 @@ const OrganizerMoveButton = memo(function OrganizerMoveButton({
   );
 
   return (
-    <Button
-      className="h-12 w-full rounded-2xl bg-blue-600 text-[15px] font-bold tracking-wide text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:bg-blue-500 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0 disabled:bg-slate-300 disabled:text-slate-500"
+    <button
+      className="group flex h-12 w-full items-center justify-center rounded-full bg-blue-600 text-[14px] font-bold tracking-wide text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-500 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:pointer-events-none disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
       onClick={onMoveSelected}
       disabled={!hasIpcBridge || moving || selectedCount === 0 || !selectedCategory}
     >
-      {moving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+      {moving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
       移动到所选目录 ({selectedCount})
-    </Button>
+    </button>
   );
 });
 
@@ -263,7 +255,7 @@ export function OrganizerCategoryPanel({
 
   return (
     <aside className="flex h-full w-[360px] flex-col border-l border-slate-200/50 bg-white/50 backdrop-blur-md">
-      <div className="flex min-h-0 flex-1 flex-col border-b border-slate-200/50 px-6 pb-4 pt-6">
+      <div className="flex min-h-0 flex-1 flex-col border-b border-slate-200/50 px-4 pb-3 pt-5">
         <div className="mb-4 flex items-center gap-2.5">
           <div className="relative min-w-0 flex-1 group">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500" />
@@ -271,14 +263,14 @@ export function OrganizerCategoryPanel({
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               className={cn(
-                'h-10 rounded-xl border-slate-200/60 bg-white/60 pl-10 text-[13px] font-medium text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
+                'h-10 rounded-full border-slate-200/60 bg-white/60 pl-10 text-[13px] font-medium text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
                 search.trim().length > 0 ? '!pr-8' : 'pr-4'
               )}
               placeholder="搜索"
             />
             {search.trim().length > 0 ? (
               <button
-                className="absolute right-2 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-md text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
+                className="absolute right-2 top-1/2 inline-flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-full text-[#70829c] transition hover:bg-[#dfe7f4] hover:text-[#4e607a]"
                 onClick={() => setSearch('')}
                 title="清空搜索"
               >
@@ -289,7 +281,7 @@ export function OrganizerCategoryPanel({
 
           <div className="relative" ref={sortMenuRef}>
             <button
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200/60 bg-white/60 shadow-sm transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-slate-200/60 bg-white/60 shadow-sm transition-all hover:bg-white hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               onClick={() => setSortMenuOpen((prev) => !prev)}
               title="排序"
             >
@@ -325,11 +317,11 @@ export function OrganizerCategoryPanel({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-2 -mr-2">
+        <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-2 -mr-2 library-sidebar-scroll">
           {filteredCategories.length > 0 ? (
             <section className="space-y-1.5">
-              <p className="px-1 text-[11px] font-bold tracking-[0.15em] text-slate-400">AVAILABLE PLACES</p>
-              <div className="space-y-1">{renderCategoryList(filteredCategories)}</div>
+              <p className="px-2 text-[11px] font-bold tracking-[0.15em] text-slate-400">AVAILABLE PLACES</p>
+              <div className="space-y-1 px-2 pb-2 pt-0.5">{renderCategoryList(filteredCategories)}</div>
             </section>
           ) : null}
 
@@ -346,20 +338,21 @@ export function OrganizerCategoryPanel({
           ) : null}
         </div>
 
-        <Button
-          className="mt-4 h-11 w-full rounded-2xl border border-dashed border-slate-300 bg-white/60 text-[13px] font-bold text-slate-600 shadow-sm transition-all hover:bg-white hover:text-blue-600 hover:border-blue-300"
+        <button
+          className="group mt-4 flex h-[42px] w-full items-center justify-center gap-1 rounded-2xl border border-dashed border-slate-300 bg-white/40 text-[13px] font-bold text-slate-500 shadow-sm transition-all hover:border-blue-300 hover:bg-white hover:text-blue-600 hover:shadow disabled:pointer-events-none disabled:bg-slate-50 disabled:opacity-50"
           title="新建归档作者目录"
           onClick={onRequestCreateAuthor}
           disabled={!hasIpcBridge || creatingAuthor}
         >
-          {creatingAuthor ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-          + 新建归档目录
-        </Button>
+          {creatingAuthor ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+          {!creatingAuthor && <span className="mb-[2px] text-[16px] leading-none transition-transform group-hover:scale-125">+</span>}
+          <span>新建归档目录</span>
+        </button>
       </div>
 
       {moveError ? (
-        <div className="shrink-0 px-5 pt-4">
-          <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+        <div className="shrink-0 px-4 pt-3">
+          <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
             <p className="min-w-0 flex-1 break-words">{moveError}</p>
             <button
               className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md text-red-500 transition hover:bg-red-100 hover:text-red-700"
@@ -372,7 +365,7 @@ export function OrganizerCategoryPanel({
         </div>
       ) : null}
 
-      <div className="px-6 py-5">
+      <div className="px-4 py-4">
         <OrganizerMoveButton
           categories={categories}
           moving={moving}

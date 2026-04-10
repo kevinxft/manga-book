@@ -40,56 +40,59 @@ export function TagManagementDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#7f8899]/65 px-4 py-8">
-      <div className="w-full max-w-[780px] overflow-hidden rounded-2xl border border-[#d7dde8] bg-[#f4f6fa] shadow-[0_24px_72px_rgba(39,53,73,0.35)]">
-        <div className="flex items-center justify-between border-b border-[#dde3ee] px-6 py-4">
-          <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#deebff]">
-              <Tag className="h-5 w-5 text-[#2f6cf6]" />
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/60 bg-white/90 shadow-[0_24px_60px_rgba(15,23,42,0.15)] ring-1 ring-slate-200/50 backdrop-blur-2xl">
+        <div className="flex items-center justify-between border-b border-slate-200/50 px-5 py-3.5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 shadow-sm ring-1 ring-blue-500/10">
+              <Tag className="h-4 w-4 text-blue-600" />
             </div>
-            <h2 className="text-xl font-bold leading-none text-[#111b2d]">管理标签</h2>
+            <h2 className="text-[15px] font-bold leading-none tracking-wide text-slate-800">标签管理</h2>
           </div>
           <button
-            className="rounded-md p-1.5 text-[#7a869b] transition hover:bg-[#e8edf5] hover:text-[#4d5d75]"
+            className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 focus:bg-slate-100 focus:outline-none"
             onClick={onClose}
+            title="关闭窗口"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="space-y-6 px-6 py-5">
-          <section>
-            <div className="mb-4 flex items-center justify-between">
-              <p className="text-base font-extrabold tracking-wide text-[#1d2739]">当前标签</p>
-              <div className="flex items-center gap-3">
-                <p className="text-sm font-semibold text-[#70829d]">共 {tags.length} 个标签</p>
-                <Button
+        <div className="flex flex-col gap-5 px-5 py-4">
+          <section className="flex flex-col min-h-0">
+            <div className="mb-2.5 flex items-center justify-between px-1">
+              <p className="text-[12px] font-bold tracking-wider text-slate-400">当前全局标签 ({tags.length})</p>
+              {tags.length > 0 ? (
+                <button
                   type="button"
-                  className="h-7 rounded-md border border-[#f0bcbc] bg-[#fff2f2] px-2.5 text-[11px] font-semibold text-[#b83b3b] hover:bg-[#ffe7e7]"
-                  disabled={tags.length === 0}
+                  className="rounded-full border border-red-200 bg-red-50/50 px-2 py-0.5 text-[10px] font-bold text-red-500 transition-colors hover:bg-red-100 hover:text-red-700"
                   onClick={() => setConfirmClearAll(true)}
                 >
-                  清除全部标签
-                </Button>
-              </div>
+                  清空全部
+                </button>
+              ) : null}
             </div>
 
             {tags.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-[#cfd8e6] bg-white/70 px-4 py-6 text-center text-xs text-[#7f8ea5]">
-                暂无标签
+              <div className="rounded-2xl border border-dashed border-slate-200/60 bg-slate-50/50 py-6 text-center text-[12px] font-bold text-slate-400 shadow-sm">
+                暂无使用任何标签
               </div>
             ) : (
-              <div className="flex flex-wrap gap-2.5">
+              <div className="library-sidebar-scroll flex max-h-[160px] flex-wrap gap-2 overflow-y-auto px-1 pb-1">
                 {tags.map((tag) => (
-                  <div key={tag.id} className="flex items-center gap-1.5 rounded-lg border border-[#ced8e8] bg-white px-2 py-1">
-                    <span className="min-w-0 rounded-md bg-[#ebf2ff] px-2.5 py-1 text-xs font-semibold text-[#325074]">
-                      <span className="truncate">{tag.label}</span>
+                  <div
+                    key={tag.id}
+                    className="group flex max-w-full items-center gap-1 rounded-full border border-slate-200/80 bg-white pl-2.5 pr-1 py-1 shadow-sm transition-all hover:border-blue-200 hover:shadow"
+                  >
+                    <span className="truncate text-[12px] font-bold tracking-wide text-slate-600 transition-colors group-hover:text-blue-600">
+                      {tag.label}
                     </span>
                     <button
-                      className="rounded-md p-1 text-[#98a7bc] hover:bg-[#f2f6fb] hover:text-[#50617a]"
+                      className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-slate-300 transition-all hover:bg-red-100 hover:text-red-500"
                       onClick={() => setPendingDeleteTag(tag)}
+                      title="删除此标签"
                     >
-                      <X className="h-4 w-4" />
+                      <X className="h-3 w-3" />
                     </button>
                   </div>
                 ))}
@@ -97,58 +100,59 @@ export function TagManagementDialog({
             )}
           </section>
 
-          <div className="h-px bg-[#dde3ee]" />
+          <div className="h-px shrink-0 bg-slate-200/60" />
 
-          <section>
-            <p className="mb-4 text-base font-extrabold tracking-wide text-[#1d2739]">新增标签</p>
-
+          <section className="shrink-0">
             <form
-              className="space-y-2"
+              className="flex items-center gap-2"
               onSubmit={(event) => {
                 event.preventDefault();
-                onUpsertTag();
+                if (newTagLabel.trim()) {
+                  onUpsertTag();
+                }
               }}
             >
-              <label className="text-xs font-bold tracking-wide text-[#6d7f99]">标签名称</label>
-              <div className="grid grid-cols-[1fr_auto] gap-2">
-                <Input
-                  value={newTagLabel}
-                  onChange={(event) => onSetNewTagLabel(event.target.value)}
-                  placeholder="例如：日常 / 热血 / 悬疑"
-                  className="h-10 rounded-xl border-[#d7deea] bg-white text-sm placeholder:text-[#a3afc2]"
-                />
-                <Button
-                  type="submit"
-                  className="h-10 rounded-xl bg-[#dfeaf9] px-3 text-[13px] font-bold text-[#2f6cf6] transition hover:bg-[#d3e2f8]"
-                >
-                  <Plus className="mr-1 h-4 w-4" />
-                  新建标签
-                </Button>
-              </div>
+              <Input
+                value={newTagLabel}
+                onChange={(event) => onSetNewTagLabel(event.target.value)}
+                placeholder="在此输入新标签名称..."
+                className="h-9 flex-1 rounded-full border-slate-200/60 bg-slate-50 pl-4 pr-4 text-[12px] font-medium text-slate-700 shadow-sm transition-all placeholder:text-slate-400 focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20"
+              />
+              <Button
+                type="submit"
+                disabled={!newTagLabel.trim()}
+                className="h-9 shrink-0 rounded-full bg-blue-600 px-4 text-[12px] font-bold tracking-wide text-white shadow-sm shadow-blue-500/20 transition-all hover:-translate-y-0.5 hover:bg-blue-500 hover:shadow-md disabled:pointer-events-none disabled:opacity-50"
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                新增
+              </Button>
             </form>
           </section>
         </div>
       </div>
 
       {pendingDeleteTag ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 p-4">
-          <div className="w-full max-w-[360px] rounded-xl border border-[#d4dceb] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
-            <p className="text-[14px] font-semibold text-[#1f2f48]">确认删除标签？</p>
-            <p className="mt-2 text-[12px] leading-5 text-[#5f7088]">删除后会从所有漫画中移除该标签。</p>
-            <p className="mt-2 rounded-md bg-[#eef3fb] px-2.5 py-2 text-[12px] font-semibold text-[#2e4360]">
-              {pendingDeleteTag.label}
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[320px] rounded-[24px] border border-white/60 bg-white/90 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/50 backdrop-blur-2xl">
+            <p className="text-center text-[15px] font-black tracking-wide text-slate-800">确认删除标签？</p>
+            <p className="mt-2 text-center text-[12px] font-medium leading-relaxed text-slate-500">
+              这意味着该标签将从所有的漫画属性中被彻底剔除。
             </p>
-            <div className="mt-4 flex justify-end gap-2">
+            <div className="mx-auto mt-4 w-fit max-w-full truncate rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[12px] font-bold text-blue-600">
+              {pendingDeleteTag.label}
+            </div>
+            <div className="mt-6 flex gap-3">
               <Button
                 type="button"
-                className="h-8 rounded-lg border border-[#d2dbe8] bg-white px-3 text-[12px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
+                variant="secondary"
+                className="h-9 flex-1 rounded-full bg-slate-100 text-[13px] font-bold text-slate-600 hover:bg-slate-200"
                 onClick={() => setPendingDeleteTag(null)}
               >
                 取消
               </Button>
               <Button
                 type="button"
-                className="h-8 rounded-lg bg-[#c73a3a] px-3 text-[12px] font-semibold text-white hover:bg-[#a83131]"
+                className="h-9 flex-1 rounded-full bg-red-500 text-[13px] font-bold text-white shadow-sm shadow-red-500/20 hover:bg-red-400"
                 onClick={() => {
                   onRemoveTag(pendingDeleteTag.id);
                   setPendingDeleteTag(null);
@@ -162,27 +166,30 @@ export function TagManagementDialog({
       ) : null}
 
       {confirmClearAll ? (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/35 p-4">
-          <div className="w-full max-w-[380px] rounded-xl border border-[#d4dceb] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
-            <p className="text-[14px] font-semibold text-[#1f2f48]">确认清除全部标签？</p>
-            <p className="mt-2 text-[12px] leading-5 text-[#5f7088]">这会删除全部全局标签，并从所有漫画移除这些标签。</p>
-            <div className="mt-4 flex justify-end gap-2">
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-[320px] rounded-[24px] border border-white/60 bg-white/90 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.2)] ring-1 ring-slate-200/50 backdrop-blur-2xl">
+            <p className="text-center text-[15px] font-black tracking-wide text-red-600">清空全部标签</p>
+            <p className="mt-2 text-center text-[12px] font-medium leading-relaxed text-slate-500">
+              您确定要删除所有全局标签吗？这会清空系统内所有漫画的标签信息且不可恢复。
+            </p>
+            <div className="mt-6 flex gap-3">
               <Button
                 type="button"
-                className="h-8 rounded-lg border border-[#d2dbe8] bg-white px-3 text-[12px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
+                variant="secondary"
+                className="h-9 flex-1 rounded-full bg-slate-100 text-[13px] font-bold text-slate-600 hover:bg-slate-200"
                 onClick={() => setConfirmClearAll(false)}
               >
                 取消
               </Button>
               <Button
                 type="button"
-                className="h-8 rounded-lg bg-[#c73a3a] px-3 text-[12px] font-semibold text-white hover:bg-[#a83131]"
+                className="h-9 flex-1 rounded-full bg-red-500 text-[13px] font-bold text-white shadow-sm shadow-red-500/20 hover:bg-red-400"
                 onClick={() => {
                   onClearAllTags();
                   setConfirmClearAll(false);
                 }}
               >
-                确认清除
+                确认清空
               </Button>
             </div>
           </div>

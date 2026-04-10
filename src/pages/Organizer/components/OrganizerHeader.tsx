@@ -68,10 +68,10 @@ export function OrganizerHeader({
           onClick={onBack}
         >
           <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          返回主库
+          返回
         </Button>
 
-        <div className="relative w-[28%] min-w-[200px] max-w-[320px] group">
+        <div className="relative w-[18%] min-w-[140px] max-w-[220px] group">
           <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500" />
           <Input
             value={query}
@@ -80,7 +80,7 @@ export function OrganizerHeader({
               'h-10 rounded-2xl border-slate-200/60 bg-white/60 pl-10 text-[13px] font-medium text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
               query.trim().length > 0 ? '!pr-10' : 'pr-4'
             )}
-            placeholder="搜索您整理的漫画名或路径..."
+            placeholder="搜索漫画"
           />
           {query.trim().length > 0 ? (
             <button

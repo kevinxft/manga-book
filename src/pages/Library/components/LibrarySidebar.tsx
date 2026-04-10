@@ -461,11 +461,11 @@ export function LibrarySidebar({
                 'group flex h-10 w-full items-center rounded-xl py-2 text-[12px] font-bold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900',
                 sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-3'
               )}
-              title="漫画整理"
-              onClick={onOpenOrganizer}
+              title="设置"
+              onClick={onOpenSettings}
             >
-              <FolderTree className="h-4 w-4 transition-transform group-hover:scale-110" />
-              {!sidebarCollapsed ? '整理' : null}
+              <Settings className="h-4 w-4 transition-transform group-hover:rotate-90" />
+              {!sidebarCollapsed ? '设置' : null}
             </button>
 
             <button
@@ -473,11 +473,11 @@ export function LibrarySidebar({
                 'group flex h-10 w-full items-center rounded-xl py-2 text-[12px] font-bold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900',
                 sidebarCollapsed ? 'justify-center px-0' : 'justify-center gap-1.5 px-3'
               )}
-              title="设置"
-              onClick={onOpenSettings}
+              title="漫画整理"
+              onClick={onOpenOrganizer}
             >
-              <Settings className="h-4 w-4 transition-transform group-hover:rotate-90" />
-              {!sidebarCollapsed ? '设置' : null}
+              <FolderTree className="h-4 w-4 transition-transform group-hover:scale-110" />
+              {!sidebarCollapsed ? '整理' : null}
             </button>
           </div>
         </div>

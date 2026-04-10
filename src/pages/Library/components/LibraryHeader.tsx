@@ -125,7 +125,7 @@ export function LibraryHeader({
               'h-10 rounded-2xl border-slate-200/60 bg-white/60 py-0 pl-10 text-[13px] leading-normal text-slate-700 shadow-sm transition-all focus:border-blue-500/50 focus:bg-white focus:ring-2 focus:ring-blue-500/20',
               search.trim().length > 0 ? '!pr-10' : 'pr-4'
             )}
-            placeholder="搜索您想看的漫画、作者或标签..."
+            placeholder="搜索你想看的漫画"
           />
           {search.trim().length > 0 ? (
             <button
