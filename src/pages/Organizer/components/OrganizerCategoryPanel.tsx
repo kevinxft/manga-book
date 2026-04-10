@@ -1,20 +1,20 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, memo, useCallback, type MouseEvent as ReactMouseEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrowDownUp, Folder, Loader2, Pencil, Search, Tags, Trash2, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
+import { useAnchoredMenuPosition } from '@renderer/components/manga/useAnchoredMenuPosition';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
 import type { OrganizerCategory } from '../types';
 
 interface OrganizerCategoryPanelProps {
   categories: OrganizerCategory[];
-  selectedCategoryKey: string | null;
-  selectedCount: number;
   moving: boolean;
   creatingAuthor: boolean;
   hasIpcBridge: boolean;
   moveError: string | null;
   onClearMoveError: () => void;
-  onSelectCategory: (key: string) => void;
   onMoveSelected: () => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
   onRequestRenameCategory: (category: OrganizerCategory) => void;
@@ -28,37 +28,122 @@ interface CategoryContextMenuState {
   category: OrganizerCategory;
 }
 
-const CONTEXT_MENU_OFFSET = 6;
-const CONTEXT_MENU_PADDING = 8;
+const CategoryItem = memo(function CategoryItem({
+  category,
+  onSelect,
+  onContextMenu
+}: {
+  category: OrganizerCategory;
+  onSelect: (key: string) => void;
+  onContextMenu: (event: ReactMouseEvent, category: OrganizerCategory) => void;
+}) {
+  const active = useOrganizerSelectionStore((state) => state.selectedCategoryKey === category.key);
+  const label = category.label;
+  const aliasText = category.aliases.length > 0 ? `(${category.aliases.join(' / ')})` : null;
+
+  return (
+    <button
+      className={cn(
+        'group flex w-full items-center justify-between rounded-xl border px-2.5 py-1.5 text-left shadow-sm transition-all duration-200',
+        active
+          ? 'border-blue-500 bg-blue-500 shadow-blue-500/25'
+          : 'border-transparent bg-slate-50 hover:bg-white hover:border-slate-200/60 hover:-translate-y-0.5 hover:shadow-md'
+      )}
+      onClick={() => onSelect(category.key)}
+      onContextMenu={(event) => onContextMenu(event, category)}
+      title={category.path}
+    >
+      <span className="inline-flex min-w-0 items-center gap-2">
+        <Folder className={cn('h-4 w-4 transition-colors', active ? 'text-white' : 'text-blue-500 group-hover:text-blue-600')} />
+        <span className="inline-flex min-w-0 items-baseline gap-1">
+          <span className={cn('truncate text-[13px] font-bold tracking-wide transition-colors', active ? 'text-white' : 'text-slate-700 group-hover:text-blue-600')}>
+            {label}
+          </span>
+          {aliasText ? (
+            <span
+              className={cn(
+                'truncate text-[11px] font-medium tracking-wide transition-colors',
+                active ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-500'
+              )}
+              title={category.aliases.join(' / ')}
+            >
+              {aliasText}
+            </span>
+          ) : null}
+        </span>
+      </span>
+      <span
+        className={cn(
+          'rounded-lg px-1.5 py-0.5 text-[11px] font-bold shadow-sm transition-colors',
+          active ? 'bg-white/20 text-white shadow-none ring-1 ring-white/30' : 'bg-slate-200/70 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:ring-1 group-hover:ring-blue-200'
+        )}
+      >
+        {category.count}
+      </span>
+    </button>
+  );
+});
+
+const OrganizerMoveButton = memo(function OrganizerMoveButton({
+  categories,
+  moving,
+  hasIpcBridge,
+  onMoveSelected
+}: {
+  categories: OrganizerCategory[];
+  moving: boolean;
+  hasIpcBridge: boolean;
+  onMoveSelected: () => void;
+}) {
+  const selectedCount = useOrganizerSelectionStore((state) => state.selectedIds.size);
+  const selectedCategoryKey = useOrganizerSelectionStore((state) => state.selectedCategoryKey);
+  const selectedCategory = useMemo(
+    () => categories.find((item) => item.key === selectedCategoryKey) ?? null,
+    [categories, selectedCategoryKey]
+  );
+
+  return (
+    <Button
+      className="h-12 w-full rounded-2xl bg-blue-600 text-[15px] font-bold tracking-wide text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:bg-blue-500 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0 disabled:bg-slate-300 disabled:text-slate-500"
+      onClick={onMoveSelected}
+      disabled={!hasIpcBridge || moving || selectedCount === 0 || !selectedCategory}
+    >
+      {moving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+      移动到所选目录 ({selectedCount})
+    </Button>
+  );
+});
 
 export function OrganizerCategoryPanel({
   categories,
-  selectedCategoryKey,
-  selectedCount,
   moving,
   creatingAuthor,
   hasIpcBridge,
   moveError,
   onClearMoveError,
-  onSelectCategory,
   onMoveSelected,
   onRequestAddAlias,
   onRequestRenameCategory,
   onRequestDeleteCategory,
   onRequestCreateAuthor
 }: OrganizerCategoryPanelProps) {
+  const setSelectedCategoryKey = useOrganizerSelectionStore((state) => state.setSelectedCategoryKey);
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<
     'movedDesc' | 'movedAsc' | 'countDesc' | 'countAsc' | 'nameAsc' | 'nameDesc'
   >('movedDesc');
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<CategoryContextMenuState | null>(null);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ left: 0, top: 0 });
-  const [contextMenuReady, setContextMenuReady] = useState(false);
   const sortMenuRef = useRef<HTMLDivElement | null>(null);
-  const contextMenuRef = useRef<HTMLDivElement | null>(null);
+  const {
+    ref: contextMenuRef,
+    position: contextMenuPosition,
+    ready: contextMenuReady
+  } = useAnchoredMenuPosition({
+    open: Boolean(contextMenu),
+    anchor: contextMenu ? { x: contextMenu.x, y: contextMenu.y } : null
+  });
 
-  const selectedCategory = categories.find((item) => item.key === selectedCategoryKey) ?? null;
   const filteredCategories = useMemo(() => {
     const keyword = search.trim().toLowerCase();
     const searched = categories.filter(
@@ -106,66 +191,30 @@ export function OrganizerCategoryPanel({
     });
   }, [categories, search, sortBy]);
 
-  const renderCategoryList = (items: OrganizerCategory[]) =>
-    items.map((category) => {
-      const active = category.key === selectedCategoryKey;
-      const label = category.label;
-      const aliasText = category.aliases.length > 0 ? `(${category.aliases.join(' / ')})` : null;
-
-      return (
-        <button
-          key={category.key}
-          className={cn(
-            'group flex w-full items-center justify-between rounded-[14px] border px-3 py-2.5 text-left transition-all duration-200 shadow-sm',
-            active
-              ? 'border-blue-500 bg-blue-500 shadow-blue-500/25'
-              : 'border-transparent bg-slate-50 hover:bg-white hover:border-slate-200/60 hover:-translate-y-0.5 hover:shadow-md'
-          )}
-          onClick={() => {
-            onSelectCategory(category.key);
-            setContextMenu(null);
-          }}
-          onContextMenu={(event) => {
-            event.preventDefault();
-            onSelectCategory(category.key);
-            setContextMenu({
-              x: event.clientX,
-              y: event.clientY,
-              category
-            });
-          }}
-          title={category.path}
-        >
-          <span className="inline-flex min-w-0 items-center gap-2.5">
-            <Folder className={cn('h-4 w-4 transition-colors', active ? 'text-white' : 'text-blue-500 group-hover:text-blue-600')} />
-            <span className="inline-flex min-w-0 items-baseline gap-1">
-              <span className={cn('truncate text-[13px] font-bold tracking-wide transition-colors', active ? 'text-white' : 'text-slate-700 group-hover:text-blue-600')}>
-                {label}
-              </span>
-              {aliasText ? (
-                <span
-                  className={cn(
-                    'truncate text-[11px] font-medium tracking-wide transition-colors',
-                    active ? 'text-white/80' : 'text-slate-400 group-hover:text-slate-500'
-                  )}
-                  title={category.aliases.join(' / ')}
-                >
-                  {aliasText}
-                </span>
-              ) : null}
-            </span>
-          </span>
-          <span
-            className={cn(
-              'rounded-lg px-2 py-0.5 text-[11px] font-bold shadow-sm transition-colors',
-              active ? 'bg-white/20 text-white shadow-none ring-1 ring-white/30' : 'bg-slate-200/70 text-slate-500 group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:ring-1 group-hover:ring-blue-200'
-            )}
-          >
-            {category.count}
-          </span>
-        </button>
-      );
+  const handleCategoryContextMenu = useCallback((event: ReactMouseEvent, category: OrganizerCategory) => {
+    event.preventDefault();
+    setSelectedCategoryKey(category.key);
+    setContextMenu({
+      x: event.clientX,
+      y: event.clientY,
+      category
     });
+  }, [setSelectedCategoryKey]);
+
+  const handleCategorySelect = useCallback((key: string) => {
+    setSelectedCategoryKey(key);
+    setContextMenu(null);
+  }, [setSelectedCategoryKey]);
+
+  const renderCategoryList = (items: OrganizerCategory[]) =>
+    items.map((category) => (
+      <CategoryItem
+        key={category.key}
+        category={category}
+        onSelect={handleCategorySelect}
+        onContextMenu={handleCategoryContextMenu}
+      />
+    ));
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
@@ -210,38 +259,7 @@ export function OrganizerCategoryPanel({
       window.removeEventListener('keydown', closeOnEscape);
       window.removeEventListener('resize', closeOnResize);
     };
-  }, [contextMenu]);
-
-  useLayoutEffect(() => {
-    if (!contextMenu) {
-      setContextMenuReady(false);
-      return;
-    }
-
-    const updatePosition = () => {
-      if (!contextMenuRef.current) {
-        return;
-      }
-
-      const rect = contextMenuRef.current.getBoundingClientRect();
-      const desiredLeft = contextMenu.x + CONTEXT_MENU_OFFSET;
-      const desiredTop = contextMenu.y + CONTEXT_MENU_OFFSET;
-      const maxLeft = Math.max(CONTEXT_MENU_PADDING, window.innerWidth - rect.width - CONTEXT_MENU_PADDING);
-      const maxTop = Math.max(CONTEXT_MENU_PADDING, window.innerHeight - rect.height - CONTEXT_MENU_PADDING);
-
-      setContextMenuPosition({
-        left: Math.min(Math.max(desiredLeft, CONTEXT_MENU_PADDING), maxLeft),
-        top: Math.min(Math.max(desiredTop, CONTEXT_MENU_PADDING), maxTop)
-      });
-      setContextMenuReady(true);
-    };
-
-    setContextMenuReady(false);
-    const frame = window.requestAnimationFrame(updatePosition);
-    return () => {
-      window.cancelAnimationFrame(frame);
-    };
-  }, [contextMenu]);
+  }, [contextMenu, contextMenuRef]);
 
   return (
     <aside className="flex h-full w-[360px] flex-col border-l border-slate-200/50 bg-white/50 backdrop-blur-md">
@@ -304,11 +322,11 @@ export function OrganizerCategoryPanel({
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 space-y-2.5 overflow-auto pr-2 -mr-2">
+        <div className="min-h-0 flex-1 space-y-2 overflow-auto pr-2 -mr-2">
           {filteredCategories.length > 0 ? (
             <section className="space-y-1.5">
               <p className="px-1 text-[11px] font-bold tracking-[0.15em] text-slate-400">AVAILABLE PLACES</p>
-              <div className="space-y-1.5">{renderCategoryList(filteredCategories)}</div>
+              <div className="space-y-1">{renderCategoryList(filteredCategories)}</div>
             </section>
           ) : null}
 
@@ -352,17 +370,15 @@ export function OrganizerCategoryPanel({
       ) : null}
 
       <div className="px-6 py-5">
-        <Button
-          className="h-12 w-full rounded-2xl bg-blue-600 text-[15px] font-bold tracking-wide text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:bg-blue-500 hover:shadow-lg hover:-translate-y-0.5 disabled:opacity-50 disabled:shadow-none disabled:hover:translate-y-0 disabled:bg-slate-300 disabled:text-slate-500"
-          onClick={onMoveSelected}
-          disabled={!hasIpcBridge || moving || selectedCount === 0 || !selectedCategory}
-        >
-          {moving ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
-          移动到所选目录 ({selectedCount})
-        </Button>
+        <OrganizerMoveButton
+          categories={categories}
+          moving={moving}
+          hasIpcBridge={hasIpcBridge}
+          onMoveSelected={onMoveSelected}
+        />
       </div>
 
-      {contextMenu ? (
+      {contextMenu && typeof document !== 'undefined' ? createPortal(
         <div
           ref={contextMenuRef}
           className="fixed z-[90] w-[180px] rounded-2xl border border-white/60 bg-white/95 p-1.5 shadow-[0_20px_40px_rgba(15,23,42,0.15)] backdrop-blur-xl"
@@ -412,7 +428,8 @@ export function OrganizerCategoryPanel({
             <Trash2 className="h-4 w-4" />
             删除空目录
           </button>
-        </div>
+        </div>,
+        document.body
       ) : null}
     </aside>
   );

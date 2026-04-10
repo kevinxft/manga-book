@@ -70,7 +70,6 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   const [pageEditorOpen, setPageEditorOpen] = useState(false);
   const [pageEditorTarget, setPageEditorTarget] = useState<MangaBookWithCover | null>(null);
   const [pageEditorPaths, setPageEditorPaths] = useState<string[]>([]);
-  const [pageEditorSelectedPaths, setPageEditorSelectedPaths] = useState<string[]>([]);
   const [pageEditorLoading, setPageEditorLoading] = useState(false);
   const [pageEditorDeleting, setPageEditorDeleting] = useState(false);
   const [pageEditorError, setPageEditorError] = useState<string | null>(null);
@@ -188,7 +187,6 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     setPageEditorOpen(false);
     setPageEditorTarget(null);
     setPageEditorPaths([]);
-    setPageEditorSelectedPaths([]);
     setPageEditorError(null);
     setPageEditorLoading(false);
   }, [pageEditorDeleting]);
@@ -205,7 +203,6 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
       setPageEditorOpen(true);
       setPageEditorTarget(item);
       setPageEditorPaths([]);
-      setPageEditorSelectedPaths([]);
       setPageEditorError(null);
       setPageEditorLoading(true);
 
@@ -229,35 +226,28 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     [hasIpcBridge]
   );
 
-  const togglePageEditorSelection = useCallback((pagePath: string) => {
-    setPageEditorSelectedPaths((current) =>
-      current.includes(pagePath) ? current.filter((item) => item !== pagePath) : [...current, pagePath]
-    );
-  }, []);
-
-  const handleDeleteSelectedPages = useCallback(async () => {
-    if (!pageEditorTarget || pageEditorSelectedPaths.length === 0) {
+  const handleDeleteSelectedPages = useCallback(async (selectedPagePaths: string[]) => {
+    if (!pageEditorTarget || selectedPagePaths.length === 0) {
       return;
     }
 
-    if (pageEditorSelectedPaths.length >= pageEditorPaths.length) {
+    if (selectedPagePaths.length >= pageEditorPaths.length) {
       setPageEditorError('至少需要保留 1 页漫画。');
       return;
     }
 
     setPageEditorDeleting(true);
     setPageEditorError(null);
-    const selectedPageSet = new Set(pageEditorSelectedPaths);
+    const selectedPageSet = new Set(selectedPagePaths);
 
     try {
       const result = await ipcInvoke('reader.deletePages', {
         mangaId: pageEditorTarget.id,
-        pagePaths: pageEditorSelectedPaths
+        pagePaths: selectedPagePaths
       });
 
       const remainingPagePaths = pageEditorPaths.filter((pagePath) => !selectedPageSet.has(pagePath));
       setPageEditorPaths(remainingPagePaths);
-      setPageEditorSelectedPaths([]);
 
       updateMangaLocal(pageEditorTarget.id, (current) => ({
         ...current,
@@ -300,7 +290,7 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     } finally {
       setPageEditorDeleting(false);
     }
-  }, [fetchCoverPaths, pageEditorPaths, pageEditorSelectedPaths, pageEditorTarget, updateMangaLocal]);
+  }, [fetchCoverPaths, pageEditorPaths, pageEditorTarget, updateMangaLocal]);
 
   const {
     operationError,
@@ -677,14 +667,11 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
         open={pageEditorOpen}
         title={pageEditorTarget?.title ?? null}
         pagePaths={pageEditorPaths}
-        selectedPagePaths={pageEditorSelectedPaths}
         loading={pageEditorLoading}
         deleting={pageEditorDeleting}
         error={pageEditorError}
         onClose={closePageEditor}
-        onTogglePage={togglePageEditorSelection}
-        onDeleteSelected={() => void handleDeleteSelectedPages()}
-        onClearSelection={() => setPageEditorSelectedPaths([])}
+        onDeleteSelected={handleDeleteSelectedPages}
       />
     </main>
   );

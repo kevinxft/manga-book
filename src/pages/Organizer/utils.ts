@@ -1,6 +1,6 @@
 import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory, OrganizerItem, OrganizerSortKey, OrganizerStatusFilter } from './types';
-import { getMangaDisplayPath, getMangaPathCategory } from '@renderer/pages/Library/utils';
+import { getMangaDisplayPath } from '@renderer/pages/Library/utils';
 
 export interface AuthorAliasLookupContext {
   canonicalByAnyName: Map<string, string>;
@@ -14,6 +14,11 @@ export interface MangaAuthorInfo {
   aliases: string[];
   tooltipText: string;
   ownerBadge: string;
+}
+
+interface PathLookupContext {
+  normalizedDirectoryPaths: string[];
+  normalizedTargetSourcePaths: Set<string>;
 }
 
 function normalizePath(value: string): string {
@@ -50,11 +55,17 @@ function normalizeDirectoryPaths(directoryPaths: string[]): string[] {
   ).sort((a, b) => b.length - a.length);
 }
 
-function getExplicitAuthorDirectory(folderPath: string, directoryPaths: string[]): string | null {
-  const normalizedFolderPath = normalizePath(folderPath);
-  const normalizedDirectories = normalizeDirectoryPaths(directoryPaths);
+function createPathLookupContext(directoryPaths: string[], targetSourcePaths: string[]): PathLookupContext {
+  return {
+    normalizedDirectoryPaths: normalizeDirectoryPaths(directoryPaths),
+    normalizedTargetSourcePaths: new Set(targetSourcePaths.map((item) => normalizePath(item)).filter((item) => item.length > 0))
+  };
+}
 
-  for (const directoryPath of normalizedDirectories) {
+function getExplicitAuthorDirectoryFromNormalized(folderPath: string, normalizedDirectoryPaths: string[]): string | null {
+  const normalizedFolderPath = normalizePath(folderPath);
+
+  for (const directoryPath of normalizedDirectoryPaths) {
     if (normalizedFolderPath === directoryPath || normalizedFolderPath.startsWith(`${directoryPath}/`)) {
       return directoryPath;
     }
@@ -63,12 +74,23 @@ function getExplicitAuthorDirectory(folderPath: string, directoryPaths: string[]
   return null;
 }
 
+function getMangaPathCategoryWithContext(manga: MangaBookWithCover, context: PathLookupContext): 'artists' | 'other' {
+  const source = normalizePath(manga.sourceFolderPath);
+  const target = normalizePath(manga.folderPath);
+
+  if (!target.startsWith(`${source}/`)) {
+    return 'other';
+  }
+
+  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
+  return context.normalizedTargetSourcePaths.has(source) && relativeSegments.length >= 2 ? 'artists' : 'other';
+}
+
 function getCategoryLocation(
   manga: MangaBookWithCover,
-  targetSourcePaths: string[],
-  directoryPaths: string[] = []
+  context: PathLookupContext
 ): { label: string; path: string } | null {
-  const explicitDirectory = getExplicitAuthorDirectory(manga.folderPath, directoryPaths);
+  const explicitDirectory = getExplicitAuthorDirectoryFromNormalized(manga.folderPath, context.normalizedDirectoryPaths);
   if (explicitDirectory) {
     return {
       label: getPathLabel(explicitDirectory),
@@ -78,7 +100,7 @@ function getCategoryLocation(
 
   const source = normalizePath(manga.sourceFolderPath);
   const target = normalizePath(manga.folderPath);
-  if (!targetSourcePaths.map((item) => normalizePath(item)).includes(source)) {
+  if (!context.normalizedTargetSourcePaths.has(source)) {
     return null;
   }
   if (!target.startsWith(`${source}/`)) {
@@ -88,7 +110,7 @@ function getCategoryLocation(
   const { hasLeadingSlash } = splitPath(target);
   const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
   const authorName = relativeSegments[0];
-  if (!authorName) {
+  if (!authorName || relativeSegments.length < 2) {
     return null;
   }
 
@@ -134,10 +156,9 @@ export function createAuthorAliasLookup(aliases: DirectoryAlias[]): AuthorAliasL
 
 function resolveAuthorDirectory(
   manga: MangaBookWithCover,
-  targetSourcePaths: string[],
-  directoryPaths: string[] = []
+  context: PathLookupContext
 ): { directoryName: string; directoryPath: string } | null {
-  const explicitDirectory = getExplicitAuthorDirectory(manga.folderPath, directoryPaths);
+  const explicitDirectory = getExplicitAuthorDirectoryFromNormalized(manga.folderPath, context.normalizedDirectoryPaths);
   if (explicitDirectory) {
     return {
       directoryName: getPathLabel(explicitDirectory),
@@ -145,7 +166,7 @@ function resolveAuthorDirectory(
     };
   }
 
-  const sourceKind = getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths);
+  const sourceKind = getMangaPathCategoryWithContext(manga, context);
   if (sourceKind === 'other') {
     return null;
   }
@@ -215,13 +236,12 @@ function buildTooltipText(directoryName: string, canonicalName: string | null, a
   return lines.join('\n');
 }
 
-export function resolveMangaAuthorInfo(
+function resolveMangaAuthorInfoWithContext(
   manga: MangaBookWithCover,
   aliasLookup: AuthorAliasLookupContext | null,
-  targetSourcePaths: string[],
-  directoryPaths: string[] = []
+  context: PathLookupContext
 ): MangaAuthorInfo | null {
-  const authorDirectory = resolveAuthorDirectory(manga, targetSourcePaths, directoryPaths);
+  const authorDirectory = resolveAuthorDirectory(manga, context);
   if (!authorDirectory) {
     return null;
   }
@@ -249,22 +269,29 @@ export function resolveMangaAuthorInfo(
   };
 }
 
+export function resolveMangaAuthorInfo(
+  manga: MangaBookWithCover,
+  aliasLookup: AuthorAliasLookupContext | null,
+  targetSourcePaths: string[],
+  directoryPaths: string[] = []
+): MangaAuthorInfo | null {
+  return resolveMangaAuthorInfoWithContext(
+    manga,
+    aliasLookup,
+    createPathLookupContext(directoryPaths, targetSourcePaths)
+  );
+}
+
 export function buildOrganizerCategories(
   mangas: MangaBookWithCover[],
   directoryPaths: string[] = [],
   targetSourcePaths: string[] = []
 ): OrganizerCategory[] {
   const bucket = new Map<string, OrganizerCategory>();
-  const normalizedDirectoryPaths = normalizeDirectoryPaths(directoryPaths);
+  const pathContext = createPathLookupContext(directoryPaths, targetSourcePaths);
 
   for (const manga of mangas) {
-    const explicitDirectory = getExplicitAuthorDirectory(manga.folderPath, normalizedDirectoryPaths);
-    const sourceKind = explicitDirectory ? 'artists' : getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths);
-    if (sourceKind === 'other' && !explicitDirectory) {
-      continue;
-    }
-
-    const location = getCategoryLocation(manga, targetSourcePaths, normalizedDirectoryPaths);
+    const location = getCategoryLocation(manga, pathContext);
     if (!location) {
       continue;
     }
@@ -292,7 +319,7 @@ export function buildOrganizerCategories(
     });
   }
 
-  for (const normalizedPath of normalizedDirectoryPaths) {
+  for (const normalizedPath of pathContext.normalizedDirectoryPaths) {
     if (!normalizedPath) {
       continue;
     }
@@ -328,18 +355,18 @@ export function buildOrganizerItems(
   directoryPaths: string[] = []
 ): OrganizerItem[] {
   const aliasLookup = aliases.length > 0 ? createAuthorAliasLookup(aliases) : null;
-  const normalizedDirectoryPaths = normalizeDirectoryPaths(directoryPaths);
+  const pathContext = createPathLookupContext(directoryPaths, targetSourcePaths);
 
-  return mangas.map((manga) => ({
-    ...manga,
-    displayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
-    ownerBadge: resolveMangaAuthorInfo(manga, aliasLookup, targetSourcePaths, normalizedDirectoryPaths)?.ownerBadge ?? null,
-    organizeStatus:
-      getExplicitAuthorDirectory(manga.folderPath, normalizedDirectoryPaths) ||
-      getMangaPathCategory(manga.folderPath, manga.sourceFolderPath, targetSourcePaths) !== 'other'
-        ? 'organized'
-        : 'unorganized'
-  }));
+  return mangas.map((manga) => {
+    const authorInfo = resolveMangaAuthorInfoWithContext(manga, aliasLookup, pathContext);
+
+    return {
+      ...manga,
+      displayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
+      ownerBadge: authorInfo?.ownerBadge ?? null,
+      organizeStatus: authorInfo ? 'organized' : 'unorganized'
+    };
+  });
 }
 
 export function filterAndSortOrganizerItems(

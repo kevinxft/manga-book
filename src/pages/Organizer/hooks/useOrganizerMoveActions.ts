@@ -1,18 +1,16 @@
-import type { Dispatch, SetStateAction } from 'react';
 import { useState } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { useMangaRenameAction } from '@renderer/hooks/manga/useMangaRenameAction';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { mergeMangaWithBase } from '@renderer/lib/manga';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
 import type { OrganizerCategory } from '../types';
 import { getErrorMessage } from './error';
 
 interface UseOrganizerMoveActionsInput {
   hasIpcBridge: boolean;
   categories: OrganizerCategory[];
-  selectedCategoryKey: string | null;
-  selectedIds: Set<string>;
-  setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
+  setSelectedIds: (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
   refreshAuthorDirectories: () => Promise<void>;
   setMoveError: (message: string | null) => void;
@@ -21,8 +19,6 @@ interface UseOrganizerMoveActionsInput {
 export function useOrganizerMoveActions({
   hasIpcBridge,
   categories,
-  selectedCategoryKey,
-  selectedIds,
   setSelectedIds,
   updateMangaLocal,
   refreshAuthorDirectories,
@@ -43,6 +39,7 @@ export function useOrganizerMoveActions({
   });
 
   const handleMoveSelected = async () => {
+    const { selectedIds, selectedCategoryKey } = useOrganizerSelectionStore.getState();
     if (!hasIpcBridge || moving || selectedIds.size === 0 || !selectedCategoryKey) {
       return;
     }

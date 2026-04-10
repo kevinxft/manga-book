@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { ipcInvoke } from '@renderer/ipc/client';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
 import type { OrganizerCategory } from '../types';
 import { getErrorMessage } from './error';
 
 interface UseCreateAuthorMutationArgs {
   hasIpcBridge: boolean;
   categories: OrganizerCategory[];
-  selectedCategoryKey: string | null;
   setSelectedCategoryKey: (value: string | null) => void;
   addAuthorDirectoryLocal: (directoryPath: string) => void;
   setMoveError: (message: string | null) => void;
@@ -15,7 +15,6 @@ interface UseCreateAuthorMutationArgs {
 export function useCreateAuthorMutation({
   hasIpcBridge,
   categories,
-  selectedCategoryKey,
   setSelectedCategoryKey,
   addAuthorDirectoryLocal,
   setMoveError
@@ -53,6 +52,7 @@ export function useCreateAuthorMutation({
     setCreateAuthorError(null);
     setMoveError(null);
     try {
+      const { selectedCategoryKey } = useOrganizerSelectionStore.getState();
       const selectedCategory = categories.find((item) => item.key === selectedCategoryKey) ?? null;
       const result = await ipcInvoke('organizer.createAuthorDirectory', {
         name: trimmed,

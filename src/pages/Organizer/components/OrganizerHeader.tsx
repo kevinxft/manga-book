@@ -1,8 +1,10 @@
+import { useCallback } from 'react';
 import { ArrowLeft, BookOpen, CheckSquare2, Search, Square, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
-import type { OrganizerSortKey, OrganizerSourceFilterOption, OrganizerStatusFilter } from '../types';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
+import type { OrganizerItem, OrganizerSortKey, OrganizerSourceFilterOption, OrganizerStatusFilter } from '../types';
 
 interface OrganizerHeaderProps {
   query: string;
@@ -10,13 +12,12 @@ interface OrganizerHeaderProps {
   sourceFilter: string;
   sourceOptions: OrganizerSourceFilterOption[];
   sortBy: OrganizerSortKey;
-  allVisibleSelected: boolean;
+  visibleItems: OrganizerItem[];
   onBack?: () => void;
   onQueryChange: (value: string) => void;
   onStatusFilterChange: (value: OrganizerStatusFilter) => void;
   onSourceFilterChange: (value: string) => void;
   onSortByChange: (value: OrganizerSortKey) => void;
-  onToggleSelectAllVisible: () => void;
 }
 
 export function OrganizerHeader({
@@ -25,14 +26,39 @@ export function OrganizerHeader({
   sourceFilter,
   sourceOptions,
   sortBy,
-  allVisibleSelected,
+  visibleItems,
   onBack,
   onQueryChange,
   onStatusFilterChange,
   onSourceFilterChange,
-  onSortByChange,
-  onToggleSelectAllVisible
+  onSortByChange
 }: OrganizerHeaderProps) {
+  const allVisibleSelected = useOrganizerSelectionStore((state) => {
+    if (visibleItems.length === 0 || state.selectedIds.size < visibleItems.length) {
+      return false;
+    }
+
+    return visibleItems.every((item) => state.selectedIds.has(item.id));
+  });
+
+  const toggleSelectAllVisible = useCallback(() => {
+    if (visibleItems.length === 0) {
+      return;
+    }
+
+    const store = useOrganizerSelectionStore.getState();
+    const next = new Set(store.selectedIds);
+    const shouldClear = visibleItems.every((item) => next.has(item.id));
+
+    if (shouldClear) {
+      visibleItems.forEach((item) => next.delete(item.id));
+    } else {
+      visibleItems.forEach((item) => next.add(item.id));
+    }
+
+    store.setSelectedIds(next);
+  }, [visibleItems]);
+
   return (
     <header className="flex h-[64px] items-center justify-between gap-4 border-b border-slate-200/50 bg-white/40 backdrop-blur-2xl px-6">
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -101,7 +127,7 @@ export function OrganizerHeader({
         <button
           className={cn('inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border transition-all duration-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20', allVisibleSelected ? 'bg-blue-600 border-blue-600 text-white shadow-blue-500/25 hover:bg-blue-500' : 'bg-white/60 border-slate-200/60 text-slate-500 hover:bg-white hover:text-blue-600')}
           title="全选当前结果"
-          onClick={onToggleSelectAllVisible}
+          onClick={toggleSelectAllVisible}
         >
           {allVisibleSelected ? <CheckSquare2 className="h-5 w-5" /> : <Square className="h-5 w-5" />}
         </button>

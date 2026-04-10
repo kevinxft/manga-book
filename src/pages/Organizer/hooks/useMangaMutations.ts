@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory } from '../types';
 import { useOrganizerDeleteActions } from './useOrganizerDeleteActions';
@@ -9,9 +8,7 @@ import { useOrganizerTagActions } from './useOrganizerTagActions';
 interface UseMangaMutationsArgs {
   hasIpcBridge: boolean;
   categories: OrganizerCategory[];
-  selectedCategoryKey: string | null;
-  selectedIds: Set<string>;
-  setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
+  setSelectedIds: (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   removeMangaLocal: (mangaId: string) => void;
   updateMangaLocal: (mangaId: string, updater: (manga: MangaBookWithCover) => MangaBookWithCover | null) => void;
   refreshAuthorDirectories: () => Promise<void>;
@@ -21,8 +18,6 @@ interface UseMangaMutationsArgs {
 export function useMangaMutations({
   hasIpcBridge,
   categories,
-  selectedCategoryKey,
-  selectedIds,
   setSelectedIds,
   removeMangaLocal,
   updateMangaLocal,
@@ -32,8 +27,6 @@ export function useMangaMutations({
   const moveActions = useOrganizerMoveActions({
     hasIpcBridge,
     categories,
-    selectedCategoryKey,
-    selectedIds,
     setSelectedIds,
     updateMangaLocal,
     refreshAuthorDirectories,

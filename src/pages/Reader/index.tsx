@@ -57,7 +57,6 @@ export function ReaderPage({
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
   const pageStep = 1;
   const [pageEditorOpen, setPageEditorOpen] = useState(false);
-  const [pageEditorSelectedPaths, setPageEditorSelectedPaths] = useState<string[]>([]);
   const [pageEditorDeleting, setPageEditorDeleting] = useState(false);
   const [pageEditorError, setPageEditorError] = useState<string | null>(null);
   const [boundarySuggestionDirection, setBoundarySuggestionDirection] = useState<'prev' | 'next' | null>(null);
@@ -207,7 +206,6 @@ export function ReaderPage({
   };
 
   const handleOpenPageEditor = useCallback(() => {
-    setPageEditorSelectedPaths([]);
     setPageEditorError(null);
     setBoundarySuggestionDirection(null);
     setPageEditorOpen(true);
@@ -231,29 +229,22 @@ export function ReaderPage({
       return;
     }
     setPageEditorOpen(false);
-    setPageEditorSelectedPaths([]);
     setPageEditorError(null);
   }, [pageEditorDeleting]);
 
-  const handleTogglePageSelection = useCallback((pagePath: string) => {
-    setPageEditorSelectedPaths((current) =>
-      current.includes(pagePath) ? current.filter((item) => item !== pagePath) : [...current, pagePath]
-    );
-  }, []);
-
-  const handleDeleteSelectedPages = useCallback(async () => {
-    if (pageEditorSelectedPaths.length === 0) {
+  const handleDeleteSelectedPages = useCallback(async (selectedPagePaths: string[]) => {
+    if (selectedPagePaths.length === 0) {
       return;
     }
 
-    if (pageEditorSelectedPaths.length >= pagePaths.length) {
+    if (selectedPagePaths.length >= pagePaths.length) {
       setPageEditorError('至少需要保留 1 页漫画。');
       return;
     }
 
     setPageEditorDeleting(true);
     setPageEditorError(null);
-    const selectedPageSet = new Set(pageEditorSelectedPaths);
+    const selectedPageSet = new Set(selectedPagePaths);
 
     try {
       const remainingPagePaths = pagePaths.filter((pagePath) => !selectedPageSet.has(pagePath));
@@ -267,7 +258,7 @@ export function ReaderPage({
         : Math.min(currentPageIndex, Math.max(remainingPagePaths.length - 1, 0));
       const result = await ipcInvoke('reader.deletePages', {
         mangaId: manga.id,
-        pagePaths: pageEditorSelectedPaths
+        pagePaths: selectedPagePaths
       });
 
       await reloadPages({
@@ -283,13 +274,12 @@ export function ReaderPage({
         coverPath: current.coverPath && selectedPageSet.has(current.coverPath) ? null : current.coverPath
       }));
       await fetchCoverPaths([manga.folderPath], { force: true });
-      setPageEditorSelectedPaths([]);
     } catch (deleteError) {
       setPageEditorError(deleteError instanceof Error ? deleteError.message : '删除漫画页面失败');
     } finally {
       setPageEditorDeleting(false);
     }
-  }, [currentPageIndex, fetchCoverPaths, manga.folderPath, manga.id, pageEditorSelectedPaths, pagePaths, reloadPages, updateMangaLocal]);
+  }, [currentPageIndex, fetchCoverPaths, manga.folderPath, manga.id, pagePaths, reloadPages, updateMangaLocal]);
 
   const handleConfirmDeleteManga = useCallback(async () => {
     if (deletingManga) {
@@ -313,7 +303,6 @@ export function ReaderPage({
   useEffect(() => {
     setBoundarySuggestionDirection(null);
     setPageEditorOpen(false);
-    setPageEditorSelectedPaths([]);
     setPageEditorError(null);
     setDeleteDialogOpen(false);
     setDeleteError(null);
@@ -397,14 +386,11 @@ export function ReaderPage({
         open={pageEditorOpen}
         title={manga.title}
         pagePaths={pagePaths}
-        selectedPagePaths={pageEditorSelectedPaths}
         loading={loading}
         deleting={pageEditorDeleting}
         error={pageEditorError}
         onClose={handleClosePageEditor}
-        onTogglePage={handleTogglePageSelection}
-        onDeleteSelected={() => void handleDeleteSelectedPages()}
-        onClearSelection={() => setPageEditorSelectedPaths([])}
+        onDeleteSelected={handleDeleteSelectedPages}
       />
 
       <DeleteMangaDialog

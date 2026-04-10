@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Loader2, Trash2, X } from 'lucide-react';
 import { Button } from '@renderer/components/ui/button';
 import { VirtualCardGrid } from '@renderer/components/virtual/VirtualCardGrid';
@@ -9,44 +9,141 @@ interface MangaPageEditorDialogProps {
   open: boolean;
   title: string | null;
   pagePaths: string[];
-  selectedPagePaths: string[];
   loading: boolean;
   deleting: boolean;
   error: string | null;
   onClose: () => void;
+  onDeleteSelected: (selectedPagePaths: string[]) => void | Promise<void>;
+}
+
+interface MangaPageEditorCardProps {
+  pagePath: string;
+  index: number;
+  fileName: string;
+  selected: boolean;
   onTogglePage: (pagePath: string) => void;
-  onDeleteSelected: () => void;
-  onClearSelection: () => void;
 }
 
 function getFileName(pagePath: string): string {
   return pagePath.split(/[\\/]/).filter(Boolean).pop() ?? pagePath;
 }
 
+const MangaPageEditorCard = memo(function MangaPageEditorCard({
+  pagePath,
+  index,
+  fileName,
+  selected,
+  onTogglePage
+}: MangaPageEditorCardProps) {
+  const handlePointerDown = useCallback(
+    (event: React.PointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      onTogglePage(pagePath);
+    },
+    [onTogglePage, pagePath]
+  );
+
+  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') {
+        return;
+      }
+
+      event.preventDefault();
+      onTogglePage(pagePath);
+    },
+    [onTogglePage, pagePath]
+  );
+
+  return (
+    <button
+      type="button"
+      className="w-full select-none touch-manipulation text-left"
+      onPointerDown={handlePointerDown}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+    >
+      <article className="group">
+        <div
+          className={cn(
+            'relative overflow-hidden rounded-[22px] border border-transparent bg-[#dfe5ef] shadow-[0_10px_24px_rgba(53,71,95,0.16)]',
+            !selected && 'hover:border-[#c8d4e5]'
+          )}
+        >
+          <div className="aspect-[3/4] bg-[#edf2f8]">
+            <img
+              src={toPageSrc(pagePath)}
+              alt={`第 ${index + 1} 页`}
+              loading="lazy"
+              draggable={false}
+              className="pointer-events-none h-full w-full select-none object-contain"
+            />
+          </div>
+
+          {selected ? (
+            <div className="pointer-events-none absolute inset-0 rounded-[22px] border-2 border-[#2f6cf6] bg-[#2f6cf6]/10" />
+          ) : null}
+
+          <div className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
+            {index + 1} 页
+          </div>
+
+          {selected ? (
+            <div className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#2f6cf6] text-white">
+              <Check className="h-3.5 w-3.5" />
+            </div>
+          ) : null}
+        </div>
+
+        <p className="mt-2 truncate px-1 text-[11px] font-semibold text-[#203047]" title={fileName}>
+          {fileName}
+        </p>
+      </article>
+    </button>
+  );
+});
+
 export function MangaPageEditorDialog({
   open,
   title,
   pagePaths,
-  selectedPagePaths,
   loading,
   deleting,
   error,
   onClose,
-  onTogglePage,
-  onDeleteSelected,
-  onClearSelection
+  onDeleteSelected
 }: MangaPageEditorDialogProps) {
+  const [selectedPagePaths, setSelectedPagePaths] = useState<string[]>([]);
   const selectedPagePathSet = useMemo(() => new Set(selectedPagePaths), [selectedPagePaths]);
-  const pageCards = useMemo(
+  const fileNameByPagePath = useMemo(
     () =>
-      pagePaths.map((pagePath, index) => ({
-        pagePath,
-        index,
-        fileName: getFileName(pagePath),
-        selected: selectedPagePathSet.has(pagePath)
-      })),
-    [pagePaths, selectedPagePathSet]
+      Object.fromEntries(
+        pagePaths.map((pagePath) => [pagePath, getFileName(pagePath)])
+      ) as Record<string, string>,
+    [pagePaths]
   );
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    setSelectedPagePaths([]);
+  }, [open, title, pagePaths.length]);
+
+  useEffect(() => {
+    setSelectedPagePaths((current) => current.filter((pagePath) => pagePaths.includes(pagePath)));
+  }, [pagePaths]);
+
+  const handleTogglePage = useCallback((nextPagePath: string) => {
+    setSelectedPagePaths((current) =>
+      current.includes(nextPagePath) ? current.filter((item) => item !== nextPagePath) : [...current, nextPagePath]
+    );
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -63,6 +160,27 @@ export function MangaPageEditorDialog({
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [onClose, open]);
+
+  const renderPageCard = useCallback(
+    (pagePath: string, index: number) => (
+      <MangaPageEditorCard
+        pagePath={pagePath}
+        index={index}
+        fileName={fileNameByPagePath[pagePath] ?? pagePath}
+        selected={selectedPagePathSet.has(pagePath)}
+        onTogglePage={handleTogglePage}
+      />
+    ),
+    [fileNameByPagePath, handleTogglePage, selectedPagePathSet]
+  );
+
+  const handleClearSelection = useCallback(() => {
+    setSelectedPagePaths([]);
+  }, []);
+
+  const handleDeleteSelection = useCallback(() => {
+    void onDeleteSelected(selectedPagePaths);
+  }, [onDeleteSelected, selectedPagePaths]);
 
   if (!open) {
     return null;
@@ -101,7 +219,7 @@ export function MangaPageEditorDialog({
             <Button
               type="button"
               className="h-8 rounded-lg border border-[#d2dbe8] bg-white px-3 text-[12px] font-semibold text-[#4d617f] hover:bg-[#f1f5fb]"
-              onClick={onClearSelection}
+              onClick={handleClearSelection}
               disabled={selectedPagePaths.length === 0 || deleting}
             >
               清空选择
@@ -109,7 +227,7 @@ export function MangaPageEditorDialog({
             <Button
               type="button"
               className="h-8 rounded-lg bg-[#c73a3a] px-3 text-[12px] font-semibold text-white hover:bg-[#a83131]"
-              onClick={onDeleteSelected}
+              onClick={handleDeleteSelection}
               disabled={selectedPagePaths.length === 0 || deleting || loading}
             >
               {deleting ? `删除中...` : `删除所选 ${selectedPagePaths.length > 0 ? selectedPagePaths.length : ''} 页`}
@@ -129,7 +247,7 @@ export function MangaPageEditorDialog({
             </div>
           ) : (
             <VirtualCardGrid
-              items={pageCards}
+              items={pagePaths}
               minColumnWidth={136}
               estimatedCardHeight={(cardWidth) => cardWidth * (4 / 3) + 52}
               gapX={18}
@@ -137,56 +255,16 @@ export function MangaPageEditorDialog({
               paddingX={12}
               paddingY={0}
               className="h-full overflow-auto"
-              initialScrollToIndex={pageCards.length > 0 ? pageCards.length - 1 : null}
+              initialScrollToIndex={pagePaths.length > 0 ? pagePaths.length - 1 : null}
               initialScrollAlign="end"
               initialScrollKey={title ?? 'page-editor'}
+              getItemKey={(pagePath) => pagePath}
               emptyState={
                 <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-[#d3dce9] bg-white/70 text-[13px] font-semibold text-[#6a7890]">
                   当前没有可编辑的漫画页面
                 </div>
               }
-              renderCard={(card) => (
-                <button
-                  key={card.pagePath}
-                  type="button"
-                  className="w-full text-left"
-                  onClick={() => onTogglePage(card.pagePath)}
-                >
-                  <article className="group">
-                    <div
-                      className={cn(
-                        'relative overflow-hidden rounded-[22px] border bg-[#dfe5ef] shadow-[0_10px_24px_rgba(53,71,95,0.16)] transition',
-                        card.selected
-                          ? 'border-[#2f6cf6] ring-4 ring-[#2f6cf6]/28'
-                          : 'border-transparent hover:-translate-y-0.5 hover:border-[#c8d4e5] hover:shadow-[0_14px_30px_rgba(53,71,95,0.2)]'
-                      )}
-                    >
-                      <div className="aspect-[3/4] bg-[#edf2f8]">
-                        <img
-                          src={toPageSrc(card.pagePath)}
-                          alt={`第 ${card.index + 1} 页`}
-                          loading="lazy"
-                          className="h-full w-full object-contain"
-                        />
-                      </div>
-
-                      <div className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white">
-                        {card.index + 1} 页
-                      </div>
-
-                      {card.selected ? (
-                        <div className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#2f6cf6] text-white shadow-[0_10px_20px_rgba(47,108,246,0.32)]">
-                          <Check className="h-3.5 w-3.5" />
-                        </div>
-                      ) : null}
-                    </div>
-
-                    <p className="mt-2 truncate px-1 text-[11px] font-semibold text-[#203047]" title={card.fileName}>
-                      {card.fileName}
-                    </p>
-                  </article>
-                </button>
-              )}
+              renderCard={renderPageCard}
             />
           )}
         </div>
@@ -205,7 +283,7 @@ export function MangaPageEditorDialog({
             <Button
               type="button"
               className="h-8 rounded-lg bg-[#c73a3a] px-3 text-[12px] font-semibold text-white hover:bg-[#a83131]"
-              onClick={onDeleteSelected}
+              onClick={handleDeleteSelection}
               disabled={selectedPagePaths.length === 0 || deleting || loading}
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />

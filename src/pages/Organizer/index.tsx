@@ -1,3 +1,4 @@
+import { memo, useCallback, useMemo } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import { useLibraryStore } from '@renderer/stores/libraryStore';
 import { useShallow } from 'zustand/react/shallow';
@@ -16,6 +17,7 @@ import { useOrganizerSelection } from './hooks/useOrganizerSelection';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
 import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
 import { resolveTargetSourcePaths } from '@renderer/pages/Library/utils';
 
 interface OrganizerPageProps {
@@ -23,6 +25,18 @@ interface OrganizerPageProps {
   onBack?: () => void;
   onOpenManga?: (manga: MangaBookWithCover, queueIds?: string[]) => void;
 }
+
+const OrganizerFooter = memo(function OrganizerFooter({ visibleCount }: { visibleCount: number }) {
+  const selectedCount = useOrganizerSelectionStore((state) => state.selectedIds.size);
+  return (
+    <footer className="flex items-center justify-between border-t border-slate-200/50 bg-white/50 backdrop-blur-md px-6 py-2.5 text-[11px] font-bold text-slate-400">
+      <span className="text-slate-500">
+        已选择 <strong className="text-blue-600">{selectedCount}</strong> 本典藏 {visibleCount > 0 ? `· 当前结果 ${visibleCount} 本` : ''}
+      </span>
+      <span className="tracking-[0.15em]">ORGANIZER</span>
+    </footer>
+  );
+});
 
 const EMPTY_SOURCES = [] as ReturnType<typeof useLibraryStore.getState>['sources'];
 const EMPTY_MANGAS = [] as ReturnType<typeof useLibraryStore.getState>['mangas'];
@@ -45,15 +59,18 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
   );
   const hasIpcBridge = active && typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
   const authorDirectories = useOrganizerMetadataStore((state) => (active ? state.authorDirectories : EMPTY_AUTHOR_DIRECTORIES));
-  const targetSourcePaths = resolveTargetSourcePaths(
-    sources,
-    authorDirectories.map((item) => item.directory)
+  const authorDirectoryPaths = useMemo(
+    () => authorDirectories.map((item) => item.directory),
+    [authorDirectories]
+  );
+  const targetSourcePaths = useMemo(
+    () => resolveTargetSourcePaths(sources, authorDirectoryPaths),
+    [authorDirectoryPaths, sources]
   );
   const {
     aliases,
     categories,
     organizerItems,
-    selectedCategoryKey,
     setSelectedCategoryKey,
     refreshOrganizerMetadata,
     refreshAuthorDirectories,
@@ -81,7 +98,7 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
   } = useOrganizerFilters({
     organizerItems
   });
-  const { selectedIds, setSelectedIds, allVisibleSelected, toggleSelectAllVisible, toggleItem } = useOrganizerSelection({
+  const { setSelectedIds, toggleItem } = useOrganizerSelection({
     visibleItems
   });
   const {
@@ -147,8 +164,6 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
     fetchMangas,
     categories,
     aliases,
-    selectedCategoryKey,
-    selectedIds,
     setSelectedIds,
     setSelectedCategoryKey,
     removeMangaLocal,
@@ -160,9 +175,9 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
     addAuthorDirectoryLocal
   });
 
-  const handleVisibleItemsChange = (items: MangaBookWithCover[]) => {
+  const handleVisibleItemsChange = useCallback((items: MangaBookWithCover[]) => {
     void fetchCoverPaths(items.map((item) => item.folderPath));
-  };
+  }, [fetchCoverPaths]);
 
   return (
     <main className="h-full w-full bg-slate-50/50">
@@ -173,13 +188,12 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
           sourceFilter={sourceFilter}
           sourceOptions={sourceOptions}
           sortBy={sortBy}
-          allVisibleSelected={allVisibleSelected}
+          visibleItems={visibleItems}
           onBack={onBack}
           onQueryChange={setQuery}
           onStatusFilterChange={setStatusFilter}
           onSourceFilterChange={setSourceFilter}
           onSortByChange={setSortBy}
-          onToggleSelectAllVisible={toggleSelectAllVisible}
         />
 
         {!hasIpcBridge ? (
@@ -194,7 +208,6 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
               loading={loading}
               error={error}
               visibleItems={visibleItems}
-              selectedIds={selectedIds}
               categories={categories}
               onVisibleItemsChange={handleVisibleItemsChange}
               onToggleItem={toggleItem}
@@ -209,14 +222,11 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
 
             <OrganizerCategoryPanel
               categories={categories}
-              selectedCategoryKey={selectedCategoryKey}
-              selectedCount={selectedIds.size}
               moving={moving}
               creatingAuthor={creatingAuthor}
               hasIpcBridge={hasIpcBridge}
               moveError={moveError}
               onClearMoveError={() => setMoveError(null)}
-              onSelectCategory={setSelectedCategoryKey}
               onMoveSelected={() => void handleMoveSelected()}
               onRequestAddAlias={handleRequestAddAlias}
               onRequestRenameCategory={handleRequestRenameAuthorDirectory}
@@ -226,12 +236,7 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
           </div>
         </div>
 
-        <footer className="flex items-center justify-between border-t border-slate-200/50 bg-white/50 backdrop-blur-md px-6 py-2.5 text-[11px] font-bold text-slate-400">
-          <span className="text-slate-500">
-            已选择 <strong className="text-blue-600">{selectedIds.size}</strong> 本典藏 {visibleItems.length > 0 ? `· 当前结果 ${visibleItems.length} 本` : ''}
-          </span>
-          <span className="tracking-[0.15em]">ORGANIZER</span>
-        </footer>
+        <OrganizerFooter visibleCount={visibleItems.length} />
       </div>
 
       <AliasManagerDialog

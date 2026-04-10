@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
 import type { OrganizerItem } from '../types';
 
 interface UseOrganizerSelectionArgs {
@@ -6,44 +7,33 @@ interface UseOrganizerSelectionArgs {
 }
 
 export function useOrganizerSelection({ visibleItems }: UseOrganizerSelectionArgs) {
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const toggleItem = useOrganizerSelectionStore((state) => state.toggleItem);
+  const setSelectedIds = useOrganizerSelectionStore((state) => state.setSelectedIds);
+  const visibleItemIds = useMemo(() => new Set(visibleItems.map((item) => item.id)), [visibleItems]);
 
-  const allVisibleSelected = useMemo(() => {
-    if (visibleItems.length === 0) {
-      return false;
-    }
-    return visibleItems.every((item) => selectedIds.has(item.id));
-  }, [selectedIds, visibleItems]);
-
-  const toggleSelectAllVisible = () => {
+  useEffect(() => {
     setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (visibleItems.length > 0 && visibleItems.every((item) => next.has(item.id))) {
-        visibleItems.forEach((item) => next.delete(item.id));
-      } else {
-        visibleItems.forEach((item) => next.add(item.id));
+      if (prev.size === 0) {
+        return prev;
       }
-      return next;
-    });
-  };
 
-  const toggleItem = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
+      const next = new Set<string>();
+      let changed = false;
+
+      for (const id of prev) {
+        if (visibleItemIds.has(id)) {
+          next.add(id);
+        } else {
+          changed = true;
+        }
       }
-      return next;
+
+      return changed ? next : prev;
     });
-  };
+  }, [setSelectedIds, visibleItemIds]);
 
   return {
-    selectedIds,
     setSelectedIds,
-    allVisibleSelected,
-    toggleSelectAllVisible,
     toggleItem
   };
 }

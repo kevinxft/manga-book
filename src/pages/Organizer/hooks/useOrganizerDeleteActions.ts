@@ -1,10 +1,9 @@
-import type { Dispatch, SetStateAction } from 'react';
 import { useMangaDeleteAction } from '@renderer/hooks/manga/useMangaDeleteAction';
 
 interface UseOrganizerDeleteActionsInput {
   removeMangaLocal: (mangaId: string) => void;
   setMoveError: (message: string | null) => void;
-  setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
+  setSelectedIds: (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
 }
 
 export function useOrganizerDeleteActions({

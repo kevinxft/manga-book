@@ -17,6 +17,7 @@ interface VirtualCardGridProps<T> {
   initialScrollToIndex?: number | null;
   initialScrollAlign?: 'auto' | 'start' | 'center' | 'end';
   initialScrollKey?: string | number | null;
+  getItemKey?: (item: T, index: number) => string | number;
   renderCard: (item: T, index: number) => ReactNode;
 }
 
@@ -36,6 +37,7 @@ export function VirtualCardGrid<T>({
   initialScrollToIndex = null,
   initialScrollAlign = 'start',
   initialScrollKey = null,
+  getItemKey,
   renderCard
 }: VirtualCardGridProps<T>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -185,7 +187,15 @@ export function VirtualCardGrid<T>({
                     gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`
                   }}
                 >
-                  {rowItems.map((item, itemIndex) => renderCard(item, startIndex + itemIndex))}
+                  {rowItems.map((item, itemIndex) => {
+                    const absoluteIndex = startIndex + itemIndex;
+                    const key = getItemKey ? getItemKey(item, absoluteIndex) : absoluteIndex;
+                    return (
+                      <div key={key} className="contents">
+                        {renderCard(item, absoluteIndex)}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             );

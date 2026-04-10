@@ -1,4 +1,3 @@
-import type { Dispatch, SetStateAction } from 'react';
 import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory } from '../types';
 import { useAliasMutations } from './useAliasMutations';
@@ -13,9 +12,7 @@ interface UseOrganizerMutationsArgs {
   fetchMangas: () => Promise<void>;
   categories: OrganizerCategory[];
   aliases: DirectoryAlias[];
-  selectedCategoryKey: string | null;
-  selectedIds: Set<string>;
-  setSelectedIds: Dispatch<SetStateAction<Set<string>>>;
+  setSelectedIds: (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => void;
   setSelectedCategoryKey: (value: string | null) => void;
   removeMangaLocal: (mangaId: string) => void;
   refreshOrganizerMetadata: () => Promise<void>;
@@ -31,8 +28,6 @@ export function useOrganizerMutations({
   fetchMangas,
   categories,
   aliases,
-  selectedCategoryKey,
-  selectedIds,
   setSelectedIds,
   setSelectedCategoryKey,
   removeMangaLocal,
@@ -48,8 +43,6 @@ export function useOrganizerMutations({
   const mangaMutations = useMangaMutations({
     hasIpcBridge,
     categories,
-    selectedCategoryKey,
-    selectedIds,
     setSelectedIds,
     removeMangaLocal,
     updateMangaLocal,
@@ -67,7 +60,6 @@ export function useOrganizerMutations({
   const createAuthorMutation = useCreateAuthorMutation({
     hasIpcBridge,
     categories,
-    selectedCategoryKey,
     setSelectedCategoryKey,
     addAuthorDirectoryLocal,
     setMoveError

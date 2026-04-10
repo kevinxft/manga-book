@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import type { MangaBookWithCover } from '@shared/types';
 import type { SortKey } from '@renderer/pages/Library/types';
 import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
 import type { OrganizerCategory } from '../types';
 import { buildOrganizerCategories, buildOrganizerItems } from '../utils';
 
@@ -17,7 +18,6 @@ interface UseOrganizerDataResult {
   aliases: ReturnType<typeof useOrganizerMetadataStore.getState>['aliases'];
   categories: OrganizerCategory[];
   organizerItems: ReturnType<typeof buildOrganizerItems>;
-  selectedCategoryKey: string | null;
   setSelectedCategoryKey: (value: string | null) => void;
   refreshOrganizerMetadata: () => Promise<void>;
   refreshAuthorDirectories: () => Promise<void>;
@@ -34,7 +34,7 @@ const noopRemoveAlias = () => {};
 const noopAddAuthorDirectory = () => {};
 
 export function useOrganizerData({ active, mangas, hasIpcBridge, fetchMangas, targetSourcePaths }: UseOrganizerDataArgs): UseOrganizerDataResult {
-  const [selectedCategoryKey, setSelectedCategoryKey] = useState<string | null>(null);
+  const setSelectedCategoryKey = useOrganizerSelectionStore((state) => state.setSelectedCategoryKey);
   const aliases = useOrganizerMetadataStore((state) => (active ? state.aliases : EMPTY_ALIASES));
   const authorDirectories = useOrganizerMetadataStore((state) => (active ? state.authorDirectories : EMPTY_AUTHOR_DIRECTORIES));
   const ensureLoaded = useOrganizerMetadataStore((state) => (active ? state.ensureLoaded : noopAsync));
@@ -53,6 +53,11 @@ export function useOrganizerData({ active, mangas, hasIpcBridge, fetchMangas, ta
     })();
   }, [active, ensureLoaded, fetchMangas, hasIpcBridge, mangas.length]);
 
+  const authorDirectoryPaths = useMemo(
+    () => authorDirectories.map((item) => item.directory),
+    [authorDirectories]
+  );
+
   const categories = useMemo(() => {
     const aliasMap = new Map<string, string[]>();
     for (const item of aliases) {
@@ -68,39 +73,41 @@ export function useOrganizerData({ active, mangas, hasIpcBridge, fetchMangas, ta
 
     return buildOrganizerCategories(
       mangas,
-      authorDirectories.map((item) => item.directory),
+      authorDirectoryPaths,
       targetSourcePaths
     ).map((category) => ({
       ...category,
       aliases: aliasMap.get(category.label.trim().toLocaleLowerCase()) ?? [],
       lastMovedAt: movedAtByPath.get(category.path) ?? null
     }));
-  }, [aliases, authorDirectories, mangas, targetSourcePaths]);
+  }, [aliases, authorDirectories, authorDirectoryPaths, mangas, targetSourcePaths]);
 
   const organizerItems = useMemo(
-    () => buildOrganizerItems(mangas, aliases, targetSourcePaths, authorDirectories.map((item) => item.directory)),
-    [aliases, authorDirectories, mangas, targetSourcePaths]
+    () => buildOrganizerItems(mangas, aliases, targetSourcePaths, authorDirectoryPaths),
+    [aliases, authorDirectoryPaths, mangas, targetSourcePaths]
   );
 
   useEffect(() => {
+    const { selectedCategoryKey } = useOrganizerSelectionStore.getState();
+
     if (categories.length === 0) {
-      setSelectedCategoryKey(null);
+      if (selectedCategoryKey !== null) {
+        setSelectedCategoryKey(null);
+      }
       return;
     }
 
-    setSelectedCategoryKey((prev) => {
-      if (prev && categories.some((item) => item.key === prev)) {
-        return prev;
-      }
-      return categories[0]?.key ?? null;
-    });
-  }, [categories]);
+    if (selectedCategoryKey && categories.some((item) => item.key === selectedCategoryKey)) {
+      return;
+    }
+
+    setSelectedCategoryKey(categories[0]?.key ?? null);
+  }, [categories, setSelectedCategoryKey]);
 
   return {
     aliases,
     categories,
     organizerItems,
-    selectedCategoryKey,
     setSelectedCategoryKey,
     refreshOrganizerMetadata,
     refreshAuthorDirectories,

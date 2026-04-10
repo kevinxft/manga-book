@@ -4,13 +4,13 @@ import { VirtualCardGrid } from '@renderer/components/virtual/VirtualCardGrid';
 import { cn } from '@renderer/lib/utils';
 import { getConflictBaseTitle, getParentDirectoryPath, toCoverSrc } from '@renderer/pages/Library/utils';
 import { CoverContextMenu, type CoverContextMenuState } from '@renderer/components/manga/CoverContextMenu';
+import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
 import type { OrganizerCategory, OrganizerItem } from '../types';
 
 interface OrganizerFileGridProps {
   loading: boolean;
   error: string | null;
   visibleItems: OrganizerItem[];
-  selectedIds: Set<string>;
   categories: OrganizerCategory[];
   onToggleItem: (id: string) => void;
   onQuickMoveManga: (mangaId: string, destinationPath: string) => void;
@@ -25,7 +25,6 @@ interface OrganizerFileGridProps {
 
 interface OrganizerGridCardData {
   item: OrganizerItem;
-  isSelected: boolean;
   duplicateConflict: boolean;
   visibleTagNames: string[];
   hiddenTagCount: number;
@@ -46,12 +45,13 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
   onAddTagManga: (item: OrganizerItem, anchor: { x: number; y: number }) => void;
   onOpenManga?: (item: OrganizerItem) => void;
 }) {
+  const isSelected = useOrganizerSelectionStore((state) => state.selectedIds.has(card.item.id));
   return (
     <article key={card.item.id} className="group" title={card.item.displayPath}>
       <div
         className={cn(
           'relative block w-full overflow-hidden rounded-2xl border text-left transition-all duration-150 ease-out',
-          card.isSelected
+          isSelected
             ? 'border-blue-500 bg-blue-100 ring-4 ring-blue-500/30 shadow-[0_12px_24px_rgba(47,108,246,0.25)] scale-[1.02]'
             : 'border-white/60 bg-slate-100 ring-1 ring-slate-900/5 shadow-[0_8px_20px_rgba(0,0,0,0.06)] hover:shadow-[0_16px_36px_rgba(47,108,246,0.12)] hover:-translate-y-1'
         )}
@@ -75,7 +75,7 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
         </button>
 
         <div className="absolute left-2 right-2 top-2 flex items-start justify-between gap-2">
-          {card.isSelected ? (
+          {isSelected ? (
             <span className="inline-flex shrink-0 items-center justify-center gap-1 rounded-lg bg-blue-600 px-2 py-0.5 text-[10px] font-bold tracking-wide text-white shadow-md ring-1 ring-white/20">
               <Check className="h-3 w-3" />
               已选
@@ -185,7 +185,6 @@ export function OrganizerFileGrid({
   loading,
   error,
   visibleItems,
-  selectedIds,
   categories,
   onToggleItem,
   onQuickMoveManga,
@@ -232,7 +231,6 @@ export function OrganizerFileGrid({
         const visibleTagNames = tagNames.slice(0, 2);
         return {
           item,
-          isSelected: selectedIds.has(item.id),
           duplicateConflict: duplicateConflictIds.has(item.id),
           visibleTagNames,
           hiddenTagCount: Math.max(0, tagNames.length - visibleTagNames.length),
@@ -240,7 +238,7 @@ export function OrganizerFileGrid({
           tagCount: tagNames.length
         };
       }),
-    [duplicateConflictIds, selectedIds, visibleItems]
+    [duplicateConflictIds, visibleItems]
   );
 
   const handleContextMenuOpen = useCallback((event: MouseEvent<HTMLDivElement>, item: OrganizerItem) => {
