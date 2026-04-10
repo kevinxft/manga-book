@@ -1,6 +1,7 @@
 import type { DirectoryAlias } from '@shared/types';
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
+import { cn } from '@renderer/lib/utils';
 import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import type { OrganizerCategory } from '../types';
@@ -29,6 +30,20 @@ export function AliasManagerDialog({
   onRemoveAlias
 }: AliasManagerDialogProps) {
   const [aliasInput, setAliasInput] = useState('');
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      const timer = setTimeout(() => setVisible(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => setMounted(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -37,13 +52,25 @@ export function AliasManagerDialog({
     setAliasInput('');
   }, [open, targetCategory?.path]);
 
-  if (!open || !targetCategory) {
+  if (!mounted || !targetCategory) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/35 p-4">
-      <div className="w-full max-w-[440px] rounded-xl border border-[#d3dced] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
+    <div 
+      className={cn(
+        "fixed inset-0 z-[120] flex items-center justify-center bg-black/35 p-4",
+        "transition-all duration-300 ease-out",
+        visible ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}
+    >
+      <div 
+        className={cn(
+          "w-full max-w-[440px] rounded-xl border border-[#d3dced] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]",
+          "transition-all duration-300 ease-out",
+          visible ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4"
+        )}
+      >
         <p className="text-[15px] font-semibold text-[#1f2f48]">管理别名</p>
         <p className="mt-1 text-[12px] text-[#647792]">
           作者目录：<span className="font-semibold text-[#2e4360]">{targetCategory.label}</span>

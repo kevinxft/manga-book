@@ -100,7 +100,7 @@ const LibraryGridCard = memo(function LibraryGridCard({
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
-                onAddTagManga(item.manga, { x: rect.right, y: rect.bottom });
+                onAddTagManga(item.manga, { x: rect.left, y: rect.bottom });
               }}
               title="添加标签"
               aria-label="添加标签"
@@ -116,7 +116,7 @@ const LibraryGridCard = memo(function LibraryGridCard({
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
-                onAddTagManga(item.manga, { x: rect.right, y: rect.bottom });
+                onAddTagManga(item.manga, { x: rect.left, y: rect.bottom });
               }}
               title={name}
               aria-label={`编辑标签：${name}`}
@@ -131,7 +131,7 @@ const LibraryGridCard = memo(function LibraryGridCard({
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
-                onAddTagManga(item.manga, { x: rect.right, y: rect.bottom });
+                onAddTagManga(item.manga, { x: rect.left, y: rect.bottom });
               }}
               title={`编辑标签，当前共 ${item.tagCount} 个`}
               aria-label={`编辑标签，当前共 ${item.tagCount} 个`}

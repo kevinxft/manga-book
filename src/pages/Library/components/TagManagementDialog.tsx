@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Tag, X } from 'lucide-react';
+import { cn } from '@renderer/lib/utils';
 import { Input } from '@renderer/components/ui/input';
 import { Button } from '@renderer/components/ui/button';
 import type { TagItem } from '../types';
@@ -27,6 +28,20 @@ export function TagManagementDialog({
 }: TagManagementDialogProps) {
   const [pendingDeleteTag, setPendingDeleteTag] = useState<TagItem | null>(null);
   const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      const timer = setTimeout(() => setVisible(true), 10);
+      return () => clearTimeout(timer);
+    } else {
+      setVisible(false);
+      const timer = setTimeout(() => setMounted(false), 300);
+      return () => clearTimeout(timer);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (!open) {
@@ -35,13 +50,25 @@ export function TagManagementDialog({
     }
   }, [open]);
 
-  if (!open) {
+  if (!mounted) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/60 bg-white/90 shadow-[0_24px_60px_rgba(15,23,42,0.15)] ring-1 ring-slate-200/50 backdrop-blur-2xl">
+    <div 
+      className={cn(
+        "fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm",
+        "transition-all duration-300 ease-out",
+        visible ? "opacity-100" : "opacity-0 pointer-events-none"
+      )}
+    >
+      <div 
+        className={cn(
+          "w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/60 bg-white/90 shadow-[0_24px_60px_rgba(15,23,42,0.15)] ring-1 ring-slate-200/50 backdrop-blur-2xl",
+          "transition-all duration-300 ease-out",
+          visible ? "scale-100 opacity-100 translate-y-0" : "scale-95 opacity-0 translate-y-4"
+        )}
+      >
         <div className="flex items-center justify-between border-b border-slate-200/50 px-5 py-3.5">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 shadow-sm ring-1 ring-blue-500/10">

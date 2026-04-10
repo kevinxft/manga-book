@@ -101,7 +101,7 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
-                onAddTagManga(card.item, { x: rect.right, y: rect.bottom });
+                onAddTagManga(card.item, { x: rect.left, y: rect.bottom });
               }}
               title="添加标签"
               aria-label="添加标签"
@@ -117,7 +117,7 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
-                onAddTagManga(card.item, { x: rect.right, y: rect.bottom });
+                onAddTagManga(card.item, { x: rect.left, y: rect.bottom });
               }}
               title={name}
               aria-label={`编辑标签：${name}`}
@@ -132,7 +132,7 @@ const OrganizerGridCard = memo(function OrganizerGridCard({
               onClick={(event) => {
                 event.stopPropagation();
                 const rect = event.currentTarget.getBoundingClientRect();
-                onAddTagManga(card.item, { x: rect.right, y: rect.bottom });
+                onAddTagManga(card.item, { x: rect.left, y: rect.bottom });
               }}
               title={`编辑标签，当前共 ${card.tagCount} 个`}
               aria-label={`编辑标签，当前共 ${card.tagCount} 个`}

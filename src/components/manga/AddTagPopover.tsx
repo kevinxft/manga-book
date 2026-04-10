@@ -16,7 +16,7 @@ interface AddTagPopoverProps {
   onSubmit: (values: string[]) => void;
 }
 
-const POPOVER_OFFSET = 10;
+  const POPOVER_OFFSET = 4;
 const VIEWPORT_PADDING = 8;
 
 export function AddTagPopover({
