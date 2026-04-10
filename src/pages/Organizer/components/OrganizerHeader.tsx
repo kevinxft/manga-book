@@ -60,7 +60,7 @@ export function OrganizerHeader({
   }, [visibleItems]);
 
   return (
-    <header className="flex h-[64px] items-center justify-between gap-4 border-b border-slate-200/50 bg-white/40 backdrop-blur-2xl px-6">
+    <header className="app-window-drag app-page-titlebar flex h-[64px] items-center justify-between gap-4 border-b border-slate-200/50 bg-white/40 backdrop-blur-2xl px-6">
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Button
           variant="secondary"

@@ -79,3 +79,31 @@
     background: #aeb9cc;
   }
 }
+
+.app-window-drag {
+  -webkit-app-region: drag;
+}
+
+a,
+button,
+input,
+select,
+textarea,
+[role='button'],
+.app-window-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+html.platform-darwin .app-sidebar-titlebar:not(.app-sidebar-titlebar--collapsed) {
+  height: 94px;
+  padding-top: 34px;
+}
+
+html.platform-darwin .app-sidebar-titlebar--collapsed {
+  height: 94px;
+  padding-top: 34px;
+}
+
+html.platform-darwin .app-page-titlebar {
+  padding-left: 92px;
+}

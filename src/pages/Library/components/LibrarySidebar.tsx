@@ -198,8 +198,8 @@ export function LibrarySidebar({
       <aside className="flex h-full min-h-0 flex-col border-r border-slate-200/60 bg-white/50 backdrop-blur-2xl transition-all duration-300">
         <div
           className={cn(
-            'flex h-[60px] items-center border-b border-slate-200/50',
-            sidebarCollapsed ? 'justify-center px-2' : 'px-5'
+            'app-window-drag app-sidebar-titlebar flex h-[60px] items-center border-b border-slate-200/50',
+            sidebarCollapsed ? 'app-sidebar-titlebar--collapsed justify-center px-2' : 'px-5'
           )}
         >
           <div className={cn('flex items-center', sidebarCollapsed ? 'justify-center' : 'gap-3')}>

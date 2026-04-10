@@ -26,14 +26,14 @@ export function ReaderTopBar({
   deleting = false
 }: ReaderTopBarProps) {
   return (
-    <header className="absolute inset-x-0 top-0 z-30 flex h-16 items-center border-b border-white/5 bg-[#0f1115]/80 px-6 backdrop-blur-xl shadow-sm">
+    <header className="app-window-drag app-page-titlebar absolute inset-x-0 top-0 z-30 flex h-16 items-center border-b border-white/5 bg-[#0f1115]/80 px-6 backdrop-blur-xl shadow-sm">
       <div className="flex min-w-0 flex-1 items-center gap-4 pr-4">
         <button
           className="group inline-flex h-9 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full bg-white/5 px-3.5 pr-4 text-[12px] font-medium tracking-wide text-[#dce2ec] ring-1 ring-white/10 transition-all duration-200 hover:bg-white/15 hover:text-white focus:outline-none"
           onClick={onBack}
         >
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-          返回书架
+          返回
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-bold tracking-wide text-white drop-shadow-md">{title}</p>
@@ -61,7 +61,7 @@ export function ReaderTopBar({
             title="编辑漫画页面"
           >
             <Images className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-            整理漫画
+            整理
           </button>
         ) : null}
 

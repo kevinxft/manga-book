@@ -82,7 +82,12 @@ function createMainWindow(): BrowserWindow {
     height: 860,
     minWidth: 1100,
     minHeight: 720,
-    ...(process.platform === 'darwin' ? {} : { icon: getAppIconPath() }),
+    ...(process.platform === 'darwin'
+      ? {
+          titleBarStyle: 'hiddenInset' as const,
+          trafficLightPosition: { x: 18, y: 18 }
+        }
+      : { icon: getAppIconPath() }),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       contextIsolation: true,

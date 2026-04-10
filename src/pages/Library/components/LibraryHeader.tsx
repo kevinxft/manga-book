@@ -64,7 +64,7 @@ export function LibraryHeader({
   const scanPercent = getScanPercent(progress);
 
   return (
-    <header className="flex h-[64px] items-center justify-between border-b border-slate-200/50 bg-white/40 px-5 backdrop-blur-2xl">
+    <header className="app-window-drag flex h-[64px] items-center justify-between border-b border-slate-200/50 bg-white/40 px-5 backdrop-blur-2xl">
       <div className="flex items-center gap-4">
         <button
           className="group inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 text-slate-500 shadow-sm ring-1 ring-slate-200/60 transition-all hover:bg-white hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
