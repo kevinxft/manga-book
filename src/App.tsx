@@ -32,6 +32,18 @@ export default function App() {
   }, [hydrate]);
 
   useEffect(() => {
+    document.documentElement.classList.add('app-ready');
+    const splash = document.getElementById('boot-splash');
+    const timer = window.setTimeout(() => {
+      splash?.remove();
+    }, 600);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!activeManga) {
       return;
     }

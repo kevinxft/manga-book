@@ -11,6 +11,8 @@ import { findArtistsDirectoryPath } from './organizer.common';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const READER_MANUAL_CHAPTERS_KEY_PREFIX = 'reader_manual_chapters:';
+const READER_CHAPTER_METADATA_KEY_PREFIX = 'reader_chapter_metadata:';
+const MAX_CHAPTER_TITLE_LENGTH = 120;
 
 async function listImagePaths(directoryPath: string): Promise<string[]> {
   const entries = await fs.readdir(directoryPath, { withFileTypes: true });
@@ -43,11 +45,24 @@ function getManualChapterMetadataKey(mangaId: string): string {
   return `${READER_MANUAL_CHAPTERS_KEY_PREFIX}${mangaId}`;
 }
 
+function getChapterMetadataKey(mangaId: string): string {
+  return `${READER_CHAPTER_METADATA_KEY_PREFIX}${mangaId}`;
+}
+
 type StoredManualChapter = {
   id: string;
   startPageRelativePath: string;
   createdAt: string;
 };
+
+type StoredChapterMetadata = {
+  id: string;
+  title: string | null;
+  highlighted: boolean;
+  updatedAt: string;
+};
+
+type ReaderChapterBase = Omit<ReaderChapter, 'highlighted'>;
 
 function readStoredManualChapters(db: Database.Database, mangaId: string): StoredManualChapter[] {
   const row = db.prepare('SELECT value FROM source_metadata WHERE key = ? LIMIT 1').get(getManualChapterMetadataKey(mangaId)) as
@@ -107,6 +122,90 @@ function writeStoredManualChapters(
   });
 }
 
+function normalizeChapterTitle(value: string | null | undefined): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.slice(0, MAX_CHAPTER_TITLE_LENGTH);
+}
+
+function readStoredChapterMetadata(db: Database.Database, mangaId: string): StoredChapterMetadata[] {
+  const row = db.prepare('SELECT value FROM source_metadata WHERE key = ? LIMIT 1').get(getChapterMetadataKey(mangaId)) as
+    | { value: string }
+    | undefined;
+  if (!row?.value) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(row.value) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed
+      .map((item) => {
+        if (!item || typeof item !== 'object') {
+          return null;
+        }
+
+        const candidate = item as Partial<StoredChapterMetadata>;
+        const id = typeof candidate.id === 'string' ? candidate.id.trim() : '';
+        if (!id) {
+          return null;
+        }
+
+        return {
+          id,
+          title: normalizeChapterTitle(candidate.title),
+          highlighted: candidate.highlighted === true,
+          updatedAt: typeof candidate.updatedAt === 'string' ? candidate.updatedAt : ''
+        };
+      })
+      .filter((item): item is StoredChapterMetadata => Boolean(item));
+  } catch {
+    return [];
+  }
+}
+
+function writeStoredChapterMetadata(
+  db: Database.Database,
+  mangaId: string,
+  items: StoredChapterMetadata[]
+): void {
+  const key = getChapterMetadataKey(mangaId);
+  const normalized = items
+    .map((item) => ({
+      id: item.id.trim(),
+      title: normalizeChapterTitle(item.title),
+      highlighted: item.highlighted === true,
+      updatedAt: item.updatedAt || new Date().toISOString()
+    }))
+    .filter((item) => item.id.length > 0)
+    .filter((item) => item.title !== null || item.highlighted);
+
+  if (normalized.length === 0) {
+    db.prepare('DELETE FROM source_metadata WHERE key = ?').run(key);
+    return;
+  }
+
+  db.prepare(
+    `INSERT INTO source_metadata (key, value, updated_at)
+      VALUES (@key, @value, @updated_at)
+      ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`
+  ).run({
+    key,
+    value: JSON.stringify(normalized),
+    updated_at: new Date().toISOString()
+  });
+}
+
 async function isMangaInsideAuthorDirectory(manga: MangaBook): Promise<boolean> {
   const artistsDirectoryPath = await findArtistsDirectoryPath(manga.sourceFolderPath);
   if (!artistsDirectoryPath) {
@@ -123,11 +222,11 @@ async function isMangaInsideAuthorDirectory(manga: MangaBook): Promise<boolean> 
   return relativeSegments.length >= 2;
 }
 
-async function listReaderChaptersForManga(
+async function listBaseReaderChaptersForManga(
   manga: MangaBook,
-  sourceMetadata: IpcContext['repositories']['sourceMetadata'],
-  canEditManualChapters: boolean
-): Promise<ReaderChapter[]> {
+  canEditManualChapters: boolean,
+  sourceMetadata: IpcContext['repositories']['sourceMetadata']
+): Promise<ReaderChapterBase[]> {
   if (manga.structure === 'multiVolume') {
     const entries = await fs.readdir(manga.folderPath, { withFileTypes: true });
     const childDirectories = entries
@@ -135,7 +234,7 @@ async function listReaderChaptersForManga(
       .map((entry) => path.join(manga.folderPath, entry.name))
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
-    const chapters: ReaderChapter[] = [];
+    const chapters: ReaderChapterBase[] = [];
     let startPageIndex = 0;
 
     for (const childDirectoryPath of childDirectories) {
@@ -207,6 +306,53 @@ async function listReaderChaptersForManga(
       deletable: canEditManualChapters && !chapter.id.startsWith('generated:')
     };
   });
+}
+
+function applyChapterMetadata(chapters: ReaderChapterBase[], items: StoredChapterMetadata[]): ReaderChapter[] {
+  const metadataById = new Map(items.map((item) => [item.id, item]));
+
+  return chapters.map((chapter) => {
+    const metadata = metadataById.get(chapter.id);
+    return {
+      ...chapter,
+      title: metadata?.title ?? chapter.title,
+      highlighted: metadata?.highlighted === true
+    };
+  });
+}
+
+async function listReaderChaptersForManga(
+  manga: MangaBook,
+  sourceMetadata: IpcContext['repositories']['sourceMetadata'],
+  canEditManualChapters: boolean
+): Promise<ReaderChapter[]> {
+  const baseChapters = await listBaseReaderChaptersForManga(manga, canEditManualChapters, sourceMetadata);
+  if (baseChapters.length === 0) {
+    return [];
+  }
+
+  const handle = sourceMetadata.ensureSourceMetadataDb(manga.sourceFolderPath);
+  const storedMetadata = readStoredChapterMetadata(handle.db, manga.id);
+  return applyChapterMetadata(baseChapters, storedMetadata);
+}
+
+function upsertChapterMetadataItem(
+  items: StoredChapterMetadata[],
+  input: { id: string; title: string | null; highlighted: boolean }
+): StoredChapterMetadata[] {
+  const nextItems = items.filter((item) => item.id !== input.id);
+
+  if (input.title === null && !input.highlighted) {
+    return nextItems;
+  }
+
+  nextItems.push({
+    id: input.id,
+    title: input.title,
+    highlighted: input.highlighted,
+    updatedAt: new Date().toISOString()
+  });
+  return nextItems;
 }
 
 export function registerReaderIpc(context: IpcContext): void {
@@ -316,9 +462,67 @@ export function registerReaderIpc(context: IpcContext): void {
       }
 
       writeStoredManualChapters(handle.db, existing.id, nextChapters);
+      writeStoredChapterMetadata(
+        handle.db,
+        existing.id,
+        readStoredChapterMetadata(handle.db, existing.id).filter((item) => item.id !== chapterId)
+      );
       return ok(await listReaderChaptersForManga(existing, sourceMetadata, true));
     } catch (error) {
       return fail('FS_ERROR', error instanceof Error ? error.message : 'Failed to remove manga chapter');
+    }
+  });
+
+  registerHandler('reader.updateChapter', async (request) => {
+    const existing = manga.getById(request.mangaId);
+    if (!existing) {
+      return fail('NOT_FOUND', 'Manga not found');
+    }
+
+    const canManageChapters = await isMangaInsideAuthorDirectory(existing);
+    if (!canManageChapters) {
+      return fail('VALIDATION_ERROR', '只有作者目录下的漫画才能编辑章节。');
+    }
+
+    const chapterId = request.chapterId?.trim();
+    if (!chapterId) {
+      return fail('VALIDATION_ERROR', '章节标识无效。');
+    }
+
+    const hasTitleUpdate = Object.prototype.hasOwnProperty.call(request, 'title');
+    const hasHighlightUpdate = typeof request.highlighted === 'boolean';
+    if (!hasTitleUpdate && !hasHighlightUpdate) {
+      return fail('VALIDATION_ERROR', '未提供章节更新内容。');
+    }
+
+    try {
+      const baseChapters = await listBaseReaderChaptersForManga(existing, canManageChapters, sourceMetadata);
+      const targetChapter = baseChapters.find((chapter) => chapter.id === chapterId);
+      if (!targetChapter) {
+        return fail('NOT_FOUND', 'Chapter not found');
+      }
+
+      const handle = sourceMetadata.ensureSourceMetadataDb(existing.sourceFolderPath);
+      const storedMetadata = readStoredChapterMetadata(handle.db, existing.id);
+      const currentMetadata = storedMetadata.find((item) => item.id === chapterId);
+
+      const nextTitleInput = hasTitleUpdate ? normalizeChapterTitle(request.title) : currentMetadata?.title ?? null;
+      const nextTitle = nextTitleInput === targetChapter.title ? null : nextTitleInput;
+      const nextHighlighted = hasHighlightUpdate ? request.highlighted === true : currentMetadata?.highlighted === true;
+
+      writeStoredChapterMetadata(
+        handle.db,
+        existing.id,
+        upsertChapterMetadataItem(storedMetadata, {
+          id: chapterId,
+          title: nextTitle,
+          highlighted: nextHighlighted
+        })
+      );
+
+      return ok(await listReaderChaptersForManga(existing, sourceMetadata, canManageChapters));
+    } catch (error) {
+      return fail('FS_ERROR', error instanceof Error ? error.message : 'Failed to update manga chapter');
     }
   });
 

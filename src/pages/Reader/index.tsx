@@ -245,13 +245,15 @@ export function ReaderPage({
     () => resolveCurrentChapterIndex(chapters, currentPageIndex),
     [chapters, currentPageIndex]
   );
+  const isAuthorDirectoryManga = isMangaInsideAuthorDirectory(
+    manga.folderPath,
+    authorDirectories.map((item) => item.directory)
+  );
+  const canEditChapterMetadata = isAuthorDirectoryManga && chapters.length > 0;
   const canAddChapter =
     manga.structure === 'singleVolume' &&
     pagePaths.length > 0 &&
-    isMangaInsideAuthorDirectory(
-      manga.folderPath,
-      authorDirectories.map((item) => item.directory)
-    );
+    isAuthorDirectoryManga;
   const canAddAtCurrentPage =
     canAddChapter &&
     currentPageIndex > 0 &&
@@ -376,6 +378,28 @@ export function ReaderPage({
       setChapterBusy(false);
     }
   }, [chapterBusy, manga.id]);
+
+  const handleUpdateChapter = useCallback(async (chapter: ReaderChapter, input: { title?: string | null; highlighted?: boolean }) => {
+    if (chapterBusy || !isAuthorDirectoryManga) {
+      return;
+    }
+
+    setChapterBusy(true);
+    setActionError(null);
+    try {
+      const nextChapters = await ipcInvoke('reader.updateChapter', {
+        mangaId: manga.id,
+        chapterId: chapter.id,
+        title: input.title,
+        highlighted: input.highlighted
+      });
+      setChapters(nextChapters);
+    } catch (chapterError) {
+      setActionError(chapterError instanceof Error ? chapterError.message : '更新章节失败');
+    } finally {
+      setChapterBusy(false);
+    }
+  }, [chapterBusy, isAuthorDirectoryManga, manga.id]);
 
   const handleDeleteSelectedPages = useCallback(async (selectedPagePaths: string[]) => {
     if (selectedPagePaths.length === 0) {
@@ -524,11 +548,13 @@ export function ReaderPage({
         currentChapterIndex={currentChapterIndex}
         chapterBusy={chapterBusy}
         canAddChapter={canAddChapter}
+        canEditChapterMetadata={canEditChapterMetadata}
         canAddAtCurrentPage={canAddAtCurrentPage}
         currentPageIndex={currentPageIndex}
         onAddChapter={() => void handleAddChapter()}
         onJumpToChapter={(chapter) => jumpToPage(chapter.startPageIndex)}
         onRemoveChapter={(chapter) => void handleRemoveChapter(chapter)}
+        onUpdateChapter={(chapter, input) => void handleUpdateChapter(chapter, input)}
       />
 
       <ReaderViewport

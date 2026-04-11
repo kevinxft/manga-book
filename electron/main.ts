@@ -11,6 +11,7 @@ import { registerIpcHandlers } from './ipc';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const STABLE_USER_DATA_DIRNAME = 'MangaBook';
 const LEGACY_USER_DATA_DIRNAMES = ['manga-book-electron', '漫书'];
+const APP_BACKGROUND_COLOR = '#ffffff';
 
 function getLatestLegacyUserDataPath(appDataPath: string): string | null {
   let latestLegacyPath: string | null = null;
@@ -82,6 +83,7 @@ function createMainWindow(): BrowserWindow {
     height: 860,
     minWidth: 1100,
     minHeight: 720,
+    backgroundColor: APP_BACKGROUND_COLOR,
     ...(process.platform === 'darwin'
       ? {
           titleBarStyle: 'hiddenInset' as const,

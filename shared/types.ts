@@ -176,6 +176,7 @@ export interface ReaderChapter {
   endPageIndex: number;
   pageCount: number;
   source: 'filesystem' | 'manual' | 'generated';
+  highlighted: boolean;
   deletable: boolean;
 }
 
@@ -191,6 +192,13 @@ export interface ReaderAddChapterRequest {
 export interface ReaderRemoveChapterRequest {
   mangaId: string;
   chapterId: string;
+}
+
+export interface ReaderUpdateChapterRequest {
+  mangaId: string;
+  chapterId: string;
+  title?: string | null;
+  highlighted?: boolean;
 }
 
 export interface ReaderDeletePagesRequest {
@@ -373,6 +381,7 @@ export interface IpcChannels {
   'reader.listChapters': { req: ReaderListChaptersRequest; res: ReaderChapter[] };
   'reader.addChapter': { req: ReaderAddChapterRequest; res: ReaderChapter[] };
   'reader.removeChapter': { req: ReaderRemoveChapterRequest; res: ReaderChapter[] };
+  'reader.updateChapter': { req: ReaderUpdateChapterRequest; res: ReaderChapter[] };
   'reader.deletePages': { req: ReaderDeletePagesRequest; res: ReaderDeletePagesResult };
   'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };
 
