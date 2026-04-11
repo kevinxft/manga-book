@@ -3,6 +3,7 @@ import type { MangaBookWithCover, ReaderChapter } from '@shared/types';
 import { X } from 'lucide-react';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 import { MangaPageEditorDialog } from '@renderer/components/manga/MangaPageEditorDialog';
+import { useMangaSearchActions } from '@renderer/hooks/manga/useMangaSearchActions';
 import { useMangaTagEditor } from '@renderer/hooks/manga/useMangaTagEditor';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { DeleteMangaDialog } from '@renderer/pages/Organizer/components/DeleteMangaDialog';
@@ -226,6 +227,10 @@ export function ReaderPage({
   } = useMangaTagEditor({
     hasIpcBridge,
     updateMangaLocal,
+    setError: setActionError
+  });
+  const { handleOpenInFolder } = useMangaSearchActions({
+    hasIpcBridge,
     setError: setActionError
   });
   const { handleReaderMouseDown, handleReaderContextMenu, handleToolbarButtonMouseDown } = useReaderControls({
@@ -520,6 +525,8 @@ export function ReaderPage({
       <ReaderTopBar
         title={manga.title}
         folderPath={manga.folderPath}
+        isReference={!isAuthorDirectoryManga}
+        tags={manga.tags}
         onBack={onBack}
         onOpenPreviousManga={onOpenPreviousManga}
         onOpenNextManga={onOpenNextManga}
@@ -527,6 +534,7 @@ export function ReaderPage({
         canOpenNextManga={canOpenNextManga}
         onOpenTagEditor={handleOpenTagEditor}
         onOpenPageEditor={handleOpenPageEditor}
+        onOpenFolder={() => void handleOpenInFolder(manga.id)}
         onDeleteManga={handleRequestDeleteManga}
         deleting={deletingManga}
       />

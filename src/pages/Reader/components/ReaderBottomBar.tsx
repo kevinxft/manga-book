@@ -72,7 +72,7 @@ export function ReaderBottomBar({
             max={Math.max(pageCount, 1)}
             value={Math.min(currentPageIndex + 1, Math.max(pageCount, 1))}
             onChange={onSliderChange}
-            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/20 accent-[#3d7cf9] outline-none transition-all hover:bg-white/30"
+            className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full bg-white/10 accent-white/80 outline-none transition-all hover:bg-white/20"
             aria-label="页面快速跳转"
           />
         </div>
@@ -106,7 +106,7 @@ export function ReaderBottomBar({
           <button
             className={cn(
               'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
-              readerMode === 'paged' ? 'bg-[#3d7cf9] text-white shadow-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
+              readerMode === 'paged' ? 'bg-white/15 text-white shadow-[0_2px_8px_rgba(0,0,0,0.3)] ring-1 ring-white/10' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onReaderModeChange('paged')}
             onMouseDown={onToolbarButtonMouseDown}
@@ -117,7 +117,7 @@ export function ReaderBottomBar({
           <button
             className={cn(
               'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
-              readerMode === 'scroll' ? 'bg-[#3d7cf9] text-white shadow-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
+              readerMode === 'scroll' ? 'bg-white/15 text-white shadow-[0_2px_8px_rgba(0,0,0,0.3)] ring-1 ring-white/10' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onReaderModeChange('scroll')}
             onMouseDown={onToolbarButtonMouseDown}
@@ -132,7 +132,7 @@ export function ReaderBottomBar({
           <button
             className={cn(
               'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
-              widthMode === 'fit' ? 'bg-white/20 text-white shadow-md backdrop-blur-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
+              widthMode === 'fit' ? 'bg-white/15 text-white shadow-[0_2px_8px_rgba(0,0,0,0.3)] ring-1 ring-white/10' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onWidthModeChange('fit')}
             onMouseDown={onToolbarButtonMouseDown}
@@ -143,7 +143,7 @@ export function ReaderBottomBar({
           <button
             className={cn(
               'rounded-full px-3.5 py-1 text-[11px] font-medium transition-all duration-200 focus:outline-none',
-              widthMode === 'fixed' ? 'bg-white/20 text-white shadow-md backdrop-blur-md' : 'text-[#8c9bab] hover:text-[#dce2ec]'
+              widthMode === 'fixed' ? 'bg-white/15 text-white shadow-[0_2px_8px_rgba(0,0,0,0.3)] ring-1 ring-white/10' : 'text-[#8c9bab] hover:text-[#dce2ec]'
             )}
             onClick={() => onWidthModeChange('fixed')}
             onMouseDown={onToolbarButtonMouseDown}
@@ -179,7 +179,7 @@ export function ReaderBottomBar({
 
         {/* Organize Button */}
         <button
-          className="group inline-flex shrink-0 h-8 items-center gap-1.5 rounded-full bg-white/5 py-1 pl-3 pr-3.5 text-[#dce2ec] transition-all duration-200 hover:bg-[#3d7cf9] hover:text-white hover:shadow-[0_0_12px_rgba(61,124,249,0.4)] focus:outline-none"
+          className="group inline-flex shrink-0 h-8 items-center gap-1.5 rounded-full bg-white/5 py-1 pl-3 pr-3.5 text-[#dce2ec] transition-all duration-200 hover:bg-white/15 hover:text-white focus:outline-none"
           onClick={onOpenPageEditor}
           onMouseDown={onToolbarButtonMouseDown}
           title="编辑漫画页面"
