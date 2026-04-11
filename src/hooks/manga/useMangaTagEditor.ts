@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { MangaBookWithCover, MangaTag } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { useTagStore } from '@renderer/stores/tagStore';
@@ -32,7 +32,7 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
     [tags]
   );
 
-  const openAddTagDialog = (item: MangaBookWithCover, anchor: { x: number; y: number }) => {
+  const openAddTagDialog = useCallback((item: MangaBookWithCover, anchor: { x: number; y: number }) => {
     if (!hasIpcBridge) {
       setError('当前运行在普通浏览器环境，无法添加标签。请使用 bun run dev 启动 Electron 窗口。');
       return;
@@ -43,9 +43,9 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
     setAddTagAnchor(anchor);
     setAddTagError(null);
     setAddTagDialogOpen(true);
-  };
+  }, [hasIpcBridge, setError]);
 
-  const closeAddTagDialog = (force = false) => {
+  const closeAddTagDialog = useCallback((force = false) => {
     if (addTagSaving && !force) {
       return;
     }
@@ -53,9 +53,9 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
     setAddTagTarget(null);
     setAddTagAnchor(null);
     setAddTagError(null);
-  };
+  }, [addTagSaving]);
 
-  const handleConfirmAddTag = async (nextTagNames: string[]) => {
+  const handleConfirmAddTag = useCallback(async (nextTagNames: string[]) => {
     if (!addTagTarget || addTagSaving) {
       return;
     }
@@ -133,7 +133,7 @@ export function useMangaTagEditor({ hasIpcBridge, updateMangaLocal, setError }: 
     } finally {
       setAddTagSaving(false);
     }
-  };
+  }, [addTagSaving, addTagTarget, closeAddTagDialog, setError, updateMangaLocal, upsertTagLocal]);
 
   return {
     addTagDialogOpen,

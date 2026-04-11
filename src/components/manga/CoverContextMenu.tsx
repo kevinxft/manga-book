@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
+import { categoryMatchesSearch, normalizeSearchText } from '@renderer/pages/Organizer/utils';
 import { CoverActionSection } from './CoverActionSection';
 import { CoverMoveSection, type MoveSortKey } from './CoverMoveSection';
 import { useAnchoredMenuPosition } from './useAnchoredMenuPosition';
@@ -98,7 +99,7 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
       return [] as OrganizerCategory[];
     }
     const currentParent = normalizePath(getParentPath(menu.item.folderPath));
-    const keyword = moveSearch.trim().toLowerCase();
+    const keyword = normalizeSearchText(moveSearch);
 
     return categories
       .filter((category) => {
@@ -108,11 +109,7 @@ export function CoverContextMenu<T extends CoverContextMenuItem>({
         if (keyword.length === 0) {
           return true;
         }
-        return (
-          category.label.toLowerCase().includes(keyword) ||
-          category.path.toLowerCase().includes(keyword) ||
-          category.aliases.some((alias) => alias.toLowerCase().includes(keyword))
-        );
+        return categoryMatchesSearch(category, keyword);
       })
       .sort((a, b) => sortMoveTargets(a, b, moveSortBy));
   }, [categories, menu, moveSearch, moveSortBy]);

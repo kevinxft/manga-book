@@ -22,6 +22,7 @@ import { useLibraryOrganizerCategories } from './hooks/useLibraryOrganizerCatego
 import { useLibraryDataLifecycle } from './hooks/useLibraryDataLifecycle';
 import { useAliasMutations } from '@renderer/pages/Organizer/hooks/useAliasMutations';
 import { useAuthorDirectoryDelete } from '@renderer/pages/Organizer/hooks/useAuthorDirectoryDelete';
+import { useAuthorDirectoryImport } from '@renderer/pages/Organizer/hooks/useAuthorDirectoryImport';
 import { useAuthorDirectoryRename } from '@renderer/pages/Organizer/hooks/useAuthorDirectoryRename';
 import { useOrganizerMutationErrors } from '@renderer/pages/Organizer/hooks/useOrganizerMutationErrors';
 import { ipcInvoke } from '@renderer/ipc/client';
@@ -376,6 +377,19 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   });
 
   const {
+    importingAuthorDirectoryPath,
+    handleRequestImportToAuthorDirectory
+  } = useAuthorDirectoryImport({
+    hasIpcBridge,
+    fetchMangas,
+    refreshAuthorDirectories: useOrganizerMetadataStore.getState().refreshAuthorDirectories,
+    setMoveError: (message) => {
+      setMoveError(message);
+      setOperationError(message);
+    }
+  });
+
+  const {
     addTagDialogOpen,
     addTagTarget,
     addTagAnchor,
@@ -498,6 +512,8 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
             onRemoveSource={(sourceId) => {
               void removeSource(sourceId);
             }}
+            importingAuthorDirectoryPath={importingAuthorDirectoryPath}
+            onRequestImportToCategory={(category) => void handleRequestImportToAuthorDirectory(category)}
             onRequestAddAlias={handleRequestAddAlias}
             onRequestRenameCategory={handleRequestRenameAuthorDirectory}
             onRequestDeleteCategory={handleRequestDeleteAuthorDirectory}

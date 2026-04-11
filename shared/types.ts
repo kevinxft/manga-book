@@ -169,6 +169,30 @@ export interface ReaderListPagesRequest {
   mangaId: string;
 }
 
+export interface ReaderChapter {
+  id: string;
+  title: string;
+  startPageIndex: number;
+  endPageIndex: number;
+  pageCount: number;
+  source: 'filesystem' | 'manual' | 'generated';
+  deletable: boolean;
+}
+
+export interface ReaderListChaptersRequest {
+  mangaId: string;
+}
+
+export interface ReaderAddChapterRequest {
+  mangaId: string;
+  pageIndex: number;
+}
+
+export interface ReaderRemoveChapterRequest {
+  mangaId: string;
+  chapterId: string;
+}
+
 export interface ReaderDeletePagesRequest {
   mangaId: string;
   pagePaths: string[];
@@ -245,8 +269,44 @@ export interface OrganizerRenameAuthorDirectoryResult {
   updatedCount: number;
 }
 
+export interface OrganizerMergeAuthorDirectoriesRequest {
+  sourceDirectoryPaths: string[];
+  targetName: string;
+}
+
+export interface OrganizerMergedMangaPath {
+  id: string;
+  previousPath: string;
+  path: string;
+  title: string;
+  renamedDueToConflict: boolean;
+}
+
+export interface OrganizerMergeAuthorDirectoriesResult {
+  targetPath: string;
+  targetName: string;
+  movedMangas: OrganizerMergedMangaPath[];
+  deletedSourcePaths: string[];
+  aliases: DirectoryAlias[];
+  renamedConflictCount: number;
+}
+
 export interface OrganizerDeleteAuthorDirectoryRequest {
   directoryPath: string;
+}
+
+export interface OrganizerImportMangasToAuthorDirectoryRequest {
+  directoryPath: string;
+}
+
+export interface OrganizerImportMangasToAuthorDirectoryResult {
+  cancelled: boolean;
+  importedCount: number;
+  renamedConflictCount: number;
+  skipped: Array<{
+    path: string;
+    reason: 'NOT_FOUND' | 'INVALID_MANGA_DIRECTORY' | 'ALREADY_IN_TARGET';
+  }>;
 }
 
 export interface OrganizerDeleteMangaRequest {
@@ -310,6 +370,9 @@ export interface IpcChannels {
   'library.getScanTaskStatus': { req: { taskId: string }; res: ScanTaskStatus };
 
   'reader.listPages': { req: ReaderListPagesRequest; res: string[] };
+  'reader.listChapters': { req: ReaderListChaptersRequest; res: ReaderChapter[] };
+  'reader.addChapter': { req: ReaderAddChapterRequest; res: ReaderChapter[] };
+  'reader.removeChapter': { req: ReaderRemoveChapterRequest; res: ReaderChapter[] };
   'reader.deletePages': { req: ReaderDeletePagesRequest; res: ReaderDeletePagesResult };
   'reader.saveProgress': { req: ReaderSaveProgressRequest; res: { saved: boolean } };
 
@@ -322,6 +385,11 @@ export interface IpcChannels {
   'organizer.listAuthorDirectories': { req: void; res: TargetDirectorySummary[] };
   'organizer.createAuthorDirectory': { req: OrganizerCreateAuthorDirectoryRequest; res: { path: string; created: boolean } };
   'organizer.renameAuthorDirectory': { req: OrganizerRenameAuthorDirectoryRequest; res: OrganizerRenameAuthorDirectoryResult };
+  'organizer.mergeAuthorDirectories': { req: OrganizerMergeAuthorDirectoriesRequest; res: OrganizerMergeAuthorDirectoriesResult };
+  'organizer.importMangasToAuthorDirectory': {
+    req: OrganizerImportMangasToAuthorDirectoryRequest;
+    res: OrganizerImportMangasToAuthorDirectoryResult;
+  };
   'organizer.deleteAuthorDirectory': { req: OrganizerDeleteAuthorDirectoryRequest; res: { deleted: boolean; path: string } };
   'organizer.deleteManga': { req: OrganizerDeleteMangaRequest; res: { deleted: boolean } };
   'organizer.searchGoogle': { req: OrganizerSearchGoogleRequest; res: { opened: boolean } };

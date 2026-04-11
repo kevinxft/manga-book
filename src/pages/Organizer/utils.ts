@@ -125,6 +125,21 @@ function toLookupKey(value: string): string {
   return value.trim().toLocaleLowerCase();
 }
 
+export function normalizeSearchText(value: string): string {
+  return value.normalize('NFKC').trim().toLocaleLowerCase();
+}
+
+export function categoryMatchesSearch(category: OrganizerCategory, keyword: string): boolean {
+  if (!keyword) {
+    return true;
+  }
+
+  return (
+    normalizeSearchText(category.label).includes(keyword) ||
+    category.aliases.some((alias) => normalizeSearchText(alias).includes(keyword))
+  );
+}
+
 export function createAuthorAliasLookup(aliases: DirectoryAlias[]): AuthorAliasLookupContext {
   const canonicalByAnyName = new Map<string, string>();
   const aliasesByCanonicalName = new Map<string, string[]>();

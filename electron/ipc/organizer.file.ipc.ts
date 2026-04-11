@@ -1,14 +1,20 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { shell } from 'electron';
+import { dialog, shell } from 'electron';
+import type { DirectoryAlias, MangaStructure, OrganizerMergedMangaPath } from '@shared/types';
 import type { IpcContext } from './context';
 import { fail, ok, registerHandler } from './helpers';
-import { updateCachedCanonicalName } from './organizer.alias.ipc';
+import { invalidateAliasListCache, updateCachedCanonicalName } from './organizer.alias.ipc';
 import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath, toKey } from '@main/utils/pathUtils';
 import { clearCoverPathCache, invalidateCoverPath } from '@main/scanner/coverFinder';
 import { isMetadataDirectoryPath } from '@main/db/sourceMetadata';
+
+const AUTHOR_ALIAS_METADATA_FILENAME = '.mangabook-author.json';
+const IGNORABLE_AUTHOR_DIRECTORY_FILES = new Set([AUTHOR_ALIAS_METADATA_FILENAME, '.DS_Store']);
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+const MIN_MANGA_IMAGE_COUNT = 4;
 
 async function getAvailableDirectoryPath(
   destinationRoot: string,
@@ -32,6 +38,62 @@ async function getAvailableDirectoryPath(
 
   throw new Error(`Unable to find available directory name for ${preferredName}`);
 }
+
+function isValidAuthorDirectoryName(name: string): boolean {
+  return Boolean(name) && name !== '.' && name !== '..' && !/[\\/]/.test(name);
+}
+
+async function assertDirectoryHasOnlyChildDirectories(directoryPath: string): Promise<string | null> {
+  const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+  const unsupportedEntry = entries.find(
+    (entry) =>
+      isMetadataDirectoryPath(path.join(directoryPath, entry.name)) ||
+      (!entry.isDirectory() && !IGNORABLE_AUTHOR_DIRECTORY_FILES.has(entry.name))
+  );
+  return unsupportedEntry?.name ?? null;
+}
+
+async function listImageFiles(directoryPath: string): Promise<string[]> {
+  const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+  return entries
+    .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+    .map((entry) => path.join(directoryPath, entry.name));
+}
+
+async function inspectImportableMangaDirectory(
+  directoryPath: string
+): Promise<{ structure: MangaStructure; totalPages: number } | null> {
+  const directImages = await listImageFiles(directoryPath);
+  if (directImages.length >= MIN_MANGA_IMAGE_COUNT) {
+    return {
+      structure: 'singleVolume',
+      totalPages: directImages.length
+    };
+  }
+
+  const childDirectories = (await listDirectories(directoryPath)).filter((childPath) => !isMetadataDirectoryPath(childPath));
+  let totalChildPages = 0;
+  let hasChildVolume = false;
+
+  for (const childDirectory of childDirectories) {
+    const childImages = await listImageFiles(childDirectory);
+    if (childImages.length === 0) {
+      continue;
+    }
+    hasChildVolume = true;
+    totalChildPages += childImages.length;
+  }
+
+  if (!hasChildVolume) {
+    return null;
+  }
+
+  return {
+    structure: 'multiVolume',
+    totalPages: totalChildPages
+  };
+}
+
 
 export function registerOrganizerFileIpc(context: IpcContext): void {
   const { manga, library, directoryUsage, alias } = context.repositories;
@@ -233,6 +295,234 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     });
   });
 
+  registerHandler('organizer.mergeAuthorDirectories', async (request) => {
+    const sourceDirectoryPaths = Array.from(
+      new Set((request.sourceDirectoryPaths ?? []).map((item) => normalizeAbsolutePath(item)).filter(Boolean))
+    );
+    const targetName = request.targetName?.trim() ?? '';
+
+    if (sourceDirectoryPaths.length < 2) {
+      return fail('VALIDATION', 'At least two author directories are required');
+    }
+    if (!isValidAuthorDirectoryName(targetName)) {
+      return fail('VALIDATION', 'Invalid author directory name');
+    }
+
+    const parentPath = normalizeAbsolutePath(path.dirname(sourceDirectoryPaths[0] as string));
+    for (const sourcePath of sourceDirectoryPaths) {
+      if (normalizeAbsolutePath(path.dirname(sourcePath)) !== parentPath) {
+        return fail('VALIDATION', 'Author directories must be under the same root');
+      }
+      if (!(await directoryExists(sourcePath))) {
+        return fail('NOT_FOUND', `Author directory not found: ${sourcePath}`);
+      }
+    }
+
+    const targetPath = normalizeAbsolutePath(path.join(parentPath, targetName));
+    const targetExists = await pathExists(targetPath);
+    if (targetExists && !(await directoryExists(targetPath))) {
+      return fail('CONFLICT', 'Merge target already exists and is not a directory');
+    }
+
+    for (const sourcePath of sourceDirectoryPaths) {
+      if (sourcePath === targetPath) {
+        continue;
+      }
+
+      const unsupportedEntry = await assertDirectoryHasOnlyChildDirectories(sourcePath);
+      if (unsupportedEntry) {
+        return fail('DIRECTORY_NOT_EMPTY', `源目录包含无法合并的文件：${path.basename(sourcePath)}/${unsupportedEntry}`);
+      }
+    }
+
+    if (!targetExists) {
+      await ensureDirectory(targetPath);
+    }
+
+    const sourceRoots = library.list().map((source) => source.path);
+    const booksByFolderPath = new Map(manga.list().map((book) => [normalizeAbsolutePath(book.folderPath), book]));
+    const movedMangas: OrganizerMergedMangaPath[] = [];
+    const deletedSourcePaths: string[] = [];
+    let renamedConflictCount = 0;
+
+    for (const sourcePath of sourceDirectoryPaths) {
+      if (sourcePath === targetPath) {
+        continue;
+      }
+
+      const childDirectories = (await listDirectories(sourcePath))
+        .map((childPath) => normalizeAbsolutePath(childPath))
+        .filter((childPath) => !isMetadataDirectoryPath(childPath));
+
+      for (const childPath of childDirectories) {
+        const moveTarget = await getAvailableDirectoryPath(targetPath, path.basename(childPath));
+        await movePath(childPath, moveTarget.path);
+        if (moveTarget.renamedDueToConflict) {
+          renamedConflictCount += 1;
+        }
+
+        const book = booksByFolderPath.get(childPath);
+        if (!book) {
+          continue;
+        }
+
+        invalidateCoverPath(book.folderPath);
+        const nextSourceFolderPath = resolveSourceFolderPath(moveTarget.path, sourceRoots, book.sourceFolderPath);
+        const updated = manga.updatePath(book.id, path.basename(moveTarget.path), moveTarget.path, nextSourceFolderPath);
+        movedMangas.push({
+          id: updated.id,
+          previousPath: book.folderPath,
+          path: updated.folderPath,
+          title: updated.title,
+          renamedDueToConflict: moveTarget.renamedDueToConflict
+        });
+      }
+
+      await Promise.all(
+        [...IGNORABLE_AUTHOR_DIRECTORY_FILES].map((fileName) => fs.rm(path.join(sourcePath, fileName), { force: true }))
+      );
+      await fs.rmdir(sourcePath);
+      deletedSourcePaths.push(sourcePath);
+    }
+
+    if (movedMangas.length > 0) {
+      directoryUsage.touch(targetPath);
+      clearCoverPathCache();
+    }
+
+    const sourceNames = sourceDirectoryPaths.map((sourcePath) => path.basename(sourcePath));
+    const sourceNameKeys = new Set(sourceNames.map((sourceName) => toKey(sourceName)));
+    const aliasCandidates = new Map<string, string>();
+
+    for (const sourceName of sourceNames) {
+      aliasCandidates.set(toKey(sourceName), sourceName);
+    }
+
+    for (const aliasItem of alias.list()) {
+      if (sourceNameKeys.has(toKey(aliasItem.canonicalName))) {
+        aliasCandidates.set(toKey(aliasItem.alias), aliasItem.alias);
+      }
+    }
+
+    const storedAliases: DirectoryAlias[] = [];
+    const targetNameKey = toKey(targetName);
+    for (const [aliasKey, aliasName] of aliasCandidates) {
+      if (!aliasKey || aliasKey === targetNameKey) {
+        continue;
+      }
+
+      storedAliases.push(alias.insert(aliasName, targetName, targetPath));
+    }
+    invalidateAliasListCache();
+
+    return ok({
+      targetPath,
+      targetName,
+      movedMangas,
+      deletedSourcePaths,
+      aliases: storedAliases,
+      renamedConflictCount
+    });
+  });
+
+  registerHandler('organizer.importMangasToAuthorDirectory', async (request) => {
+    const targetDirectoryPath = normalizeAbsolutePath(request.directoryPath);
+    if (!(await directoryExists(targetDirectoryPath))) {
+      return fail('NOT_FOUND', 'Author directory not found');
+    }
+
+    const sourcePaths = library.list().map((source) => normalizeAbsolutePath(source.path));
+    const targetSourceRoot =
+      sourcePaths.find(
+        (sourcePath) => targetDirectoryPath === sourcePath || targetDirectoryPath.startsWith(`${sourcePath}${path.sep}`)
+      ) ?? null;
+    if (!targetSourceRoot) {
+      return fail('NO_SOURCE_ROOT', '未找到该作者目录对应的漫画来源目录。');
+    }
+
+    const result = await dialog.showOpenDialog({
+      title: `选择要导入到「${path.basename(targetDirectoryPath)}」的漫画目录`,
+      properties: ['openDirectory', 'multiSelections', 'dontAddToRecent']
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return ok({
+        cancelled: true,
+        importedCount: 0,
+        renamedConflictCount: 0,
+        skipped: []
+      });
+    }
+
+    const selectedPaths = Array.from(
+      new Set(result.filePaths.map((filePath) => normalizeAbsolutePath(filePath)).filter(Boolean))
+    );
+    const existingMangaByFolderPath = new Map(
+      manga.list().map((book) => [normalizeAbsolutePath(book.folderPath), book])
+    );
+    const skipped: Array<{
+      path: string;
+      reason: 'NOT_FOUND' | 'INVALID_MANGA_DIRECTORY' | 'ALREADY_IN_TARGET';
+    }> = [];
+    let importedCount = 0;
+    let renamedConflictCount = 0;
+
+    for (const selectedPath of selectedPaths) {
+      if (selectedPath === targetDirectoryPath || selectedPath.startsWith(`${targetDirectoryPath}${path.sep}`)) {
+        skipped.push({ path: selectedPath, reason: 'ALREADY_IN_TARGET' });
+        continue;
+      }
+
+      if (!(await directoryExists(selectedPath))) {
+        skipped.push({ path: selectedPath, reason: 'NOT_FOUND' });
+        continue;
+      }
+
+      const inspection = await inspectImportableMangaDirectory(selectedPath);
+      if (!inspection) {
+        skipped.push({ path: selectedPath, reason: 'INVALID_MANGA_DIRECTORY' });
+        continue;
+      }
+
+      const moveTarget = await getAvailableDirectoryPath(targetDirectoryPath, path.basename(selectedPath));
+      await movePath(selectedPath, moveTarget.path);
+
+      importedCount += 1;
+      if (moveTarget.renamedDueToConflict) {
+        renamedConflictCount += 1;
+      }
+
+      const existing = existingMangaByFolderPath.get(selectedPath);
+      if (existing) {
+        invalidateCoverPath(existing.folderPath);
+        manga.updatePath(existing.id, path.basename(moveTarget.path), moveTarget.path, targetSourceRoot);
+      } else {
+        manga.upsert({
+          title: path.basename(moveTarget.path),
+          folderPath: moveTarget.path,
+          sourceFolderPath: targetSourceRoot,
+          structure: inspection.structure,
+          totalPages: inspection.totalPages
+        });
+      }
+
+      invalidateCoverPath(selectedPath);
+      invalidateCoverPath(moveTarget.path);
+    }
+
+    if (importedCount > 0) {
+      directoryUsage.touch(targetDirectoryPath);
+      clearCoverPathCache();
+    }
+
+    return ok({
+      cancelled: false,
+      importedCount,
+      renamedConflictCount,
+      skipped
+    });
+  });
+
   registerHandler('organizer.deleteAuthorDirectory', async (request) => {
     const currentPath = normalizeAbsolutePath(request.directoryPath);
     if (!(await directoryExists(currentPath))) {
@@ -275,7 +565,7 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     }
 
     if (request.withFiles) {
-      await fs.rm(book.folderPath, { recursive: true, force: false });
+      await shell.trashItem(book.folderPath);
     } else {
       await fs.access(book.folderPath);
     }

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { DirectoryAlias, TargetDirectorySummary } from '@shared/types';
+import type { DirectoryAlias, OrganizerMergeAuthorDirectoriesResult, TargetDirectorySummary } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 
 interface OrganizerMetadataState {
@@ -19,6 +19,7 @@ interface OrganizerMetadataState {
     previousName: string;
     name: string;
   }) => void;
+  mergeAuthorDirectoriesLocal: (result: OrganizerMergeAuthorDirectoriesResult) => void;
 }
 
 let organizerMetadataPromise: Promise<void> | null = null;
@@ -174,6 +175,39 @@ export const useOrganizerMetadataStore = create<OrganizerMetadataState>((set, ge
             ? { ...alias, canonicalName: nextName }
             : alias
         ),
+        authorDirectories: nextAuthorDirectories,
+        loaded: true,
+        error: null
+      };
+    });
+  },
+
+  mergeAuthorDirectoriesLocal(result) {
+    set((state) => {
+      const deletedSourcePaths = new Set(result.deletedSourcePaths);
+      const targetPath = result.targetPath.trim();
+      if (!targetPath) {
+        return state;
+      }
+
+      const nextAuthorDirectories = state.authorDirectories.filter((item) => !deletedSourcePaths.has(item.directory));
+      if (!nextAuthorDirectories.some((item) => item.directory === targetPath)) {
+        nextAuthorDirectories.push({
+          directory: targetPath,
+          mangaCount: result.movedMangas.length,
+          lastMovedAt: new Date().toISOString()
+        });
+      }
+
+      const aliasesByKey = new Map(
+        state.aliases.map((alias) => [alias.alias.trim().toLocaleLowerCase(), alias])
+      );
+      for (const alias of result.aliases) {
+        aliasesByKey.set(alias.alias.trim().toLocaleLowerCase(), alias);
+      }
+
+      return {
+        aliases: [...aliasesByKey.values()].sort((first, second) => first.alias.localeCompare(second.alias, 'zh-Hans-CN')),
         authorDirectories: nextAuthorDirectories,
         loaded: true,
         error: null

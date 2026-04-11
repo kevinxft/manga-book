@@ -19,7 +19,7 @@ export function DeleteMangaDialog({ open, target, deleting, error, onClose, onCo
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-[420px] rounded-xl border border-[#d4dceb] bg-[#f9fbff] p-4 shadow-[0_20px_50px_rgba(20,34,58,0.35)]">
         <p className="text-[15px] font-semibold text-[#1f2f48]">确认删除漫画？</p>
-        <p className="mt-2 text-[12px] leading-5 text-[#5f7088]">将永久删除整个漫画目录及全部图片文件，无法恢复。</p>
+        <p className="mt-2 text-[12px] leading-5 text-[#5f7088]">将把整个漫画目录移入系统回收站，可在系统回收站中恢复。</p>
         <p className="mt-2 rounded-md bg-[#eef3fb] px-2.5 py-2 text-[12px] font-semibold text-[#2e4360]">{target.title}</p>
         {error ? (
           <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-2.5 py-2 text-[12px] font-semibold text-red-700">
@@ -41,7 +41,7 @@ export function DeleteMangaDialog({ open, target, deleting, error, onClose, onCo
             onClick={onConfirm}
             disabled={deleting}
           >
-            {deleting ? '删除中...' : '确认删除'}
+            {deleting ? '移动中...' : '移入回收站'}
           </Button>
         </div>
       </div>

@@ -9,9 +9,11 @@ import { DeleteAuthorDirectoryDialog } from './components/DeleteAuthorDirectoryD
 import { DeleteMangaDialog } from './components/DeleteMangaDialog';
 import { OrganizerFileGrid } from './components/OrganizerFileGrid';
 import { OrganizerHeader } from './components/OrganizerHeader';
+import { MergeAuthorDirectoriesDialog } from './components/MergeAuthorDirectoriesDialog';
 import { RenameAuthorDirectoryDialog } from './components/RenameAuthorDirectoryDialog';
 import { useOrganizerData } from './hooks/useOrganizerData';
 import { useOrganizerFilters } from './hooks/useOrganizerFilters';
+import { useAuthorDirectoryImport } from './hooks/useAuthorDirectoryImport';
 import { useOrganizerMutations } from './hooks/useOrganizerMutations';
 import { useOrganizerSelection } from './hooks/useOrganizerSelection';
 import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
@@ -146,6 +148,12 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
     closeCreateAuthorDialog,
     handleRequestCreateAuthor,
     handleConfirmCreateAuthor,
+    mergeAuthorDialogOpen,
+    mergingAuthors,
+    mergeAuthorError,
+    handleRequestMergeAuthorDirectories,
+    closeMergeAuthorDialog,
+    handleConfirmMergeAuthorDirectories,
     renameAuthorDialogOpen,
     renameAuthorTarget,
     renamingAuthor,
@@ -173,6 +181,15 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
     upsertAlias,
     removeAliasLocal,
     addAuthorDirectoryLocal
+  });
+  const {
+    importingAuthorDirectoryPath,
+    handleRequestImportToAuthorDirectory
+  } = useAuthorDirectoryImport({
+    hasIpcBridge,
+    fetchMangas,
+    refreshAuthorDirectories,
+    setMoveError
   });
 
   const handleVisibleItemsChange = useCallback((items: MangaBookWithCover[]) => {
@@ -225,14 +242,18 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
               categories={categories}
               moving={moving}
               creatingAuthor={creatingAuthor}
+              mergingAuthors={mergingAuthors}
               hasIpcBridge={hasIpcBridge}
               moveError={moveError}
+              importingAuthorDirectoryPath={importingAuthorDirectoryPath}
               onClearMoveError={() => setMoveError(null)}
               onMoveSelected={() => void handleMoveSelected()}
+              onRequestImportToCategory={(category) => void handleRequestImportToAuthorDirectory(category)}
               onRequestAddAlias={handleRequestAddAlias}
               onRequestRenameCategory={handleRequestRenameAuthorDirectory}
               onRequestDeleteCategory={handleRequestDeleteAuthorDirectory}
               onRequestCreateAuthor={handleRequestCreateAuthor}
+              onRequestMergeAuthorDirectories={handleRequestMergeAuthorDirectories}
             />
           </div>
         </div>
@@ -258,6 +279,15 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
         error={createAuthorError}
         onClose={() => closeCreateAuthorDialog()}
         onSubmit={(value) => void handleConfirmCreateAuthor(value)}
+      />
+
+      <MergeAuthorDirectoriesDialog
+        open={mergeAuthorDialogOpen}
+        categories={categories}
+        merging={mergingAuthors}
+        error={mergeAuthorError}
+        onClose={closeMergeAuthorDialog}
+        onSubmit={(value) => void handleConfirmMergeAuthorDirectories(value)}
       />
 
       <RenameAuthorDirectoryDialog

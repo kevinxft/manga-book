@@ -1,4 +1,5 @@
-import { ArrowLeft, ChevronLeft, ChevronRight, Images, Trash2 } from 'lucide-react';
+import type { MouseEvent } from 'react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Images, Tag, Trash2 } from 'lucide-react';
 
 interface ReaderTopBarProps {
   title: string;
@@ -8,6 +9,7 @@ interface ReaderTopBarProps {
   onOpenNextManga?: () => void;
   canOpenPreviousManga?: boolean;
   canOpenNextManga?: boolean;
+  onOpenTagEditor?: (event: MouseEvent<HTMLButtonElement>) => void;
   onOpenPageEditor?: () => void;
   onDeleteManga?: () => void;
   deleting?: boolean;
@@ -21,6 +23,7 @@ export function ReaderTopBar({
   onOpenNextManga,
   canOpenPreviousManga = false,
   canOpenNextManga = false,
+  onOpenTagEditor,
   onOpenPageEditor,
   onDeleteManga,
   deleting = false
@@ -47,13 +50,24 @@ export function ReaderTopBar({
             className="group inline-flex h-9 items-center gap-1.5 rounded-full bg-red-500/10 px-3.5 pr-4 text-[12px] font-medium tracking-wide text-red-300 ring-1 ring-red-500/20 transition-all duration-200 hover:bg-red-500/20 hover:text-red-200 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
             onClick={onDeleteManga}
             disabled={deleting}
-            title="删除当前漫画"
+            title="移入回收站"
           >
             <Trash2 className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
-            {deleting ? '删除中...' : '删除'}
+            {deleting ? '移动中...' : '回收站'}
           </button>
         ) : null}
-        
+
+        {onOpenTagEditor ? (
+          <button
+            className="group inline-flex h-9 items-center gap-1.5 rounded-full bg-white/5 px-3.5 pr-4 text-[12px] font-medium tracking-wide text-[#dce2ec] ring-1 ring-white/10 transition-all duration-200 hover:bg-[#2f8f68] hover:text-white hover:ring-[#2f8f68] hover:shadow-[0_0_12px_rgba(47,143,104,0.28)] focus:outline-none"
+            onClick={onOpenTagEditor}
+            title="编辑漫画标签"
+          >
+            <Tag className="h-3.5 w-3.5 transition-transform group-hover:scale-110" />
+            标签
+          </button>
+        ) : null}
+
         {onOpenPageEditor ? (
           <button
             className="group inline-flex h-9 items-center gap-1.5 rounded-full bg-white/5 px-3.5 pr-4 text-[12px] font-medium tracking-wide text-[#dce2ec] ring-1 ring-white/10 transition-all duration-200 hover:bg-[#3d7cf9] hover:text-white hover:ring-[#3d7cf9] hover:shadow-[0_0_12px_rgba(61,124,249,0.3)] focus:outline-none"

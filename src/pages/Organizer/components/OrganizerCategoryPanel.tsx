@@ -1,25 +1,29 @@
 import { useEffect, useMemo, useRef, useState, memo, useCallback, type MouseEvent as ReactMouseEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { ArrowDownUp, Folder, Loader2, Pencil, Search, Tags, Trash2, X } from 'lucide-react';
-import { Button } from '@renderer/components/ui/button';
+import { ArrowDownUp, Folder, FolderTree, Import, Loader2, Pencil, Search, Tags, Trash2, X } from 'lucide-react';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
 import { useAnchoredMenuPosition } from '@renderer/components/manga/useAnchoredMenuPosition';
 import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
+import { categoryMatchesSearch, normalizeSearchText } from '../utils';
 import type { OrganizerCategory } from '../types';
 
 interface OrganizerCategoryPanelProps {
   categories: OrganizerCategory[];
   moving: boolean;
   creatingAuthor: boolean;
+  mergingAuthors: boolean;
   hasIpcBridge: boolean;
   moveError: string | null;
+  importingAuthorDirectoryPath: string | null;
   onClearMoveError: () => void;
   onMoveSelected: () => void;
+  onRequestImportToCategory: (category: OrganizerCategory) => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
   onRequestRenameCategory: (category: OrganizerCategory) => void;
   onRequestDeleteCategory: (category: OrganizerCategory) => void;
   onRequestCreateAuthor: () => void;
+  onRequestMergeAuthorDirectories: () => void;
 }
 
 interface CategoryContextMenuState {
@@ -110,14 +114,18 @@ export function OrganizerCategoryPanel({
   categories,
   moving,
   creatingAuthor,
+  mergingAuthors,
   hasIpcBridge,
   moveError,
+  importingAuthorDirectoryPath,
   onClearMoveError,
   onMoveSelected,
+  onRequestImportToCategory,
   onRequestAddAlias,
   onRequestRenameCategory,
   onRequestDeleteCategory,
-  onRequestCreateAuthor
+  onRequestCreateAuthor,
+  onRequestMergeAuthorDirectories
 }: OrganizerCategoryPanelProps) {
   const setSelectedCategoryKey = useOrganizerSelectionStore((state) => state.setSelectedCategoryKey);
   const [search, setSearch] = useState('');
@@ -137,13 +145,8 @@ export function OrganizerCategoryPanel({
   });
 
   const filteredCategories = useMemo(() => {
-    const keyword = search.trim().toLowerCase();
-    const searched = categories.filter(
-      (category) =>
-        keyword.length === 0 ||
-        category.label.toLowerCase().includes(keyword) ||
-        category.aliases.some((alias) => alias.toLowerCase().includes(keyword))
-    );
+    const keyword = normalizeSearchText(search);
+    const searched = categories.filter((category) => categoryMatchesSearch(category, keyword));
 
     return [...searched].sort((a, b) => {
       const compareByMovedAt = (asc: boolean) => {
@@ -338,16 +341,27 @@ export function OrganizerCategoryPanel({
           ) : null}
         </div>
 
-        <button
-          className="group mt-4 flex h-[42px] w-full items-center justify-center gap-1 rounded-2xl border border-dashed border-slate-300 bg-white/40 text-[13px] font-bold text-slate-500 shadow-sm transition-all hover:border-blue-300 hover:bg-white hover:text-blue-600 hover:shadow disabled:pointer-events-none disabled:bg-slate-50 disabled:opacity-50"
-          title="新建归档作者目录"
-          onClick={onRequestCreateAuthor}
-          disabled={!hasIpcBridge || creatingAuthor}
-        >
-          {creatingAuthor ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-          {!creatingAuthor && <span className="mb-[2px] text-[16px] leading-none transition-transform group-hover:scale-125">+</span>}
-          <span>新建归档目录</span>
-        </button>
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            className="group flex h-[42px] w-full items-center justify-center gap-1 rounded-2xl border border-dashed border-slate-300 bg-white/40 text-[13px] font-bold text-slate-500 shadow-sm transition-all hover:border-blue-300 hover:bg-white hover:text-blue-600 hover:shadow disabled:pointer-events-none disabled:bg-slate-50 disabled:opacity-50"
+            title="新建归档作者目录"
+            onClick={onRequestCreateAuthor}
+            disabled={!hasIpcBridge || creatingAuthor}
+          >
+            {creatingAuthor ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+            {!creatingAuthor && <span className="mb-[2px] text-[16px] leading-none transition-transform group-hover:scale-125">+</span>}
+            <span>新建归档目录</span>
+          </button>
+          <button
+            className="group flex h-[42px] w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-slate-300 bg-white/40 text-[13px] font-bold text-slate-500 shadow-sm transition-all hover:border-blue-300 hover:bg-white hover:text-blue-600 hover:shadow disabled:pointer-events-none disabled:bg-slate-50 disabled:opacity-50"
+            title="合并多个作者目录"
+            onClick={onRequestMergeAuthorDirectories}
+            disabled={!hasIpcBridge || mergingAuthors || categories.length < 2}
+          >
+            {mergingAuthors ? <Loader2 className="h-4 w-4 animate-spin" /> : <FolderTree className="h-4 w-4 transition-transform group-hover:scale-110" />}
+            <span>合并目录</span>
+          </button>
+        </div>
       </div>
 
       {moveError ? (
@@ -377,7 +391,7 @@ export function OrganizerCategoryPanel({
       {contextMenu && typeof document !== 'undefined' ? createPortal(
         <div
           ref={contextMenuRef}
-          className="fixed z-[90] w-[180px] rounded-2xl border border-white/60 bg-white/95 p-1.5 shadow-[0_20px_40px_rgba(15,23,42,0.15)] backdrop-blur-xl"
+          className="fixed z-[90] w-[210px] rounded-2xl border border-white/60 bg-white/95 p-1.5 shadow-[0_20px_40px_rgba(15,23,42,0.15)] backdrop-blur-xl"
           style={{
             left: contextMenuPosition.left,
             top: contextMenuPosition.top,
@@ -403,6 +417,29 @@ export function OrganizerCategoryPanel({
           >
             <Tags className="h-4 w-4" />
             添加匹配别名
+          </button>
+          <button
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-[13px] font-bold transition-all',
+              importingAuthorDirectoryPath === contextMenu.category.path
+                ? 'cursor-not-allowed text-slate-400'
+                : 'text-slate-700 hover:bg-slate-100 hover:text-blue-600'
+            )}
+            onClick={() => {
+              if (importingAuthorDirectoryPath === contextMenu.category.path) {
+                return;
+              }
+              void onRequestImportToCategory(contextMenu.category);
+              setContextMenu(null);
+            }}
+            disabled={importingAuthorDirectoryPath === contextMenu.category.path}
+          >
+            {importingAuthorDirectoryPath === contextMenu.category.path ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Import className="h-4 w-4" />
+            )}
+            导入漫画
           </button>
           <button
             className={cn(

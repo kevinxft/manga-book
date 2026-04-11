@@ -2,6 +2,7 @@ import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
 import type { OrganizerCategory } from '../types';
 import { useAliasMutations } from './useAliasMutations';
 import { useAuthorDirectoryDelete } from './useAuthorDirectoryDelete';
+import { useAuthorDirectoryMerge } from './useAuthorDirectoryMerge';
 import { useAuthorDirectoryRename } from './useAuthorDirectoryRename';
 import { useCreateAuthorMutation } from './useCreateAuthorMutation';
 import { useMangaMutations } from './useMangaMutations';
@@ -71,6 +72,12 @@ export function useOrganizerMutations({
     setMoveError
   });
 
+  const authorDirectoryMerge = useAuthorDirectoryMerge({
+    hasIpcBridge,
+    setSelectedCategoryKey,
+    setMoveError
+  });
+
   const authorDirectoryDelete = useAuthorDirectoryDelete({
     hasIpcBridge,
     fetchMangas,
@@ -84,6 +91,7 @@ export function useOrganizerMutations({
     ...aliasMutations,
     ...createAuthorMutation,
     ...authorDirectoryRename,
+    ...authorDirectoryMerge,
     ...authorDirectoryDelete,
     moveError,
     setMoveError

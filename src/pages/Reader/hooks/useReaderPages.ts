@@ -133,20 +133,6 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
     return () => observer.disconnect();
   }, [pagePaths, readerMode]);
 
-  useEffect(() => {
-    if (!hasIpcBridge || pagePaths.length === 0) return;
-    const timer = setTimeout(() => {
-      void ipcInvoke('reader.saveProgress', {
-        mangaId: manga.id,
-        chapterIndex: 0,
-        pageIndex: currentPageIndex,
-        totalPages: pagePaths.length
-      }).catch(() => undefined);
-    }, 280);
-
-    return () => clearTimeout(timer);
-  }, [currentPageIndex, hasIpcBridge, manga.id, pagePaths.length]);
-
   return {
     pagePaths,
     loading,

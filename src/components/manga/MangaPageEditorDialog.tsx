@@ -214,7 +214,7 @@ export function MangaPageEditorDialog({
         </header>
 
         <div className="flex items-center justify-between gap-3 border-b border-[#dde4ef] bg-[#f7f9fc] px-6 py-3">
-          <p className="text-[12px] text-[#6a7890]">点击页面卡片即可多选，删除后会直接从漫画目录移除图片文件。</p>
+          <p className="text-[12px] text-[#6a7890]">点击页面卡片即可多选，删除后会把图片移入系统回收站。</p>
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -230,7 +230,7 @@ export function MangaPageEditorDialog({
               onClick={handleDeleteSelection}
               disabled={selectedPagePaths.length === 0 || deleting || loading}
             >
-              {deleting ? `删除中...` : `删除所选 ${selectedPagePaths.length > 0 ? selectedPagePaths.length : ''} 页`}
+              {deleting ? `移动中...` : `移入回收站 ${selectedPagePaths.length > 0 ? selectedPagePaths.length : ''} 页`}
             </Button>
           </div>
         </div>
@@ -270,7 +270,7 @@ export function MangaPageEditorDialog({
         </div>
 
         <footer className="flex items-center justify-between border-t border-[#dde4ef] bg-white/80 px-6 py-3 text-[12px] text-[#6a7890]">
-          <span>会直接删除原始图片文件，建议先确认选择的页数。</span>
+          <span>会把所选图片移入系统回收站，建议先确认选择的页数。</span>
           <div className="flex items-center gap-2">
             <Button
               type="button"
@@ -287,7 +287,7 @@ export function MangaPageEditorDialog({
               disabled={selectedPagePaths.length === 0 || deleting || loading}
             >
               <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              {deleting ? '删除中...' : '删除所选页面'}
+              {deleting ? '移动中...' : '移入回收站'}
             </Button>
           </div>
         </footer>

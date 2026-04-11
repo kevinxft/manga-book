@@ -6,6 +6,7 @@ import {
   FolderClosed,
   FolderTree,
   Import,
+  Loader2,
   Pencil,
   Search,
   Settings,
@@ -17,6 +18,7 @@ import type { LibraryFolder } from '@shared/types';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
 import type { OrganizerCategory } from '@renderer/pages/Organizer/types';
+import { categoryMatchesSearch, normalizeSearchText } from '@renderer/pages/Organizer/utils';
 import { APP_NAME, APP_VERSION } from '@renderer/constants/appInfo';
 import appIconUrl from '../../../../build/icon.png';
 import type { TagItem } from '../types';
@@ -40,6 +42,8 @@ interface LibrarySidebarProps {
   onOpenSourceFolder: (sourcePath: string) => void;
   onSyncSource: (sourcePath: string) => void;
   onRemoveSource: (sourceId: string) => void;
+  importingAuthorDirectoryPath: string | null;
+  onRequestImportToCategory: (category: OrganizerCategory) => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
   onRequestRenameCategory: (category: OrganizerCategory) => void;
   onRequestDeleteCategory: (category: OrganizerCategory) => void;
@@ -74,6 +78,8 @@ export function LibrarySidebar({
   onOpenSourceFolder,
   onSyncSource,
   onRemoveSource,
+  importingAuthorDirectoryPath,
+  onRequestImportToCategory,
   onRequestAddAlias,
   onRequestRenameCategory,
   onRequestDeleteCategory,
@@ -169,14 +175,8 @@ export function LibrarySidebar({
   }, [contextMenu]);
 
   const sortedArtistDirectories = useMemo(() => {
-    const keyword = artistSearch.trim().toLowerCase();
-    const items = artistDirectories.filter(
-      (directory) =>
-        keyword.length === 0 ||
-        directory.label.toLowerCase().includes(keyword) ||
-        directory.path.toLowerCase().includes(keyword) ||
-        directory.aliases.some((alias) => alias.toLowerCase().includes(keyword))
-    );
+    const keyword = normalizeSearchText(artistSearch);
+    const items = artistDirectories.filter((directory) => categoryMatchesSearch(directory, keyword));
 
     items.sort((a, b) => {
       if (artistSortBy === 'countDesc') {
@@ -495,7 +495,7 @@ export function LibrarySidebar({
       {contextMenu ? (
         <div
           ref={contextMenuRef}
-          className="fixed z-[90] w-[172px] rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_30px_rgba(36,54,86,0.24)]"
+          className="fixed z-[90] w-[196px] rounded-lg border border-[#d6deea] bg-white p-1.5 shadow-[0_14px_30px_rgba(36,54,86,0.24)]"
           style={{
             left: contextMenuPosition.left,
             top: contextMenuPosition.top,
@@ -521,6 +521,29 @@ export function LibrarySidebar({
           >
             <Tags className="h-3.5 w-3.5 text-[#627694]" />
             添加别名
+          </button>
+          <button
+            className={cn(
+              'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[12px] font-semibold transition',
+              importingAuthorDirectoryPath === contextMenu.category.path
+                ? 'cursor-not-allowed text-[#9aa6b8]'
+                : 'text-[#304763] hover:bg-[#edf2f9]'
+            )}
+            onClick={() => {
+              if (importingAuthorDirectoryPath === contextMenu.category.path) {
+                return;
+              }
+              void onRequestImportToCategory(contextMenu.category);
+              setContextMenu(null);
+            }}
+            disabled={importingAuthorDirectoryPath === contextMenu.category.path}
+          >
+            {importingAuthorDirectoryPath === contextMenu.category.path ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-[#9aa6b8]" />
+            ) : (
+              <Import className="h-3.5 w-3.5 text-[#627694]" />
+            )}
+            导入漫画
           </button>
           <button
             className={cn(
