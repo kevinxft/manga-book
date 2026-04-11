@@ -7,9 +7,10 @@ interface UseReaderPagesInput {
   manga: MangaBookWithCover;
   readerMode: ReaderMode;
   hasIpcBridge: boolean;
+  rememberReadingProgress: boolean;
 }
 
-export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPagesInput) {
+export function useReaderPages({ manga, readerMode, hasIpcBridge, rememberReadingProgress }: UseReaderPagesInput) {
   const [pagePaths, setPagePaths] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +47,9 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
 
         setPagePaths(pages);
 
-        const initialIndex = Math.max(0, Math.min(manga.lastPageIndex, Math.max(pages.length - 1, 0)));
+        const initialIndex = rememberReadingProgress
+          ? Math.max(0, Math.min(manga.lastPageIndex, Math.max(pages.length - 1, 0)))
+          : 0;
         const fallbackIndex =
           typeof options?.fallbackPageIndex === 'number'
             ? Math.max(0, Math.min(options.fallbackPageIndex, Math.max(pages.length - 1, 0)))
@@ -70,7 +73,7 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
         }
       }
     },
-    [hasIpcBridge, manga.id, manga.lastPageIndex]
+    [hasIpcBridge, manga.id, manga.lastPageIndex, rememberReadingProgress]
   );
 
   useEffect(() => {
@@ -88,13 +91,13 @@ export function useReaderPages({ manga, readerMode, hasIpcBridge }: UseReaderPag
 
   useEffect(() => {
     if (readerMode !== 'scroll' || pagePaths.length === 0) return;
-    const targetIndex = Math.max(0, Math.min(manga.lastPageIndex, pagePaths.length - 1));
+    const targetIndex = rememberReadingProgress ? Math.max(0, Math.min(manga.lastPageIndex, pagePaths.length - 1)) : 0;
     const targetNode = pageRefs.current[targetIndex];
     if (!targetNode) return;
     requestAnimationFrame(() => {
       targetNode.scrollIntoView({ block: 'start' });
     });
-  }, [manga.lastPageIndex, pagePaths, readerMode]);
+  }, [manga.lastPageIndex, pagePaths, readerMode, rememberReadingProgress]);
 
   useEffect(() => {
     if (readerMode !== 'scroll') {

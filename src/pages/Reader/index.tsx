@@ -56,6 +56,7 @@ interface ReaderPageProps {
   widthMode: ReaderWidthMode;
   fixedWidthPercent: number;
   pageAnimationEnabled: boolean;
+  rememberReadingProgress: boolean;
   onReaderModeChange: (mode: ReaderMode) => void;
   onWidthModeChange: (mode: ReaderWidthMode) => void;
   onFixedWidthPercentChange: (value: number) => void;
@@ -75,6 +76,7 @@ export function ReaderPage({
   widthMode,
   fixedWidthPercent,
   pageAnimationEnabled,
+  rememberReadingProgress,
   onReaderModeChange,
   onWidthModeChange,
   onFixedWidthPercentChange,
@@ -109,7 +111,8 @@ export function ReaderPage({
     useReaderPages({
       manga,
       readerMode,
-      hasIpcBridge
+      hasIpcBridge,
+      rememberReadingProgress
     });
 
   useEffect(() => {
@@ -496,7 +499,7 @@ export function ReaderPage({
   }, [reloadChapters, pagePaths.length]);
 
   useEffect(() => {
-    if (!hasIpcBridge || pagePaths.length === 0) {
+    if (!hasIpcBridge || pagePaths.length === 0 || !rememberReadingProgress) {
       return;
     }
 
@@ -510,7 +513,7 @@ export function ReaderPage({
     }, 280);
 
     return () => clearTimeout(timer);
-  }, [currentChapterIndex, currentPageIndex, hasIpcBridge, manga.id, pagePaths.length]);
+  }, [currentChapterIndex, currentPageIndex, hasIpcBridge, manga.id, pagePaths.length, rememberReadingProgress]);
 
   return (
     <main className="relative flex h-screen w-full min-w-0 flex-col bg-black">
@@ -541,6 +544,20 @@ export function ReaderPage({
         </div>
       ) : null}
 
+      <ReaderViewport
+        readerMode={readerMode}
+        loading={loading}
+        error={error}
+        pagePaths={pagePaths}
+        currentPageIndex={currentPageIndex}
+        effectiveWidth={effectiveWidth}
+        mangaTitle={manga.title}
+        scrollContainerRef={scrollContainerRef}
+        pageRefs={pageRefs}
+        onReaderMouseDown={handleReaderMouseDown}
+        onReaderContextMenu={handleReaderContextMenu}
+      />
+
       <ReaderChapterPanel
         mangaId={manga.id}
         visible={showChapterPanel}
@@ -555,20 +572,6 @@ export function ReaderPage({
         onJumpToChapter={(chapter) => jumpToPage(chapter.startPageIndex)}
         onRemoveChapter={(chapter) => void handleRemoveChapter(chapter)}
         onUpdateChapter={(chapter, input) => void handleUpdateChapter(chapter, input)}
-      />
-
-      <ReaderViewport
-        readerMode={readerMode}
-        loading={loading}
-        error={error}
-        pagePaths={pagePaths}
-        currentPageIndex={currentPageIndex}
-        effectiveWidth={effectiveWidth}
-        mangaTitle={manga.title}
-        scrollContainerRef={scrollContainerRef}
-        pageRefs={pageRefs}
-        onReaderMouseDown={handleReaderMouseDown}
-        onReaderContextMenu={handleReaderContextMenu}
       />
 
       {boundarySuggestionDirection && boundarySuggestionMangas.length > 0 ? (

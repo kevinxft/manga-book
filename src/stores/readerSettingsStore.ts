@@ -6,6 +6,7 @@ const READER_WIDTH_MODE_STORAGE_KEY = 'manga-book.reader-width-mode';
 const READER_FIXED_WIDTH_PERCENT_STORAGE_KEY = 'manga-book.reader-fixed-width-percent';
 const READER_PAGE_ANIMATION_STORAGE_KEY = 'manga-book.reader-page-animation';
 const READER_BOUNDARY_SUGGESTION_COUNT_STORAGE_KEY = 'manga-book.reader-boundary-suggestion-count';
+const READER_REMEMBER_PROGRESS_STORAGE_KEY = 'manga-book.reader-remember-progress';
 
 const MIN_FIXED_WIDTH_PERCENT = 50;
 const MAX_FIXED_WIDTH_PERCENT = 100;
@@ -28,18 +29,21 @@ interface ReaderSettingsState {
   fixedWidthPercent: number;
   pageAnimationEnabled: boolean;
   boundarySuggestionCount: number;
+  rememberReadingProgress: boolean;
   hydrate: () => void;
   setReaderMode: (mode: ReaderMode) => void;
   setWidthMode: (mode: ReaderWidthMode) => void;
   setFixedWidthPercent: (value: number) => void;
   setPageAnimationEnabled: (value: boolean) => void;
   setBoundarySuggestionCount: (value: number) => void;
+  setRememberReadingProgress: (value: boolean) => void;
   applySettings: (next: {
     readerMode: ReaderMode;
     widthMode: ReaderWidthMode;
     fixedWidthPercent: number;
     pageAnimationEnabled: boolean;
     boundarySuggestionCount: number;
+    rememberReadingProgress: boolean;
   }) => void;
 }
 
@@ -49,6 +53,7 @@ function persistSettings(settings: {
   fixedWidthPercent: number;
   pageAnimationEnabled: boolean;
   boundarySuggestionCount: number;
+  rememberReadingProgress: boolean;
 }): void {
   try {
     window.localStorage.setItem(READER_MODE_STORAGE_KEY, settings.readerMode);
@@ -56,6 +61,7 @@ function persistSettings(settings: {
     window.localStorage.setItem(READER_FIXED_WIDTH_PERCENT_STORAGE_KEY, String(settings.fixedWidthPercent));
     window.localStorage.setItem(READER_PAGE_ANIMATION_STORAGE_KEY, settings.pageAnimationEnabled ? '1' : '0');
     window.localStorage.setItem(READER_BOUNDARY_SUGGESTION_COUNT_STORAGE_KEY, String(settings.boundarySuggestionCount));
+    window.localStorage.setItem(READER_REMEMBER_PROGRESS_STORAGE_KEY, settings.rememberReadingProgress ? '1' : '0');
   } catch {
     // ignore storage failures
   }
@@ -68,6 +74,7 @@ export const useReaderSettingsStore = create<ReaderSettingsState>((set, get) => 
   fixedWidthPercent: 90,
   pageAnimationEnabled: false,
   boundarySuggestionCount: 7,
+  rememberReadingProgress: true,
 
   hydrate() {
     if (get().hydrated) {
@@ -79,6 +86,7 @@ export const useReaderSettingsStore = create<ReaderSettingsState>((set, get) => 
     let nextFixedWidthPercent = 90;
     let nextPageAnimationEnabled = false;
     let nextBoundarySuggestionCount = 7;
+    let nextRememberReadingProgress = true;
 
     try {
       const savedMode = window.localStorage.getItem(READER_MODE_STORAGE_KEY);
@@ -105,6 +113,11 @@ export const useReaderSettingsStore = create<ReaderSettingsState>((set, get) => 
       if (Number.isFinite(savedBoundarySuggestionCount)) {
         nextBoundarySuggestionCount = clampBoundarySuggestionCount(savedBoundarySuggestionCount);
       }
+
+      const savedRememberReadingProgress = window.localStorage.getItem(READER_REMEMBER_PROGRESS_STORAGE_KEY);
+      if (savedRememberReadingProgress === '1' || savedRememberReadingProgress === '0') {
+        nextRememberReadingProgress = savedRememberReadingProgress === '1';
+      }
     } catch {
       // ignore read failures
     }
@@ -115,7 +128,8 @@ export const useReaderSettingsStore = create<ReaderSettingsState>((set, get) => 
       widthMode: nextWidthMode,
       fixedWidthPercent: nextFixedWidthPercent,
       pageAnimationEnabled: nextPageAnimationEnabled,
-      boundarySuggestionCount: nextBoundarySuggestionCount
+      boundarySuggestionCount: nextBoundarySuggestionCount,
+      rememberReadingProgress: nextRememberReadingProgress
     });
   },
 
@@ -151,6 +165,12 @@ export const useReaderSettingsStore = create<ReaderSettingsState>((set, get) => 
     persistSettings(state);
   },
 
+  setRememberReadingProgress(value) {
+    set({ rememberReadingProgress: value });
+    const state = get();
+    persistSettings(state);
+  },
+
   applySettings(next) {
     const fixedWidthPercent = snapWidthPercent(next.fixedWidthPercent);
     const boundarySuggestionCount = clampBoundarySuggestionCount(next.boundarySuggestionCount);
@@ -159,7 +179,8 @@ export const useReaderSettingsStore = create<ReaderSettingsState>((set, get) => 
       widthMode: next.widthMode,
       fixedWidthPercent,
       pageAnimationEnabled: next.pageAnimationEnabled,
-      boundarySuggestionCount
+      boundarySuggestionCount,
+      rememberReadingProgress: next.rememberReadingProgress
     });
     persistSettings({ ...next, fixedWidthPercent, boundarySuggestionCount });
   }

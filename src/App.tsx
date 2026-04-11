@@ -20,6 +20,7 @@ export default function App() {
     fixedWidthPercent,
     pageAnimationEnabled,
     boundarySuggestionCount,
+    rememberReadingProgress,
     hydrate,
     setReaderMode,
     setWidthMode,
@@ -115,6 +116,7 @@ export default function App() {
           fixedWidthPercent={fixedWidthPercent}
           pageAnimationEnabled={pageAnimationEnabled}
           boundarySuggestionCount={boundarySuggestionCount}
+          rememberReadingProgress={rememberReadingProgress}
           onSave={applySettings}
           onClose={() => setSettingsOpen(false)}
         />
@@ -128,6 +130,7 @@ export default function App() {
             widthMode={widthMode}
             fixedWidthPercent={fixedWidthPercent}
             pageAnimationEnabled={pageAnimationEnabled}
+            rememberReadingProgress={rememberReadingProgress}
             onReaderModeChange={setReaderMode}
             onWidthModeChange={setWidthMode}
             onFixedWidthPercentChange={setFixedWidthPercent}

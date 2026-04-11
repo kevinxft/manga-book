@@ -18,6 +18,7 @@ export function SettingsPage({
   fixedWidthPercent,
   pageAnimationEnabled,
   boundarySuggestionCount,
+  rememberReadingProgress,
   onSave,
   onClose
 }: SettingsPageProps) {
@@ -27,11 +28,13 @@ export function SettingsPage({
     draftFixedWidthPercent,
     draftPageAnimationEnabled,
     draftBoundarySuggestionCount,
+    draftRememberReadingProgress,
     setDraftReaderMode,
     setDraftWidthMode,
     setDraftFixedWidthPercent,
     setDraftPageAnimationEnabled,
     setDraftBoundarySuggestionCount,
+    setDraftRememberReadingProgress,
     dirty,
     buildPayload
   } = useSettingsDraft({
@@ -40,7 +43,8 @@ export function SettingsPage({
     widthMode,
     fixedWidthPercent,
     pageAnimationEnabled,
-    boundarySuggestionCount
+    boundarySuggestionCount,
+    rememberReadingProgress
   });
 
   const [mounted, setMounted] = useState(false);
@@ -169,6 +173,15 @@ export function SettingsPage({
               title="翻页动画"
               description="开启后滚动模式切页会使用平滑动画。"
               onToggle={() => setDraftPageAnimationEnabled((prev) => !prev)}
+            />
+          </section>
+
+          <section className="border-t border-slate-100 pt-5">
+            <ToggleSwitch
+              checked={draftRememberReadingProgress}
+              title="记忆阅读进度"
+              description="开启后会自动从上次阅读到的章节和页数继续打开。"
+              onToggle={() => setDraftRememberReadingProgress((prev) => !prev)}
             />
           </section>
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
-import { Check, ChevronsLeft, ChevronsRight, Loader2, Pencil, Plus, Star, Trash2 } from 'lucide-react';
+import { Check, ChevronsLeft, Maximize2, Minimize2, Loader2, Pencil, Plus, Star, Trash2, X } from 'lucide-react';
 import { cn } from '@renderer/lib/utils';
 import { useReaderChapterPanelStore } from '@renderer/stores/readerChapterPanelStore';
 import type { ReaderChapter } from '@shared/types';
@@ -55,7 +55,7 @@ export function ReaderChapterPanel({
   const hasChapters = chapters.length > 0;
   const hasEditableChapters = chapters.some((chapter) => chapter.deletable);
   const hasEditingTools = hasEditableChapters || canAddChapter || canEditChapterMetadata;
-  const mode = useReaderChapterPanelStore(
+  const modeFromStore = useReaderChapterPanelStore(
     useMemo(
       () => (state) => state.modeByMangaId[mangaId] ?? (hasChapters ? 'normal' : 'mini'),
       [hasChapters, mangaId]
@@ -63,6 +63,9 @@ export function ReaderChapterPanel({
   );
   const setMode = useReaderChapterPanelStore((state) => state.setMode);
   const syncMode = useReaderChapterPanelStore((state) => state.syncMode);
+
+  // Use a local state for 'isOpen' since the user wants explicit toggle
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
     syncMode(mangaId, hasChapters);
@@ -120,69 +123,97 @@ export function ReaderChapterPanel({
     return null;
   }
 
-  if (mode === 'mini') {
+  if (!isOpen && !editing) {
+    return (
+      <button
+        className={cn(
+          'pointer-events-auto absolute right-6 top-24 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#0f1115]/60 text-[#8ea0b8] shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl transition-all duration-300 hover:scale-110 hover:bg-[#2f7fe6] hover:text-white',
+          !hasChapters && 'opacity-0 pointer-events-none'
+        )}
+        onClick={() => setIsOpen(true)}
+        title="展开章节目录"
+      >
+        <div className="relative">
+          <ChevronsLeft className="h-5 w-5" />
+          {hasChapters && (
+            <div className="absolute -right-2.5 -top-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#2f7fe6] text-[9px] font-bold text-white shadow-lg ring-2 ring-[#0f1115]">
+              {chapters.length}
+            </div>
+          )}
+        </div>
+      </button>
+    );
+  }
+
+  if (modeFromStore === 'mini') {
     return (
       <aside
-        className={cn(
-          'group/panel pointer-events-auto absolute right-6 top-20 z-30 flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[#0f1115]/70 p-1.5 text-white shadow-[0_20px_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-[width,background-color,shadow] duration-300 ease-in-out hover:bg-[#0f1115]/85 hover:shadow-[0_24px_60px_rgba(0,0,0,0.6)]',
-          hasChapters ? 'w-[64px]' : 'w-11'
-        )}
+        className="pointer-events-auto absolute right-6 top-24 z-30 flex w-12 flex-col items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0f1115]/90 p-1.5 text-white shadow-[0_24px_50px_rgba(0,0,0,0.6)] backdrop-blur-3xl transition-all duration-300"
       >
-        <button
-          className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-[#8ea0b8] transition-all hover:bg-[#2f7fe6] hover:text-white"
-          onClick={() => {
-            setMode(mangaId, 'normal');
-            setEditing(!hasChapters);
-          }}
-          title="展开章节列表"
-        >
-          <ChevronsLeft className="h-4 w-4" />
-        </button>
+        <div className="flex flex-col gap-1">
+          <button
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[#627083] transition-all hover:bg-white/10 hover:text-white"
+            onClick={() => setIsOpen(false)}
+            title="收起面板"
+          >
+            <X className="h-4 w-4" />
+          </button>
+          <button
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/5 text-[#8ea0b8] transition-all hover:bg-[#2f7fe6] hover:text-white"
+            onClick={() => setMode(mangaId, 'normal')}
+            title="切换为完整视图"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </button>
+        </div>
 
-        {hasChapters && (
-          <div className="flex w-full flex-col gap-1.5 transition-all duration-300">
-            <div className="h-px w-full bg-white/5 mx-auto max-w-[20px]" />
-            <div className="max-h-[calc(100vh-240px)] space-y-1.5 overflow-y-auto overflow-x-hidden px-1 pb-2 custom-scrollbar">
-              {chapters.map((chapter, index) => {
-                const active = index === currentChapterIndex;
+        <div className="h-px w-full max-w-[20px] bg-white/10" />
 
-                return (
-                  <button
-                    key={chapter.id}
-                    className={cn(
-                      'relative flex h-8 w-full items-center justify-center rounded-lg text-[11px] font-bold transition-all duration-200',
-                      active
-                        ? 'bg-[#2f7fe6]/20 text-[#3d8fff] ring-1 ring-[#2f7fe6]/40 shadow-[0_0_12px_rgba(47,127,230,0.2)]'
-                        : chapter.highlighted
-                          ? 'bg-[#f4b53f]/12 text-[#f7cb74] ring-1 ring-[#f4b53f]/30 shadow-[0_0_12px_rgba(244,181,63,0.16)] hover:bg-[#f4b53f]/18'
-                          : 'text-[#8ea0b8] hover:bg-white/10 hover:text-white'
-                    )}
-                    onClick={() => onJumpToChapter(chapter)}
-                    title={chapter.title}
-                  >
-                    {active && <div className="absolute -left-0.5 top-1.5 h-5 w-1 rounded-full bg-[#2f7fe6] shadow-[0_0_8px_#2f7fe6]" />}
-                    {chapter.highlighted && !active ? (
-                      <Star className="absolute right-1.5 top-1.5 h-2.5 w-2.5 fill-current text-[#f4b53f]" />
-                    ) : null}
-                    {getChapterLabel(chapter, index)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        <div className="custom-scrollbar max-h-[calc(100vh-320px)] space-y-1.5 overflow-y-auto overflow-x-hidden px-0.5 pb-2">
+          {chapters.map((chapter, index) => {
+            const active = index === currentChapterIndex;
+
+            return (
+              <button
+                key={chapter.id}
+                className={cn(
+                  'relative flex h-8 w-8 items-center justify-center rounded-lg text-[10px] font-bold transition-all duration-300',
+                  active
+                    ? chapter.highlighted
+                      ? 'bg-[#f4b53f]/25 text-[#f4b53f] ring-1 ring-[#f4b53f]/50 shadow-[0_4px_12px_rgba(244,181,63,0.25)]'
+                      : 'bg-[#2f7fe6]/20 text-[#3d8fff] ring-1 ring-[#2f7fe6]/40 shadow-[0_0_12px_rgba(47,127,230,0.2)]'
+                    : chapter.highlighted
+                      ? 'bg-[#f4b53f]/12 text-[#f7cb74] ring-1 ring-[#f4b53f]/30 hover:bg-[#f4b53f]/18'
+                      : 'text-[#8ea0b8] hover:bg-white/10 hover:text-white'
+                )}
+                onClick={() => onJumpToChapter(chapter)}
+                title={chapter.title}
+              >
+                {active && (
+                   <div className={cn(
+                     "absolute -left-0.5 top-1.5 h-5 w-1 rounded-full",
+                     chapter.highlighted ? "bg-[#f4b53f] shadow-[0_0_8px_#f4b53f]" : "bg-[#2f7fe6] shadow-[0_0_8px_#2f7fe6]"
+                   )} />
+                )}
+                {getChapterLabel(chapter, index)}
+              </button>
+            );
+          })}
+        </div>
       </aside>
     );
   }
 
   return (
-    <aside className="pointer-events-auto absolute right-6 top-20 z-30 flex w-[220px] flex-col overflow-hidden rounded-[22px] border border-white/10 bg-gradient-to-b from-[#1a1c22]/90 to-[#0f1115]/90 text-white shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-3xl transition-[width,background-color,shadow] duration-300 ease-in-out">
-      <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-[#2f7fe6] shadow-[0_0_8px_#2f7fe6]" />
-          <span className="text-[13px] font-bold tracking-tight text-[#dfe7f4]">章节目录</span>
+    <aside
+      className="group/panel pointer-events-auto absolute right-6 top-24 z-30 flex w-[240px] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#0f1115]/90 text-white shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-3xl transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
+    >
+      <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-4 py-3.5">
+        <div className="flex items-center gap-2.5">
+          <div className="h-5 w-1 rounded-full bg-[#2f7fe6] shadow-[0_0_10px_#2f7fe6]" />
+          <span className="text-[13.5px] font-bold tracking-tight text-[#f0f4f9]">章节目录</span>
           {chapters.length > 0 && (
-            <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-medium text-[#8ea0b8]">
+            <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-[#8ea0b8]">
               {chapters.length}
             </span>
           )}
@@ -204,18 +235,22 @@ export function ReaderChapterPanel({
           )}
           <button
             className="flex h-7 w-7 items-center justify-center rounded-lg text-[#8ea0b8] transition-all hover:bg-white/10 hover:text-white"
-            onClick={() => {
-              setMode(mangaId, 'mini');
-              setEditing(false);
-            }}
-            title="收起为 Mini 模式"
+            onClick={() => setMode(mangaId, 'mini')}
+            title="切换为迷你视图"
           >
-            <ChevronsRight className="h-4 w-4" />
+            <Minimize2 className="h-4 w-4" />
+          </button>
+          <button
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-[#627083] transition-all hover:bg-white/10 hover:text-white"
+            onClick={() => setIsOpen(false)}
+            title="收起面板"
+          >
+            <X className="h-4 w-4" />
           </button>
         </div>
       </div>
 
-      <div className="max-h-[calc(100vh-220px)] flex-1 space-y-2 overflow-auto px-3 pt-3 pb-6 transition-all custom-scrollbar">
+      <div className="max-h-[min(calc(100vh-250px),600px)] flex-1 space-y-2 overflow-y-auto px-3.5 pt-4 pb-8 transition-all custom-scrollbar">
         {hasChapters ? (
           chapters.map((chapter, index) => {
             const active = index === currentChapterIndex;
@@ -225,10 +260,10 @@ export function ReaderChapterPanel({
               <div
                 key={chapter.id}
                 className={cn(
-                  'group relative overflow-hidden rounded-xl border transition-all duration-200',
+                  'group relative overflow-hidden rounded-xl border transition-all duration-300',
                   active
                     ? chapter.highlighted
-                      ? 'border-[#f4b53f]/45 bg-[linear-gradient(135deg,rgba(47,127,230,0.16),rgba(244,181,63,0.14))] shadow-[0_8px_24px_rgba(0,0,0,0.24)]'
+                      ? 'border-[#f4b53f]/60 bg-[#f4b53f]/20 shadow-[0_12px_30px_rgba(0,0,0,0.3),0_0_15px_rgba(244,181,63,0.25)]'
                       : 'border-[#2f7fe6]/40 bg-[#2f7fe6]/12 shadow-[0_8px_20px_rgba(0,0,0,0.2)]'
                     : chapter.highlighted
                       ? 'border-[#f4b53f]/28 bg-[#f4b53f]/8 shadow-[0_6px_16px_rgba(244,181,63,0.12)] hover:border-[#f4b53f]/45 hover:bg-[#f4b53f]/12'
@@ -253,7 +288,7 @@ export function ReaderChapterPanel({
                           <span
                             className={cn(
                               'text-[10px] font-bold uppercase tracking-wider',
-                              active ? 'text-[#3d8fff]' : chapter.highlighted ? 'text-[#f4b53f]' : 'text-[#5c6d85]'
+                              chapter.highlighted ? 'text-[#f4b53f]' : active ? 'text-[#3d8fff]' : 'text-[#5c6d85]'
                             )}
                           >
                             CH.{String(index + 1).padStart(2, '0')}
@@ -261,7 +296,7 @@ export function ReaderChapterPanel({
                           <span
                             className={cn(
                               'text-[10px] font-semibold',
-                              active ? 'text-[#2f7fe6]' : chapter.highlighted ? 'text-[#f4b53f]' : 'text-[#90a0b7]'
+                              active ? 'text-[#2f7fe6]' : chapter.highlighted ? 'text-[#f4b53f]/90' : 'text-[#90a0b7]'
                             )}
                           >
                             P.{formatPageRange(chapter)}
@@ -307,27 +342,26 @@ export function ReaderChapterPanel({
                       <div className="flex items-center gap-2">
                         <span
                           className={cn(
-                            'text-[10px] font-bold uppercase tracking-wider',
-                            active ? 'text-[#3d8fff]' : chapter.highlighted ? 'text-[#f4b53f]' : 'text-[#5c6d85]'
+                            'text-[10px] font-bold uppercase tracking-wider transition-colors duration-300',
+                            chapter.highlighted ? 'text-[#f4b53f]' : active ? 'text-[#3d8fff]' : 'text-[#5c6d85]'
                           )}
                         >
                           CH.{String(index + 1).padStart(2, '0')}
                         </span>
                         <span
                           className={cn(
-                            'truncate text-[12px] font-bold leading-tight',
-                            active ? 'text-white' : 'text-[#dfe7f4]/90'
+                            'truncate text-[12px] font-bold leading-tight transition-colors duration-300',
+                            active ? (chapter.highlighted ? 'text-[#f4b53f]' : 'text-white') : 'text-[#dfe7f4]/90'
                           )}
                         >
                           {chapter.title}
                         </span>
-                        {chapter.highlighted ? <Star className="h-3.5 w-3.5 shrink-0 fill-current text-[#f4b53f]" /> : null}
                       </div>
                       <div className="mt-1 flex items-center gap-1.5 opacity-80">
                         <span
                           className={cn(
-                            'text-[10px] font-semibold',
-                            active ? 'text-[#2f7fe6]' : chapter.highlighted ? 'text-[#f4b53f]' : 'text-[#90a0b7]'
+                            'text-[10px] font-semibold transition-colors duration-300',
+                            chapter.highlighted ? (active ? 'text-[#f4b53f]/90' : 'text-[#f4b53f]/80') : (active ? 'text-[#3d8fff]/90' : 'text-[#90a0b7]')
                           )}
                         >
                           P.{formatPageRange(chapter)}
@@ -337,11 +371,14 @@ export function ReaderChapterPanel({
                   )}
 
                   {active && (
-                    <div className="absolute right-0 top-0 h-full w-1 bg-[#2f7fe6] shadow-[-2px_0_12px_rgba(47,127,230,0.4)]" />
+                    <div className={cn(
+                      "absolute right-0 top-0 h-full w-1 transition-all duration-300",
+                      chapter.highlighted ? "bg-[#f4b53f] shadow-[-2px_0_12px_rgba(244,181,63,0.5)]" : "bg-[#2f7fe6] shadow-[-2px_0_12px_rgba(47,127,230,0.4)]"
+                    )} />
                   )}
-                  {chapter.highlighted && !active ? (
-                    <div className="absolute left-0 top-0 h-full w-1 bg-[#f4b53f] shadow-[2px_0_12px_rgba(244,181,63,0.28)]" />
-                  ) : null}
+                  {chapter.highlighted && !active && (
+                    <div className="absolute left-0 top-0 h-full w-1 bg-[#f4b53f] opacity-80 shadow-[2px_0_12px_rgba(244,181,63,0.28)] transition-all duration-300" />
+                  )}
                 </div>
               </div>
             );

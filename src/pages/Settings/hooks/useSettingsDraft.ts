@@ -12,13 +12,15 @@ export function useSettingsDraft({
   widthMode,
   fixedWidthPercent,
   pageAnimationEnabled,
-  boundarySuggestionCount
+  boundarySuggestionCount,
+  rememberReadingProgress
 }: UseSettingsDraftOptions) {
   const [draftReaderMode, setDraftReaderMode] = useState<ReaderMode>(readerMode);
   const [draftWidthMode, setDraftWidthMode] = useState<ReaderWidthMode>(widthMode);
   const [draftFixedWidthPercent, setDraftFixedWidthPercent] = useState(fixedWidthPercent);
   const [draftPageAnimationEnabled, setDraftPageAnimationEnabled] = useState(pageAnimationEnabled);
   const [draftBoundarySuggestionCount, setDraftBoundarySuggestionCount] = useState(boundarySuggestionCount);
+  const [draftRememberReadingProgress, setDraftRememberReadingProgress] = useState(rememberReadingProgress);
 
   useEffect(() => {
     if (!open) return;
@@ -27,7 +29,8 @@ export function useSettingsDraft({
     setDraftFixedWidthPercent(fixedWidthPercent);
     setDraftPageAnimationEnabled(pageAnimationEnabled);
     setDraftBoundarySuggestionCount(boundarySuggestionCount);
-  }, [boundarySuggestionCount, fixedWidthPercent, open, pageAnimationEnabled, readerMode, widthMode]);
+    setDraftRememberReadingProgress(rememberReadingProgress);
+  }, [boundarySuggestionCount, fixedWidthPercent, open, pageAnimationEnabled, readerMode, rememberReadingProgress, widthMode]);
 
   const dirty = useMemo(
     () =>
@@ -35,17 +38,20 @@ export function useSettingsDraft({
       draftWidthMode !== widthMode ||
       draftFixedWidthPercent !== fixedWidthPercent ||
       draftPageAnimationEnabled !== pageAnimationEnabled ||
-      draftBoundarySuggestionCount !== boundarySuggestionCount,
+      draftBoundarySuggestionCount !== boundarySuggestionCount ||
+      draftRememberReadingProgress !== rememberReadingProgress,
     [
       boundarySuggestionCount,
       draftBoundarySuggestionCount,
       draftFixedWidthPercent,
       draftPageAnimationEnabled,
+      draftRememberReadingProgress,
       draftReaderMode,
       draftWidthMode,
       fixedWidthPercent,
       pageAnimationEnabled,
       readerMode,
+      rememberReadingProgress,
       widthMode
     ]
   );
@@ -56,11 +62,13 @@ export function useSettingsDraft({
     draftFixedWidthPercent,
     draftPageAnimationEnabled,
     draftBoundarySuggestionCount,
+    draftRememberReadingProgress,
     setDraftReaderMode,
     setDraftWidthMode,
     setDraftFixedWidthPercent,
     setDraftPageAnimationEnabled,
     setDraftBoundarySuggestionCount,
+    setDraftRememberReadingProgress,
     dirty,
     buildPayload(): ReaderSettingsPayload {
       return {
@@ -68,7 +76,8 @@ export function useSettingsDraft({
         widthMode: draftWidthMode,
         fixedWidthPercent: draftFixedWidthPercent,
         pageAnimationEnabled: draftPageAnimationEnabled,
-        boundarySuggestionCount: draftBoundarySuggestionCount
+        boundarySuggestionCount: draftBoundarySuggestionCount,
+        rememberReadingProgress: draftRememberReadingProgress
       };
     }
   };
