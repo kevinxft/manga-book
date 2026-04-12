@@ -96,7 +96,7 @@ export function ReaderTopBar({
             title="移入回收站"
           >
             <Trash2 className="h-3 w-3 transition-transform group-hover:scale-110" />
-            {deleting ? '移动中...' : '回收站'}
+            {deleting ? '移动中...' : '删除'}
           </button>
         ) : null}
 

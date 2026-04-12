@@ -97,15 +97,27 @@ const OrganizerMoveButton = memo(function OrganizerMoveButton({
     () => categories.find((item) => item.key === selectedCategoryKey) ?? null,
     [categories, selectedCategoryKey]
   );
+  const aliasLabel = selectedCategory?.aliases.filter(Boolean).join(' / ') ?? '';
 
   return (
     <button
-      className="group flex h-12 w-full items-center justify-center rounded-full bg-blue-600 text-[14px] font-bold tracking-wide text-white shadow-md shadow-blue-500/25 transition-all duration-300 hover:-translate-y-0.5 hover:bg-blue-500 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 disabled:pointer-events-none disabled:bg-slate-100 disabled:text-slate-400 disabled:shadow-none"
+      className="group relative flex min-h-[54px] w-full items-center justify-center overflow-hidden rounded-[20px] bg-gradient-to-r from-blue-600 via-cyan-400 to-blue-600 bg-[length:200%_auto] animate-gradient-shift px-5 py-3 text-white shadow-[0_8px_24px_rgba(47,127,230,0.3)] ring-1 ring-white/30 transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-[2px] hover:shadow-[0_16px_36px_rgba(47,127,230,0.45)] focus:outline-none focus:ring-4 focus:ring-cyan-400/40 disabled:pointer-events-none disabled:animate-none disabled:bg-none disabled:bg-slate-100 disabled:text-slate-400 disabled:ring-slate-200/50 disabled:shadow-none"
       onClick={onMoveSelected}
       disabled={!hasIpcBridge || moving || selectedCount === 0 || !selectedCategory}
+      title={selectedCategory ? `移动到 ${selectedCategory.label}${aliasLabel ? `\n别名：${aliasLabel}` : ''}` : '请选择作者目录'}
     >
-      {moving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-      移动到所选目录 ({selectedCount})
+      {moving ? <Loader2 className="relative z-20 mr-2 h-4 w-4 shrink-0 animate-spin" /> : null}
+      <span className="relative z-20 flex min-w-0 flex-col items-center justify-center">
+        <span className="block truncate text-[14px] font-extrabold tracking-wide drop-shadow-sm group-disabled:font-bold group-disabled:drop-shadow-none">
+          {selectedCategory ? `移动到 ${selectedCategory.label}` : '移动到所选目录'}
+          {selectedCount > 0 ? ` (${selectedCount})` : ''}
+        </span>
+        {selectedCategory && aliasLabel ? (
+          <span className="mt-[3px] block truncate text-[10.5px] font-bold text-blue-100/90 drop-shadow-sm group-disabled:text-slate-400/80 group-disabled:drop-shadow-none">
+            别名：{aliasLabel}
+          </span>
+        ) : null}
+      </span>
     </button>
   );
 });

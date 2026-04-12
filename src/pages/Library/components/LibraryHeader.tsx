@@ -64,8 +64,8 @@ export function LibraryHeader({
   const scanPercent = getScanPercent(progress);
 
   return (
-    <header className="app-window-drag relative flex h-[64px] items-center justify-between border-b border-slate-200/50 bg-white/40 px-5 backdrop-blur-2xl">
-      <div className="relative z-10 flex items-center gap-3">
+    <header className="app-window-drag relative flex h-[64px] items-center border-b border-slate-200/50 bg-white/40 px-5 backdrop-blur-2xl">
+      <div className="app-window-no-drag relative z-10 flex shrink-0 items-center gap-3">
         <div className="flex items-center gap-3">
           <button
             className="group inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white/60 text-slate-500 shadow-sm ring-1 ring-slate-200/60 transition-all hover:bg-white hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
@@ -112,7 +112,9 @@ export function LibraryHeader({
 
       </div>
 
-      <div className="relative z-10 flex items-center gap-3">
+      <div className="h-full flex-1" />
+
+      <div className="app-window-no-drag relative z-10 flex shrink-0 items-center gap-3">
         <span className="shrink-0 text-[12px] font-bold tracking-wide text-slate-500">
           共 <span className="text-blue-600 font-black text-[12px]">{mangaCount}</span> 本典藏
         </span>

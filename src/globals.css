@@ -78,6 +78,29 @@
   .library-sidebar-scroll::-webkit-scrollbar-thumb:hover {
     background: #aeb9cc;
   }
+
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 999px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 }
 
 .app-window-drag {
@@ -95,8 +118,9 @@ textarea,
 }
 
 html.platform-darwin .app-sidebar-titlebar:not(.app-sidebar-titlebar--collapsed) {
-  height: 94px;
-  padding-top: 34px;
+  height: 64px;
+  padding-top: 0;
+  padding-left: 88px;
 }
 
 html.platform-darwin .app-sidebar-titlebar--collapsed {

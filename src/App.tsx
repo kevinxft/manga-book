@@ -21,16 +21,11 @@ export default function App() {
     pageAnimationEnabled,
     boundarySuggestionCount,
     rememberReadingProgress,
-    hydrate,
     setReaderMode,
     setWidthMode,
     setFixedWidthPercent,
     applySettings
   } = useReaderSettingsStore();
-
-  useEffect(() => {
-    hydrate();
-  }, [hydrate]);
 
   useEffect(() => {
     document.documentElement.classList.add('app-ready');

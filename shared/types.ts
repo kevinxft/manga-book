@@ -327,7 +327,7 @@ export interface OrganizerSearchGoogleRequest {
 }
 
 export interface OrganizerSearchWebRequest {
-  provider: 'hitomi' | 'exhentai' | 'google';
+  provider: 'hitomi' | 'hitomiArtist' | 'exhentai' | 'google';
   query: string;
 }
 

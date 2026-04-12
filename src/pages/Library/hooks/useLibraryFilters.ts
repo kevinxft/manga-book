@@ -13,7 +13,6 @@ export function useLibraryFilters({ mangas, artistDirectories, selectedTags }: U
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortKey>('addedAtDesc');
   const [activeMenu, setActiveMenu] = useState<string>('all');
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => {
@@ -85,12 +84,10 @@ export function useLibraryFilters({ mangas, artistDirectories, selectedTags }: U
     search,
     sortBy,
     activeMenu,
-    sidebarCollapsed,
     visibleMangas,
     sourceMangaCountByPath,
     setSearch,
     setSortBy,
-    setActiveMenu,
-    setSidebarCollapsed
+    setActiveMenu
   };
 }

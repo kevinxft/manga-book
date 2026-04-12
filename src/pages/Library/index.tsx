@@ -27,6 +27,7 @@ import { useAuthorDirectoryRename } from '@renderer/pages/Organizer/hooks/useAut
 import { useOrganizerMutationErrors } from '@renderer/pages/Organizer/hooks/useOrganizerMutationErrors';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
+import { useLibraryUiStore } from '@renderer/stores/libraryUiStore';
 import { resolveTargetSourcePaths } from './utils';
 
 interface LibraryPageProps {
@@ -37,22 +38,11 @@ interface LibraryPageProps {
 }
 
 const LIBRARY_SIDEBAR_DEFAULT_WIDTH = 270;
-const LIBRARY_SIDEBAR_MIN_WIDTH = 220;
+const LIBRARY_SIDEBAR_MIN_WIDTH = 250;
 const LIBRARY_SIDEBAR_MAX_WIDTH = 420;
-const LIBRARY_SIDEBAR_COLLAPSED_WIDTH = 72;
+const LIBRARY_SIDEBAR_COLLAPSED_WIDTH = 88;
 const LIBRARY_SIDEBAR_RESIZER_WIDTH = 8;
-const LIBRARY_SIDEBAR_STORAGE_KEY = 'manga-book.library-sidebar-width';
 const LIBRARY_MAIN_CONTENT_MIN_WIDTH = 480;
-
-function readStoredSidebarWidth(): number | null {
-  if (typeof window === 'undefined') {
-    return null;
-  }
-
-  const raw = window.localStorage.getItem(LIBRARY_SIDEBAR_STORAGE_KEY);
-  const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN;
-  return Number.isFinite(parsed) ? parsed : null;
-}
 
 function clampSidebarWidth(width: number, containerWidth?: number): number {
   const containerMaxWidth =
@@ -66,8 +56,6 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   const hasIpcBridge = typeof window !== 'undefined' && typeof window.mangaBookApi?.invoke === 'function';
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pageEditorLoadRequestRef = useRef(0);
-  const [sidebarWidth, setSidebarWidth] = useState(() => clampSidebarWidth(readStoredSidebarWidth() ?? LIBRARY_SIDEBAR_DEFAULT_WIDTH));
-  const [sidebarWidthHydrated, setSidebarWidthHydrated] = useState(false);
   const [pageEditorOpen, setPageEditorOpen] = useState(false);
   const [pageEditorTarget, setPageEditorTarget] = useState<MangaBookWithCover | null>(null);
   const [pageEditorPaths, setPageEditorPaths] = useState<string[]>([]);
@@ -149,17 +137,24 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     targetSourcePaths
   });
 
+  const { sidebarCollapsed, sidebarWidth, setSidebarCollapsed, setSidebarWidth } = useLibraryUiStore(
+    useShallow((state) => ({
+      sidebarCollapsed: state.sidebarCollapsed,
+      sidebarWidth: clampSidebarWidth(state.sidebarWidth || LIBRARY_SIDEBAR_DEFAULT_WIDTH),
+      setSidebarCollapsed: state.setSidebarCollapsed,
+      setSidebarWidth: state.setSidebarWidth
+    }))
+  );
+
   const {
     search,
     sortBy,
     activeMenu,
-    sidebarCollapsed,
     visibleMangas,
     sourceMangaCountByPath,
     setSearch,
     setSortBy,
-    setActiveMenu,
-    setSidebarCollapsed
+    setActiveMenu
   } = useLibraryFilters({
     mangas,
     artistDirectories,
@@ -407,25 +402,6 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   const handleSidebarCollapsedChange = useCallback((value: boolean) => {
     setSidebarCollapsed(value);
   }, [setSidebarCollapsed]);
-
-  useEffect(() => {
-    const storedWidth = readStoredSidebarWidth();
-    if (storedWidth !== null) {
-      setSidebarWidth((current) => {
-        const containerWidth = containerRef.current?.getBoundingClientRect().width;
-        const nextWidth = clampSidebarWidth(storedWidth, containerWidth);
-        return nextWidth === current ? current : nextWidth;
-      });
-    }
-    setSidebarWidthHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || !sidebarWidthHydrated) {
-      return;
-    }
-    window.localStorage.setItem(LIBRARY_SIDEBAR_STORAGE_KEY, String(sidebarWidth));
-  }, [sidebarWidth, sidebarWidthHydrated]);
 
   useEffect(() => {
     const container = containerRef.current;

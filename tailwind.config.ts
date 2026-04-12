@@ -55,11 +55,16 @@ const config: Config = {
           '0%': { transform: 'scaleX(0.7)', opacity: '0.75' },
           '50%': { transform: 'scaleX(1)', opacity: '1' },
           '100%': { transform: 'scaleX(0.7)', opacity: '0.75' }
+        },
+        gradientShift: {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' }
         }
       },
       animation: {
         rise: 'rise 0.5s ease-out both',
-        pulsebar: 'pulsebar 1.7s ease-in-out infinite'
+        pulsebar: 'pulsebar 1.7s ease-in-out infinite',
+        'gradient-shift': 'gradientShift 3s ease infinite'
       },
       fontFamily: {
         sans: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'sans-serif'],

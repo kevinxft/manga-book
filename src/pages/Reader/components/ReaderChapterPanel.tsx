@@ -55,10 +55,12 @@ export function ReaderChapterPanel({
   const hasChapters = chapters.length > 0;
   const hasEditableChapters = chapters.some((chapter) => chapter.deletable);
   const hasEditingTools = hasEditableChapters || canAddChapter || canEditChapterMetadata;
+  const preferredMode = useReaderChapterPanelStore((state) => state.preferredMode);
+  const defaultMode = hasChapters ? preferredMode : canAddChapter ? 'normal' : 'mini';
   const modeFromStore = useReaderChapterPanelStore(
     useMemo(
-      () => (state) => state.modeByMangaId[mangaId] ?? (hasChapters ? 'normal' : 'mini'),
-      [hasChapters, mangaId]
+      () => (state) => state.modeByMangaId[mangaId] ?? defaultMode,
+      [defaultMode, mangaId]
     )
   );
   const setMode = useReaderChapterPanelStore((state) => state.setMode);
@@ -68,9 +70,9 @@ export function ReaderChapterPanel({
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    syncMode(mangaId, hasChapters);
+    syncMode(mangaId, defaultMode);
     setEditing(false);
-  }, [hasChapters, mangaId, syncMode]);
+  }, [defaultMode, mangaId, syncMode]);
 
   useEffect(() => {
     setDraftTitlesById(Object.fromEntries(chapters.map((chapter) => [chapter.id, chapter.title])));
@@ -119,6 +121,15 @@ export function ReaderChapterPanel({
     }
   };
 
+  const handleOpenPanel = () => {
+    if (!hasChapters && canAddChapter) {
+      setMode(mangaId, 'normal');
+      setEditing(true);
+    }
+
+    setIsOpen(true);
+  };
+
   if (!visible) {
     return null;
   }
@@ -128,18 +139,24 @@ export function ReaderChapterPanel({
       <button
         className={cn(
           'pointer-events-auto absolute right-6 top-24 z-30 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-[#0f1115]/60 text-[#8ea0b8] shadow-[0_8px_32px_rgba(0,0,0,0.4)] backdrop-blur-2xl transition-all duration-300 hover:scale-110 hover:bg-[#2f7fe6] hover:text-white',
-          !hasChapters && 'opacity-0 pointer-events-none'
+          !hasChapters && !hasEditingTools && 'opacity-0 pointer-events-none'
         )}
-        onClick={() => setIsOpen(true)}
-        title="展开章节目录"
+        onClick={handleOpenPanel}
+        title={hasChapters ? '展开章节目录' : '展开章节工具'}
       >
         <div className="relative">
-          <ChevronsLeft className="h-5 w-5" />
-          {hasChapters && (
+          {hasChapters ? (
+            <ChevronsLeft className="h-5 w-5" />
+          ) : canAddChapter ? (
+            <Plus className="h-5 w-5" />
+          ) : (
+            <ChevronsLeft className="h-5 w-5" />
+          )}
+          {hasChapters ? (
             <div className="absolute -right-2.5 -top-2.5 flex h-4 w-4 items-center justify-center rounded-full bg-[#2f7fe6] text-[9px] font-bold text-white shadow-lg ring-2 ring-[#0f1115]">
               {chapters.length}
             </div>
-          )}
+          ) : null}
         </div>
       </button>
     );
@@ -148,9 +165,9 @@ export function ReaderChapterPanel({
   if (modeFromStore === 'mini') {
     return (
       <aside
-        className="pointer-events-auto absolute right-6 top-24 z-30 flex w-12 flex-col items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0f1115]/90 p-1.5 text-white shadow-[0_24px_50px_rgba(0,0,0,0.6)] backdrop-blur-3xl transition-all duration-300"
+        className="pointer-events-auto absolute right-6 top-[86px] z-30 flex max-h-[calc(100vh-200px)] w-12 flex-col items-center gap-3 overflow-hidden rounded-2xl border border-white/10 bg-[#0f1115]/90 p-1.5 text-white shadow-[0_24px_50px_rgba(0,0,0,0.6)] backdrop-blur-3xl transition-all duration-300"
       >
-        <div className="flex flex-col gap-1">
+        <div className="flex shrink-0 flex-col gap-1">
           <button
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[#627083] transition-all hover:bg-white/10 hover:text-white"
             onClick={() => setIsOpen(false)}
@@ -167,9 +184,9 @@ export function ReaderChapterPanel({
           </button>
         </div>
 
-        <div className="h-px w-full max-w-[20px] bg-white/10" />
+        <div className="h-px w-full shrink-0 max-w-[20px] bg-white/10" />
 
-        <div className="custom-scrollbar max-h-[calc(100vh-320px)] space-y-1.5 overflow-y-auto overflow-x-hidden px-0.5 pb-2">
+        <div className="custom-scrollbar flex-1 min-h-0 space-y-1.5 overflow-y-auto overflow-x-hidden px-0.5 pb-2">
           {chapters.map((chapter, index) => {
             const active = index === currentChapterIndex;
 
@@ -206,18 +223,41 @@ export function ReaderChapterPanel({
 
   return (
     <aside
-      className="group/panel pointer-events-auto absolute right-6 top-24 z-30 flex w-[240px] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#0f1115]/90 text-white shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-3xl transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
+      className="group/panel pointer-events-auto absolute right-6 top-[86px] z-30 flex max-h-[calc(100vh-200px)] w-[240px] flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#0f1115]/90 text-white shadow-[0_32px_80px_rgba(0,0,0,0.6)] backdrop-blur-3xl transition-all duration-500 ease-[cubic-bezier(0.23,1,0.32,1)]"
     >
-      <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-4 py-3.5">
-        <div className="flex items-center gap-2.5">
-          <div className="h-5 w-1 rounded-full bg-[#2f7fe6] shadow-[0_0_10px_#2f7fe6]" />
-          <span className="text-[13.5px] font-bold tracking-tight text-[#f0f4f9]">章节目录</span>
-          {chapters.length > 0 && (
-            <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-[#8ea0b8]">
-              {chapters.length}
+      <div className="flex shrink-0 items-center justify-between border-b border-white/5 bg-white/5 px-4 py-3.5">
+        {editing && canAddChapter ? (
+          <button
+            className={cn(
+              'group flex h-7 items-center justify-center gap-1.5 overflow-hidden rounded-full px-3 shadow-sm transition-all duration-300',
+              canAddAtCurrentPage && !chapterBusy
+                ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-[0_2px_8px_rgba(47,127,230,0.3)] hover:scale-[1.02] hover:shadow-[0_4px_12px_rgba(47,127,230,0.4)] ring-1 ring-white/20'
+                : 'cursor-not-allowed bg-white/5 text-slate-400 ring-1 ring-white/10'
+            )}
+            onClick={onAddChapter}
+            disabled={!canAddAtCurrentPage || chapterBusy}
+            title={canAddAtCurrentPage ? '在当前页标记为新章节起始' : '请先翻到尚未划分章节的页面'}
+          >
+            {chapterBusy ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin text-current" />
+            ) : (
+              <Plus className="h-3.5 w-3.5 text-current" />
+            )}
+            <span className="whitespace-nowrap text-[11px] font-extrabold tracking-wide">
+              {canAddAtCurrentPage ? `新增 P.${currentPageIndex + 1}` : '新增章节'}
             </span>
-          )}
-        </div>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <div className="h-5 w-1 rounded-full bg-[#2f7fe6] shadow-[0_0_10px_#2f7fe6]" />
+            <span className="text-[13.5px] font-bold tracking-tight text-[#f0f4f9]">章节目录</span>
+            {!editing && chapters.length > 0 && (
+              <span className="rounded-md bg-white/10 px-1.5 py-0.5 text-[10px] font-bold text-[#8ea0b8]">
+                {chapters.length}
+              </span>
+            )}
+          </div>
+        )}
         <div className="flex items-center gap-1">
           {hasEditingTools && (
             <button
@@ -250,7 +290,7 @@ export function ReaderChapterPanel({
         </div>
       </div>
 
-      <div className="max-h-[min(calc(100vh-250px),600px)] flex-1 space-y-2 overflow-y-auto px-3.5 pt-4 pb-8 transition-all custom-scrollbar">
+      <div className="flex-1 min-h-0 space-y-2 overflow-y-auto px-3.5 pt-4 pb-8 transition-all custom-scrollbar">
         {hasChapters ? (
           chapters.map((chapter, index) => {
             const active = index === currentChapterIndex;
@@ -270,47 +310,47 @@ export function ReaderChapterPanel({
                       : 'border-white/5 bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.08] hover:shadow-[0_4px_12px_rgba(0,0,0,0.1)]'
                 )}
               >
-                <div className={cn('relative p-2.5', editing ? 'space-y-2.5' : 'flex items-start gap-3')}>
+                <div className={cn('relative', editing ? 'p-1.5 px-2 flex flex-col gap-1' : 'p-2.5 flex items-start gap-3')}>
                   {editing ? (
                     <>
-                      <input
-                        className="w-full rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[12px] font-semibold text-[#eef4ff] outline-none transition focus:border-[#2f7fe6]/50 focus:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-60"
-                        value={draftTitle}
-                        onChange={(event) => updateDraftTitle(chapter.id, event.target.value)}
-                        onBlur={() => commitDraftTitle(chapter)}
-                        onKeyDown={(event) => handleDraftKeyDown(event, chapter)}
-                        disabled={chapterBusy || !canEditChapterMetadata}
-                        placeholder="章节名"
-                      />
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            'shrink-0 w-[40px] text-[10px] font-bold uppercase tracking-wider',
+                            chapter.highlighted ? 'text-[#f4b53f]' : active ? 'text-[#3d8fff]' : 'text-[#5c6d85]'
+                          )}
+                        >
+                          CH.{String(index + 1).padStart(2, '0')}
+                        </span>
+                        <input
+                          className="min-w-0 flex-1 rounded border border-transparent bg-white/[0.04] px-2 py-0.5 text-[11px] font-semibold text-[#eef4ff] outline-none transition focus:border-[#2f7fe6]/50 focus:bg-white/[0.08] hover:bg-white/[0.06] disabled:cursor-not-allowed disabled:opacity-60"
+                          value={draftTitle}
+                          onChange={(event) => updateDraftTitle(chapter.id, event.target.value)}
+                          onBlur={() => commitDraftTitle(chapter)}
+                          onKeyDown={(event) => handleDraftKeyDown(event, chapter)}
+                          disabled={chapterBusy || !canEditChapterMetadata}
+                          placeholder="章节名"
+                        />
+                      </div>
 
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex min-w-0 items-center gap-2 opacity-80">
-                          <span
-                            className={cn(
-                              'text-[10px] font-bold uppercase tracking-wider',
-                              chapter.highlighted ? 'text-[#f4b53f]' : active ? 'text-[#3d8fff]' : 'text-[#5c6d85]'
-                            )}
-                          >
-                            CH.{String(index + 1).padStart(2, '0')}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[10px] font-semibold',
-                              active ? 'text-[#2f7fe6]' : chapter.highlighted ? 'text-[#f4b53f]/90' : 'text-[#90a0b7]'
-                            )}
-                          >
-                            P.{formatPageRange(chapter)}
-                          </span>
-                        </div>
+                      <div className="flex items-center justify-between pl-[46px]">
+                        <span
+                          className={cn(
+                            'text-[9.5px] font-semibold',
+                            active ? 'text-[#2f7fe6]' : chapter.highlighted ? 'text-[#f4b53f]/90' : 'text-[#90a0b7]'
+                          )}
+                        >
+                          P.{formatPageRange(chapter)}
+                        </span>
 
-                        <div className="flex shrink-0 items-center gap-1">
+                        <div className="flex shrink-0 items-center gap-0.5">
                           {canEditChapterMetadata ? (
                             <button
                               className={cn(
-                                'flex h-8 w-8 items-center justify-center rounded-lg transition-all',
+                                'flex h-6 w-6 items-center justify-center rounded-md transition-all',
                                 chapter.highlighted
                                   ? 'bg-[#f4b53f]/16 text-[#f4b53f] shadow-[0_0_10px_rgba(244,181,63,0.18)]'
-                                  : 'bg-white/5 text-[#7d8ea7] hover:bg-[#f4b53f]/12 hover:text-[#f4b53f]'
+                                  : 'text-[#7d8ea7] hover:bg-white/10 hover:text-[#f4b53f]'
                               )}
                               onClick={() => onUpdateChapter(chapter, { highlighted: !chapter.highlighted })}
                               disabled={chapterBusy}
@@ -322,7 +362,7 @@ export function ReaderChapterPanel({
 
                           {chapter.deletable ? (
                             <button
-                              className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/10 text-red-400 transition-all hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                              className="flex h-6 w-6 items-center justify-center rounded-md text-[#7d8ea7] transition-all hover:bg-red-500/15 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-60"
                               onClick={() => onRemoveChapter(chapter)}
                               disabled={chapterBusy}
                               title="删除此章节"
@@ -392,36 +432,10 @@ export function ReaderChapterPanel({
           </div>
         )}
 
-        {editing && canAddChapter && (
-          <button
-            className={cn(
-              'group relative flex w-full items-center gap-3 overflow-hidden rounded-xl border border-dashed p-2.5 transition-all duration-200',
-              canAddAtCurrentPage && !chapterBusy
-                ? 'border-[#2f7fe6]/50 bg-[#2f7fe6]/5 text-[#dfe7f4] hover:bg-[#2f7fe6]/12 hover:border-[#2f7fe6]'
-                : 'cursor-not-allowed border-white/10 bg-white/[0.02] text-[#4b5563]'
-            )}
-            onClick={onAddChapter}
-            disabled={!canAddAtCurrentPage || chapterBusy}
-            title={canAddAtCurrentPage ? '在当前页标记为新章节起始' : '请先翻到需要作为新章节起始的页面'}
-          >
-            <div className={cn(
-              'flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-              canAddAtCurrentPage ? 'bg-[#2f7fe6]/20 text-[#2f7fe6] group-hover:bg-[#2f7fe6] group-hover:text-white' : 'bg-white/5 text-[#4b5563]'
-            )}>
-              {chapterBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col text-left">
-              <span className="text-[12px] font-bold">新增章节点</span>
-              <span className="text-[10px] opacity-70">
-                {canAddAtCurrentPage ? `起始于第 ${currentPageIndex + 1} 页` : '翻至新页以添加'}
-              </span>
-            </div>
-          </button>
-        )}
       </div>
 
        {editing && chapters.length > 0 && (
-         <div className="border-t border-white/5 bg-white/5 px-3 py-2 text-center">
+         <div className="shrink-0 border-t border-white/5 bg-white/5 px-3 py-2 text-center">
            <p className="text-[9px] font-medium text-[#5c6d85]">
              星标是高亮，输入框可直接改章节名
            </p>

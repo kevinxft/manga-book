@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FolderOpen, RefreshCw, Trash2, X } from 'lucide-react';
+import { FolderOpen, Import, RefreshCw, Trash2, X } from 'lucide-react';
 import type { LibraryFolder } from '@shared/types';
 import { cn } from '@renderer/lib/utils';
 
@@ -10,6 +10,7 @@ interface SourceManagerDialogProps {
   hasIpcBridge: boolean;
   scanRunning: boolean;
   onClose: () => void;
+  onPickAndAddSources: () => void;
   onOpenSourceFolder: (sourcePath: string) => void;
   onSyncSource: (sourcePath: string) => void;
   onRemoveSource: (sourceId: string) => void;
@@ -22,6 +23,7 @@ export function SourceManagerDialog({
   hasIpcBridge,
   scanRunning,
   onClose,
+  onPickAndAddSources,
   onOpenSourceFolder,
   onSyncSource,
   onRemoveSource
@@ -59,21 +61,40 @@ export function SourceManagerDialog({
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 shadow-sm ring-1 ring-blue-500/10">
               <FolderOpen className="h-4 w-4 text-blue-600" />
             </div>
-            <p className="text-[15px] font-bold tracking-wide text-slate-800">已导入目录 ({sources.length})</p>
+            <p className="text-[15px] font-bold tracking-wide text-slate-800">管理目录 ({sources.length})</p>
           </div>
-          <button
-            className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 focus:bg-slate-100 focus:outline-none"
-            onClick={onClose}
-            title="关闭窗口"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="inline-flex h-8 items-center gap-1.5 rounded-full bg-blue-50 px-3 text-[12px] font-bold text-blue-600 ring-1 ring-blue-500/10 transition-all hover:bg-blue-100 disabled:pointer-events-none disabled:opacity-50"
+              onClick={onPickAndAddSources}
+              disabled={!hasIpcBridge || scanRunning}
+              title="导入目录"
+            >
+              <Import className="h-3.5 w-3.5" />
+              导入目录
+            </button>
+            <button
+              className="flex h-7 w-7 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 focus:bg-slate-100 focus:outline-none"
+              onClick={onClose}
+              title="关闭窗口"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="min-h-0 flex-1 overflow-auto p-4 library-sidebar-scroll">
           {sources.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200/60 bg-slate-50/50 px-3 py-6 text-center text-[12px] font-bold text-slate-400 shadow-sm">
-              暂无已导入目录
+            <div className="rounded-2xl border border-dashed border-slate-200/60 bg-slate-50/50 px-3 py-6 text-center shadow-sm">
+              <p className="text-[12px] font-bold text-slate-400">暂无已导入目录</p>
+              <button
+                className="mt-4 inline-flex h-9 items-center gap-2 rounded-full bg-blue-600 px-4 text-[12px] font-bold text-white shadow-sm shadow-blue-500/20 transition-all hover:bg-blue-500 disabled:pointer-events-none disabled:opacity-50"
+                onClick={onPickAndAddSources}
+                disabled={!hasIpcBridge || scanRunning}
+              >
+                <Import className="h-3.5 w-3.5" />
+                导入目录
+              </button>
             </div>
           ) : (
             <div className="space-y-2.5">

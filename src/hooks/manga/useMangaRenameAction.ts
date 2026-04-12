@@ -50,6 +50,7 @@ export function useMangaRenameAction({ hasIpcBridge, updateMangaLocal, setError 
       setRenameTarget(null);
     } catch (error) {
       setError(error instanceof Error ? error.message : '重命名失败');
+    } finally {
       setRenaming(false);
     }
   };
