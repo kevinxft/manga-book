@@ -16,6 +16,7 @@ import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 import { MangaPageEditorDialog } from '@renderer/components/manga/MangaPageEditorDialog';
 import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
 import { RenameAuthorDirectoryDialog } from '@renderer/pages/Organizer/components/RenameAuthorDirectoryDialog';
+import { CreateLibraryRootDialog } from './components/CreateLibraryRootDialog';
 import { useLibraryFilters } from './hooks/useLibraryFilters';
 import { useLibraryMangaActions } from './hooks/useLibraryMangaActions';
 import { useLibraryOrganizerCategories } from './hooks/useLibraryOrganizerCategories';
@@ -28,7 +29,7 @@ import { useOrganizerMutationErrors } from '@renderer/pages/Organizer/hooks/useO
 import { ipcInvoke } from '@renderer/ipc/client';
 import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
 import { useLibraryUiStore } from '@renderer/stores/libraryUiStore';
-import { resolveTargetSourcePaths } from './utils';
+import { buildUnsortedImportSummaries } from './utils';
 
 interface LibraryPageProps {
   active?: boolean;
@@ -62,6 +63,8 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   const [pageEditorLoading, setPageEditorLoading] = useState(false);
   const [pageEditorDeleting, setPageEditorDeleting] = useState(false);
   const [pageEditorError, setPageEditorError] = useState<string | null>(null);
+  const [createLibraryRootDialogOpen, setCreateLibraryRootDialogOpen] = useState(false);
+  const [createLibraryRootParentPath, setCreateLibraryRootParentPath] = useState<string | null>(null);
 
   const {
     tags,
@@ -79,18 +82,21 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   } = useTagEditor(hasIpcBridge);
 
   const {
+    libraryRoot,
     sources,
     mangas,
     loading,
     error,
     progress,
     clearError,
-    fetchSources,
+    fetchLibraryRoot,
     fetchMangas,
-    pickAndAddSources,
-    removeSource,
-    openSourceFolder,
-    syncSources,
+    createLibraryRoot,
+    pickLibraryRootParent,
+    clearLibraryRoot,
+    openLibraryRoot,
+    pickAndImportDirectories,
+    syncLibrary,
     cancelSync,
     fetchCoverPaths,
     handleScanTaskUpdate,
@@ -99,18 +105,21 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     removeMangaLocal
   } = useLibraryStore(
     useShallow((state) => ({
+      libraryRoot: state.libraryRoot,
       sources: state.sources,
       mangas: state.mangas,
       loading: state.loading,
       error: state.error,
       progress: state.progress,
       clearError: state.clearError,
-      fetchSources: state.fetchSources,
+      fetchLibraryRoot: state.fetchLibraryRoot,
       fetchMangas: state.fetchMangas,
-      pickAndAddSources: state.pickAndAddSources,
-      removeSource: state.removeSource,
-      openSourceFolder: state.openSourceFolder,
-      syncSources: state.syncSources,
+      createLibraryRoot: state.createLibraryRoot,
+      pickLibraryRootParent: state.pickLibraryRootParent,
+      clearLibraryRoot: state.clearLibraryRoot,
+      openLibraryRoot: state.openLibraryRoot,
+      pickAndImportDirectories: state.pickAndImportDirectories,
+      syncLibrary: state.syncLibrary,
       cancelSync: state.cancelSync,
       fetchCoverPaths: state.fetchCoverPaths,
       handleScanTaskUpdate: state.handleScanTaskUpdate,
@@ -126,16 +135,26 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     }))
   );
 
-  const targetSourcePaths = useMemo(
-    () => resolveTargetSourcePaths(sources, authorDirectories.map((item) => item.directory)),
-    [authorDirectories, sources]
-  );
+  const targetSourcePaths = useMemo(() => {
+    if (libraryRoot?.path) {
+      return [`${libraryRoot.path}/Authors`];
+    }
+    const fallbackParent = authorDirectories[0]?.directory;
+    if (!fallbackParent) {
+      return [];
+    }
+    const normalized = fallbackParent.replace(/\\/g, '/');
+    const parent = normalized.slice(0, normalized.lastIndexOf('/'));
+    return parent ? [parent] : [];
+  }, [authorDirectories, libraryRoot]);
 
   const { artistDirectories, quickMoveCategories } = useLibraryOrganizerCategories({
     hasIpcBridge,
     mangas,
     targetSourcePaths
   });
+
+  const unsortedImports = useMemo(() => buildUnsortedImportSummaries(mangas), [mangas]);
 
   const { sidebarCollapsed, sidebarWidth, setSidebarCollapsed, setSidebarWidth } = useLibraryUiStore(
     useShallow((state) => ({
@@ -164,7 +183,8 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
   const { scanRunning } = useLibraryDataLifecycle({
     active,
     hasIpcBridge,
-    fetchSources,
+    fetchLibraryRoot,
+    hasLibraryRoot: Boolean(libraryRoot),
     fetchMangas,
     handleScanTaskUpdate,
     refreshScanProgress,
@@ -403,6 +423,45 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     setSidebarCollapsed(value);
   }, [setSidebarCollapsed]);
 
+  const handleRequestCreateLibraryRoot = useCallback(async () => {
+    const parentPath = await pickLibraryRootParent();
+    if (!parentPath) {
+      return;
+    }
+
+    setCreateLibraryRootParentPath(parentPath);
+    setCreateLibraryRootDialogOpen(true);
+  }, [pickLibraryRootParent]);
+
+  const handleCloseCreateLibraryRootDialog = useCallback(() => {
+    if (loading) {
+      return;
+    }
+    setCreateLibraryRootDialogOpen(false);
+    setCreateLibraryRootParentPath(null);
+  }, [loading]);
+
+  const handleConfirmCreateLibraryRoot = useCallback(async (directoryName: string) => {
+    const trimmedName = directoryName.trim();
+    if (!createLibraryRootParentPath || !trimmedName) {
+      return;
+    }
+
+    await createLibraryRoot(createLibraryRootParentPath, trimmedName);
+    if (!useLibraryStore.getState().error) {
+      setCreateLibraryRootDialogOpen(false);
+      setCreateLibraryRootParentPath(null);
+    }
+  }, [createLibraryRoot, createLibraryRootParentPath]);
+
+  const handleClearLibraryRoot = useCallback(() => {
+    if (!window.confirm('确认只清除当前漫画库配置吗？\n\n这不会删除磁盘上的漫画目录，只会让应用回到首次启动引导。')) {
+      return;
+    }
+
+    void clearLibraryRoot();
+  }, [clearLibraryRoot]);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container || typeof ResizeObserver === 'undefined') {
@@ -464,6 +523,49 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
     [sidebarCollapsed, sidebarWidth]
   );
 
+  if (hasIpcBridge && !libraryRoot) {
+    return (
+      <>
+        <main className="flex h-full w-full items-center justify-center bg-slate-50/60 p-8">
+          <div className="w-full max-w-[620px] rounded-[32px] border border-slate-200/80 bg-white/90 p-8 shadow-[0_24px_80px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+            <div className="max-w-[440px]">
+              <p className="text-[13px] font-bold tracking-[0.22em] text-blue-600">漫画库</p>
+              <h1 className="mt-3 text-[34px] font-black tracking-tight text-slate-900">先选择一个唯一的漫画库目录</h1>
+              <p className="mt-4 text-[15px] leading-7 text-slate-500">
+                后续导入、整理、下载的漫画都会统一放进这个目录。应用会自动创建
+                <code className="mx-1 rounded bg-slate-100 px-1.5 py-0.5 text-[13px] text-slate-700">Authors</code>
+                、
+                <code className="mx-1 rounded bg-slate-100 px-1.5 py-0.5 text-[13px] text-slate-700">Unsorted</code>
+                和
+                <code className="mx-1 rounded bg-slate-100 px-1.5 py-0.5 text-[13px] text-slate-700">.mangabook</code>
+                。
+              </p>
+            </div>
+
+            <div className="mt-8 flex items-center justify-center">
+              <button
+                className="inline-flex h-11 items-center justify-center rounded-2xl bg-blue-600 px-5 text-[14px] font-bold text-white shadow-lg shadow-blue-500/20 transition hover:bg-blue-500 disabled:pointer-events-none disabled:opacity-60"
+                onClick={() => void handleRequestCreateLibraryRoot()}
+                disabled={loading}
+              >
+                选择位置并创建漫画库
+              </button>
+            </div>
+          </div>
+        </main>
+
+        <CreateLibraryRootDialog
+          open={createLibraryRootDialogOpen}
+          parentPath={createLibraryRootParentPath}
+          creating={loading}
+          error={error}
+          onClose={handleCloseCreateLibraryRootDialog}
+          onSubmit={(value) => void handleConfirmCreateLibraryRoot(value)}
+        />
+      </>
+    );
+  }
+
   return (
     <main className="h-full w-full bg-slate-50/50">
       <div ref={containerRef} className="h-full overflow-hidden">
@@ -474,20 +576,20 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
             artistDirectories={artistDirectories}
             tags={tags}
             selectedTags={selectedTags}
-            sources={sources}
+            libraryRoot={libraryRoot}
             sourceMangaCountByPath={sourceMangaCountByPath}
+            unsortedImports={unsortedImports}
             hasIpcBridge={hasIpcBridge}
             scanRunning={scanRunning}
             onActiveMenuChange={setActiveMenu}
             onToggleTag={toggleTagSelection}
             onClearSelectedTags={clearSelectedTags}
             onOpenTagDialog={openTagDialog}
-            onPickAndAddSources={() => void pickAndAddSources()}
-            onOpenSourceFolder={(sourcePath) => void openSourceFolder(sourcePath)}
-            onSyncSource={(sourcePath) => void syncSources([sourcePath])}
-            onRemoveSource={(sourceId) => {
-              void removeSource(sourceId);
-            }}
+            onPickAndSetLibraryRoot={() => handleRequestCreateLibraryRoot()}
+            onOpenLibraryRoot={() => void openLibraryRoot()}
+            onPickAndImportDirectories={() => void pickAndImportDirectories()}
+            onSyncLibrary={() => void syncLibrary()}
+            onClearLibraryRoot={handleClearLibraryRoot}
             importingAuthorDirectoryPath={importingAuthorDirectoryPath}
             onRequestImportToCategory={(category) => void handleRequestImportToAuthorDirectory(category)}
             onRequestAddAlias={handleRequestAddAlias}
@@ -523,7 +625,7 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
               onSidebarCollapsedChange={handleSidebarCollapsedChange}
               onSortByChange={setSortBy}
               onSearchChange={setSearch}
-              onSyncSources={() => void syncSources()}
+              onSyncSources={() => void syncLibrary()}
               onCancelSync={() => void cancelSync()}
             />
 
@@ -594,6 +696,15 @@ export function LibraryPage({ active = true, onOpenManga, onOpenSettings, onOpen
         onUpsertTag={upsertDraftTag}
         onRemoveTag={removeGlobalTag}
         onClearAllTags={clearAllTags}
+      />
+
+      <CreateLibraryRootDialog
+        open={createLibraryRootDialogOpen}
+        parentPath={createLibraryRootParentPath}
+        creating={loading}
+        error={error}
+        onClose={handleCloseCreateLibraryRootDialog}
+        onSubmit={(value) => void handleConfirmCreateLibraryRoot(value)}
       />
 
       <AliasManagerDialog

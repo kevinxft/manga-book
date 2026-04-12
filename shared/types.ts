@@ -27,6 +27,13 @@ export interface LibraryFolder {
   isTarget: boolean;
 }
 
+export interface LibraryRoot {
+  path: string;
+  displayName: string;
+  initializedAt: string;
+  hasCustomIcon: boolean;
+}
+
 export interface MangaTag {
   id: string;
   name: string;
@@ -143,6 +150,33 @@ export interface LibraryRemoveSourceRequest {
 
 export interface LibraryOpenSourceFolderRequest {
   path: string;
+}
+
+export interface LibrarySetRootRequest {
+  path?: string;
+  parentPath?: string;
+  directoryName?: string;
+}
+
+export interface LibraryOpenRootRequest {
+  path?: string;
+}
+
+export interface LibraryImportDirectoriesRequest {
+  paths: string[];
+}
+
+export interface LibraryImportDirectoriesResult {
+  imported: Array<{
+    sourcePath: string;
+    targetPath: string;
+    renamedDueToConflict: boolean;
+  }>;
+  skipped: Array<{
+    path: string;
+    reason: 'DUPLICATE' | 'NOT_FOUND' | 'INVALID' | 'INSIDE_LIBRARY';
+  }>;
+  taskId: string | null;
 }
 
 export interface LibrarySyncSourcesRequest {
@@ -364,6 +398,15 @@ export interface TagClearAllResult {
 }
 
 export interface IpcChannels {
+  'library.pickLibraryRootDirectory': { req: void; res: { paths: string[] } };
+  'library.getRoot': { req: void; res: LibraryRoot | null };
+  'library.setRoot': { req: LibrarySetRootRequest; res: LibraryRoot };
+  'library.clearRoot': { req: void; res: { cleared: boolean } };
+  'library.openRoot': { req: LibraryOpenRootRequest | void; res: { opened: boolean } };
+  'library.pickImportDirectories': { req: void; res: { paths: string[] } };
+  'library.importDirectories': { req: LibraryImportDirectoriesRequest; res: LibraryImportDirectoriesResult };
+  'library.syncLibrary': { req: { forceRescan?: boolean } | void; res: { taskId: string } };
+
   'library.addSource': { req: LibraryAddSourceRequest; res: LibraryFolder };
   'library.addSources': { req: LibraryAddSourcesRequest; res: LibraryAddSourcesResult };
   'library.pickSourceDirectories': { req: void; res: { paths: string[] } };

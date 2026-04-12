@@ -4,7 +4,8 @@ import type { MangaFilter, ScanProgress } from '@shared/types';
 interface UseLibraryDataLifecycleInput {
   active: boolean;
   hasIpcBridge: boolean;
-  fetchSources: () => Promise<void>;
+  fetchLibraryRoot: () => Promise<void>;
+  hasLibraryRoot: boolean;
   fetchMangas: (options?: MangaFilter) => Promise<void>;
   handleScanTaskUpdate: (payload: import('@shared/types').ScanTaskEvent) => Promise<void>;
   refreshScanProgress: () => Promise<void>;
@@ -14,7 +15,8 @@ interface UseLibraryDataLifecycleInput {
 export function useLibraryDataLifecycle({
   active,
   hasIpcBridge,
-  fetchSources,
+  fetchLibraryRoot,
+  hasLibraryRoot,
   fetchMangas,
   handleScanTaskUpdate,
   refreshScanProgress,
@@ -24,15 +26,15 @@ export function useLibraryDataLifecycle({
     if (!active || !hasIpcBridge) {
       return;
     }
-    void fetchSources();
-  }, [active, fetchSources, hasIpcBridge]);
+    void fetchLibraryRoot();
+  }, [active, fetchLibraryRoot, hasIpcBridge]);
 
   useEffect(() => {
-    if (!active || !hasIpcBridge) {
+    if (!active || !hasIpcBridge || !hasLibraryRoot) {
       return;
     }
     void fetchMangas();
-  }, [active, fetchMangas, hasIpcBridge]);
+  }, [active, fetchMangas, hasIpcBridge, hasLibraryRoot]);
 
   useEffect(() => {
     if (!active || !hasIpcBridge) {

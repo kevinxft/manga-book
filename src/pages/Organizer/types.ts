@@ -1,7 +1,6 @@
 import type { MangaBookWithCover } from '@shared/types';
 
 export type OrganizerSortKey = 'addedAt' | 'title' | 'pages';
-export type OrganizerStatusFilter = 'all' | 'organized' | 'unorganized';
 
 export interface OrganizerSourceFilterOption {
   path: string;
@@ -23,4 +22,6 @@ export interface OrganizerItem extends MangaBookWithCover {
   displayPath: string;
   ownerBadge: string | null;
   organizeStatus: 'organized' | 'unorganized';
+  locationFilterPath: string;
+  locationFilterLabel: string;
 }

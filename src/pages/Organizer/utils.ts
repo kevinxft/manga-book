@@ -1,6 +1,6 @@
 import type { DirectoryAlias, MangaBookWithCover } from '@shared/types';
-import type { OrganizerCategory, OrganizerItem, OrganizerSortKey, OrganizerStatusFilter } from './types';
-import { getMangaDisplayPath } from '@renderer/pages/Library/utils';
+import type { OrganizerCategory, OrganizerItem, OrganizerSortKey } from './types';
+import { getMangaDisplayPath, getUnsortedImportLocation } from '@renderer/pages/Library/utils';
 
 export interface AuthorAliasLookupContext {
   canonicalByAnyName: Map<string, string>;
@@ -75,15 +75,17 @@ function getExplicitAuthorDirectoryFromNormalized(folderPath: string, normalized
 }
 
 function getMangaPathCategoryWithContext(manga: MangaBookWithCover, context: PathLookupContext): 'artists' | 'other' {
-  const source = normalizePath(manga.sourceFolderPath);
   const target = normalizePath(manga.folderPath);
+  for (const targetSourcePath of context.normalizedTargetSourcePaths) {
+    if (!target.startsWith(`${targetSourcePath}/`)) {
+      continue;
+    }
 
-  if (!target.startsWith(`${source}/`)) {
-    return 'other';
+    const relativeSegments = target.slice(targetSourcePath.length + 1).split('/').filter(Boolean);
+    return relativeSegments.length >= 2 ? 'artists' : 'other';
   }
 
-  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
-  return context.normalizedTargetSourcePaths.has(source) && relativeSegments.length >= 2 ? 'artists' : 'other';
+  return 'other';
 }
 
 function getCategoryLocation(
@@ -98,27 +100,27 @@ function getCategoryLocation(
     };
   }
 
-  const source = normalizePath(manga.sourceFolderPath);
   const target = normalizePath(manga.folderPath);
-  if (!context.normalizedTargetSourcePaths.has(source)) {
-    return null;
-  }
-  if (!target.startsWith(`${source}/`)) {
-    return null;
+  for (const targetSourcePath of context.normalizedTargetSourcePaths) {
+    if (!target.startsWith(`${targetSourcePath}/`)) {
+      continue;
+    }
+
+    const { hasLeadingSlash } = splitPath(target);
+    const relativeSegments = target.slice(targetSourcePath.length + 1).split('/').filter(Boolean);
+    const authorName = relativeSegments[0];
+    if (!authorName || relativeSegments.length < 2) {
+      continue;
+    }
+
+    const sourceSegments = splitPath(targetSourcePath).segments;
+    return {
+      label: authorName,
+      path: joinPath([...sourceSegments, authorName], hasLeadingSlash)
+    };
   }
 
-  const { hasLeadingSlash } = splitPath(target);
-  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
-  const authorName = relativeSegments[0];
-  if (!authorName || relativeSegments.length < 2) {
-    return null;
-  }
-
-  const sourceSegments = splitPath(source).segments;
-  return {
-    label: authorName,
-    path: joinPath([...sourceSegments, authorName], hasLeadingSlash)
-  };
+  return null;
 }
 
 function toLookupKey(value: string): string {
@@ -186,24 +188,27 @@ function resolveAuthorDirectory(
     return null;
   }
 
-  const source = normalizePath(manga.sourceFolderPath);
   const target = normalizePath(manga.folderPath);
-  if (!target.startsWith(`${source}/`)) {
-    return null;
+  for (const targetSourcePath of context.normalizedTargetSourcePaths) {
+    if (!target.startsWith(`${targetSourcePath}/`)) {
+      continue;
+    }
+
+    const { hasLeadingSlash } = splitPath(target);
+    const relativeSegments = target.slice(targetSourcePath.length + 1).split('/').filter(Boolean);
+    const directoryName = relativeSegments[0];
+    if (!directoryName) {
+      continue;
+    }
+
+    const sourceSegments = splitPath(targetSourcePath).segments;
+    return {
+      directoryName,
+      directoryPath: joinPath([...sourceSegments, directoryName], hasLeadingSlash)
+    };
   }
 
-  const { hasLeadingSlash } = splitPath(target);
-  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
-  const directoryName = relativeSegments[0];
-  if (!directoryName) {
-    return null;
-  }
-
-  const sourceSegments = splitPath(source).segments;
-  return {
-    directoryName,
-    directoryPath: joinPath([...sourceSegments, directoryName], hasLeadingSlash)
-  };
+  return null;
 }
 
 function dedupeNames(values: string[]): string[] {
@@ -374,12 +379,17 @@ export function buildOrganizerItems(
 
   return mangas.map((manga) => {
     const authorInfo = resolveMangaAuthorInfoWithContext(manga, aliasLookup, pathContext);
+    const unsortedLocation = authorInfo ? null : getUnsortedImportLocation(manga.folderPath, manga.sourceFolderPath);
+    const locationFilterPath = authorInfo?.directoryPath ?? unsortedLocation?.path ?? manga.folderPath;
+    const locationFilterLabel = authorInfo?.directoryName ?? unsortedLocation?.label ?? getPathLabel(manga.folderPath);
 
     return {
       ...manga,
       displayPath: getMangaDisplayPath(manga.folderPath, manga.sourceFolderPath),
       ownerBadge: authorInfo?.ownerBadge ?? null,
-      organizeStatus: authorInfo ? 'organized' : 'unorganized'
+      organizeStatus: authorInfo ? 'organized' : 'unorganized',
+      locationFilterPath,
+      locationFilterLabel
     };
   });
 }
@@ -387,24 +397,23 @@ export function buildOrganizerItems(
 export function filterAndSortOrganizerItems(
   mangas: OrganizerItem[],
   query: string,
-  statusFilter: OrganizerStatusFilter,
   sortBy: OrganizerSortKey,
-  sourceFolderPath?: string | null
+  locationFilterPath?: string | null
 ): OrganizerItem[] {
   const keyword = query.trim().toLowerCase();
-  const normalizedSourceFilter = sourceFolderPath?.trim();
+  const normalizedLocationFilter = locationFilterPath?.trim();
 
   const filtered = mangas.filter((manga) => {
-    if (statusFilter === 'organized' && manga.organizeStatus !== 'organized') {
-      return false;
-    }
+    if (normalizedLocationFilter) {
+      const normalizedItemLocation = manga.locationFilterPath.trim();
+      const matchesExact = normalizedItemLocation === normalizedLocationFilter;
+      const matchesAncestor =
+        normalizedItemLocation.startsWith(`${normalizedLocationFilter}/`) ||
+        normalizedItemLocation.startsWith(`${normalizedLocationFilter}\\`);
 
-    if (statusFilter === 'unorganized' && manga.organizeStatus !== 'unorganized') {
-      return false;
-    }
-
-    if (normalizedSourceFilter && manga.sourceFolderPath !== normalizedSourceFilter) {
-      return false;
+      if (!matchesExact && !matchesAncestor) {
+        return false;
+      }
     }
 
     const matchesQuery =

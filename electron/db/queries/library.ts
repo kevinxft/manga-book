@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
-import type { LibraryFolder } from '@shared/types';
+import type { LibraryFolder, LibraryRoot } from '@shared/types';
 
 interface LibraryFolderRow {
   id: string;
@@ -20,6 +20,15 @@ function mapRow(row: LibraryFolderRow): LibraryFolder {
   };
 }
 
+function mapRootRow(row: LibraryFolderRow): LibraryRoot {
+  return {
+    path: row.path,
+    displayName: row.display_name,
+    initializedAt: row.added_at,
+    hasCustomIcon: row.is_target === 1
+  };
+}
+
 export function createLibraryQueries(db: Database.Database) {
   const insertOrIgnoreStatement = db.prepare(
     `INSERT OR IGNORE INTO library_folders (id, path, display_name, added_at, is_target)
@@ -29,8 +38,13 @@ export function createLibraryQueries(db: Database.Database) {
   const selectByIdStatement = db.prepare('SELECT * FROM library_folders WHERE id = ?');
   const listStatement = db.prepare('SELECT * FROM library_folders ORDER BY added_at ASC');
   const removeStatement = db.prepare('DELETE FROM library_folders WHERE id = ?');
+  const clearStatement = db.prepare('DELETE FROM library_folders');
   const clearTargetStatement = db.prepare('UPDATE library_folders SET is_target = 0');
   const setTargetStatement = db.prepare('UPDATE library_folders SET is_target = 1 WHERE id = ?');
+  const insertRootStatement = db.prepare(
+    `INSERT INTO library_folders (id, path, display_name, added_at, is_target)
+      VALUES (@id, @path, @display_name, @added_at, @is_target)`
+  );
 
   function add(path: string, displayName: string): LibraryFolder {
     const now = new Date().toISOString();
@@ -80,12 +94,46 @@ export function createLibraryQueries(db: Database.Database) {
     return transaction(id);
   }
 
+  function getRoot(): LibraryRoot | null {
+    const row = (db.prepare('SELECT * FROM library_folders ORDER BY is_target DESC, added_at ASC LIMIT 1').get() ??
+      null) as LibraryFolderRow | null;
+    return row ? mapRootRow(row) : null;
+  }
+
+  function setRoot(path: string, displayName: string, options?: { hasCustomIcon?: boolean }): LibraryRoot {
+    const now = new Date().toISOString();
+    const transaction = db.transaction(() => {
+      clearStatement.run();
+      insertRootStatement.run({
+        id: randomUUID(),
+        path,
+        display_name: displayName,
+        added_at: now,
+        is_target: options?.hasCustomIcon === false ? 0 : 1
+      });
+      const row = db.prepare('SELECT * FROM library_folders LIMIT 1').get() as LibraryFolderRow | undefined;
+      if (!row) {
+        throw new Error('Failed to save library root');
+      }
+      return mapRootRow(row);
+    });
+
+    return transaction();
+  }
+
+  function clear(): void {
+    clearStatement.run();
+  }
+
   return {
     add,
     getById,
     getByPath,
     list,
     remove,
-    setTarget
+    setTarget,
+    getRoot,
+    setRoot,
+    clear
   };
 }

@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-this-alias */
 import fs from 'node:fs';
 import path from 'node:path';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import Database from 'better-sqlite3';
+import { app } from 'electron';
 import type {
   Bookmark,
   DirectoryAlias,
@@ -19,7 +20,7 @@ const SOURCE_METADATA_DIRNAME = '.mangabook';
 const SOURCE_METADATA_DB_FILENAME = 'metadata.db';
 const SOURCE_SCHEMA_VERSION = 1;
 const AUTHOR_ALIAS_METADATA_FILENAME = '.mangabook-author.json';
-const ARTISTS_DIRECTORY_NAME = 'artists';
+const ARTISTS_DIRECTORY_NAME = 'authors';
 const METADATA_KEYS = {
   legacyMigrationComplete: 'legacy_migration_complete',
   authorFileImportComplete: 'author_file_import_complete'
@@ -109,7 +110,9 @@ function toAbsolutePath(rootPath: string, relativePath: string): string {
 }
 
 function getSourceMetadataDirectoryPath(rootPath: string): string {
-  return path.join(normalizeAbsolutePath(rootPath), SOURCE_METADATA_DIRNAME);
+  const normalizedRootPath = normalizeAbsolutePath(rootPath);
+  const rootHash = createHash('sha1').update(normalizedRootPath).digest('hex');
+  return path.join(app.getPath('userData'), 'source-metadata', rootHash);
 }
 
 function getSourceMetadataDbPath(rootPath: string): string {

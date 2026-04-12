@@ -1,3 +1,4 @@
+import type { MangaBookWithCover } from '@shared/types';
 import type { MangaPathCategory } from './types';
 
 function normalizePath(value: string): string {
@@ -67,19 +68,18 @@ export function getTagTextColor(color: string): string {
 }
 
 export function getMangaPathCategory(folderPath: string, sourceFolderPath: string, targetSourcePaths: string[] = []): MangaPathCategory {
-  const source = normalizePath(sourceFolderPath);
   const target = normalizePath(folderPath);
   const normalizedTargetSources = normalizeSourcePaths(targetSourcePaths);
 
-  if (!target.startsWith(`${source}/`)) {
-    return 'other';
-  }
+  for (const targetSourcePath of normalizedTargetSources) {
+    if (!target.startsWith(`${targetSourcePath}/`)) {
+      continue;
+    }
 
-  const relPath = target.slice(source.length + 1);
-  const relativeSegments = relPath.split('/').filter(Boolean);
-
-  if (normalizedTargetSources.includes(source) && relativeSegments.length >= 2) {
-    return 'artists';
+    const relativeSegments = target.slice(targetSourcePath.length + 1).split('/').filter(Boolean);
+    if (relativeSegments.length >= 2) {
+      return 'artists';
+    }
   }
 
   return 'other';
@@ -90,20 +90,21 @@ export function getArtistNameFromMangaPath(
   sourceFolderPath: string,
   targetSourcePaths: string[] = []
 ): string | null {
-  const source = normalizePath(sourceFolderPath);
   const target = normalizePath(folderPath);
   const normalizedTargetSources = normalizeSourcePaths(targetSourcePaths);
 
-  if (!normalizedTargetSources.includes(source) || !target.startsWith(`${source}/`)) {
-    return null;
+  for (const targetSourcePath of normalizedTargetSources) {
+    if (!target.startsWith(`${targetSourcePath}/`)) {
+      continue;
+    }
+
+    const relativeSegments = target.slice(targetSourcePath.length + 1).split('/').filter(Boolean);
+    if (relativeSegments.length >= 2) {
+      return relativeSegments[0] ?? null;
+    }
   }
 
-  const relativeSegments = target.slice(source.length + 1).split('/').filter(Boolean);
-  if (relativeSegments.length < 2) {
-    return null;
-  }
-
-  return relativeSegments[0] ?? null;
+  return null;
 }
 
 export function getParentDirectoryPath(folderPath: string): string {
@@ -115,6 +116,60 @@ export function getParentDirectoryPath(folderPath: string): string {
 
   const parentSegments = segments.slice(0, -1);
   return `${normalized.startsWith('/') ? '/' : ''}${parentSegments.join('/')}`;
+}
+
+export interface UnsortedImportLocation {
+  path: string;
+  label: string;
+}
+
+export interface UnsortedImportSummary extends UnsortedImportLocation {
+  mangaCount: number;
+}
+
+export function getUnsortedImportLocation(folderPath: string, sourceFolderPath: string): UnsortedImportLocation | null {
+  const source = normalizePath(sourceFolderPath);
+  const target = normalizePath(folderPath);
+  const unsortedRoot = `${source}/Unsorted`;
+
+  if (!target.startsWith(`${unsortedRoot}/`)) {
+    return null;
+  }
+
+  const relativeSegments = target.slice(unsortedRoot.length + 1).split('/').filter(Boolean);
+  const folderName = relativeSegments[0];
+  if (!folderName) {
+    return null;
+  }
+
+  return {
+    path: `${unsortedRoot}/${folderName}`,
+    label: folderName
+  };
+}
+
+export function buildUnsortedImportSummaries(mangas: MangaBookWithCover[]): UnsortedImportSummary[] {
+  const bucket = new Map<string, UnsortedImportSummary>();
+
+  for (const manga of mangas) {
+    const location = getUnsortedImportLocation(manga.folderPath, manga.sourceFolderPath);
+    if (!location) {
+      continue;
+    }
+
+    const existing = bucket.get(location.path);
+    if (existing) {
+      existing.mangaCount += 1;
+      continue;
+    }
+
+    bucket.set(location.path, {
+      ...location,
+      mangaCount: 1
+    });
+  }
+
+  return [...bucket.values()].sort((a, b) => a.label.localeCompare(b.label, 'zh-Hans-CN'));
 }
 
 type SourceLike = {

@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import type { OrganizerItem, OrganizerSortKey, OrganizerSourceFilterOption, OrganizerStatusFilter } from '../types';
+import type { OrganizerItem, OrganizerSortKey, OrganizerSourceFilterOption } from '../types';
 import { filterAndSortOrganizerItems } from '../utils';
 
 interface UseOrganizerFiltersArgs {
@@ -8,40 +8,55 @@ interface UseOrganizerFiltersArgs {
 
 export function useOrganizerFilters({ organizerItems }: UseOrganizerFiltersArgs) {
   const [query, setQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrganizerStatusFilter>('unorganized');
   const [sortBy, setSortBy] = useState<OrganizerSortKey>('addedAt');
   const [sourceFilter, setSourceFilter] = useState('all');
   const deferredQuery = useDeferredValue(query);
 
   const sourceOptions = useMemo<OrganizerSourceFilterOption[]>(() => {
-    const segmentsByPath = new Map<string, string[]>();
-    const countsByLeaf = new Map<string, number>();
+    const labelsByPath = new Map<string, string>();
+    const countsByLabel = new Map<string, number>();
+    let authorsRootPath: string | null = null;
 
     for (const item of organizerItems) {
-      const normalized = item.sourceFolderPath.trim();
-      if (!normalized || segmentsByPath.has(normalized)) {
+      if (item.organizeStatus === 'organized') {
+        if (!authorsRootPath) {
+          authorsRootPath = `${item.sourceFolderPath.trim().replace(/[\\/]+$/, '')}/Authors`;
+        }
         continue;
       }
 
-      const segments = normalized.replace(/\\/g, '/').split('/').filter(Boolean);
-      segmentsByPath.set(normalized, segments);
+      const normalized = item.locationFilterPath.trim();
+      if (!normalized || labelsByPath.has(normalized)) {
+        continue;
+      }
 
-      const leaf = (segments[segments.length - 1] ?? normalized).trim();
-      countsByLeaf.set(leaf, (countsByLeaf.get(leaf) ?? 0) + 1);
+      const label = item.locationFilterLabel.trim() || normalized;
+      labelsByPath.set(normalized, label);
+      countsByLabel.set(label, (countsByLabel.get(label) ?? 0) + 1);
     }
 
-    return [...segmentsByPath.entries()]
-      .map(([path, segments]) => {
-        const leaf = (segments[segments.length - 1] ?? path).trim();
+    const unsortedOptions = [...labelsByPath.entries()]
+      .map(([path, label]) => {
+        const segments = path.replace(/\\/g, '/').split('/').filter(Boolean);
         const parent = segments[segments.length - 2]?.trim();
-        const duplicateLeaf = (countsByLeaf.get(leaf) ?? 0) > 1;
+        const duplicateLabel = (countsByLabel.get(label) ?? 0) > 1;
 
         return {
           path,
-          label: duplicateLeaf && parent ? `${leaf} · ${parent}` : leaf || path
+          label: duplicateLabel && parent ? `${label} · ${parent}` : label || path
         };
       })
       .sort((a, b) => a.label.localeCompare(b.label, 'zh-Hans-CN'));
+
+    return authorsRootPath
+      ? [
+          {
+            path: authorsRootPath,
+            label: '作者目录'
+          },
+          ...unsortedOptions
+        ]
+      : unsortedOptions;
   }, [organizerItems]);
 
   useEffect(() => {
@@ -56,19 +71,16 @@ export function useOrganizerFilters({ organizerItems }: UseOrganizerFiltersArgs)
 
   const visibleItems = useMemo(() => {
     return filterAndSortOrganizerItems(
-        organizerItems,
+      organizerItems,
       deferredQuery,
-      statusFilter,
       sortBy,
       sourceFilter === 'all' ? null : sourceFilter
     );
-  }, [deferredQuery, organizerItems, sortBy, sourceFilter, statusFilter]);
+  }, [deferredQuery, organizerItems, sortBy, sourceFilter]);
 
   return {
     query,
     setQuery,
-    statusFilter,
-    setStatusFilter,
     sourceFilter,
     setSourceFilter,
     sourceOptions,

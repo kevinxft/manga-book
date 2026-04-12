@@ -4,32 +4,28 @@ import { Button } from '@renderer/components/ui/button';
 import { Input } from '@renderer/components/ui/input';
 import { cn } from '@renderer/lib/utils';
 import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
-import type { OrganizerItem, OrganizerSortKey, OrganizerSourceFilterOption, OrganizerStatusFilter } from '../types';
+import type { OrganizerItem, OrganizerSortKey, OrganizerSourceFilterOption } from '../types';
 
 interface OrganizerHeaderProps {
   query: string;
-  statusFilter: OrganizerStatusFilter;
   sourceFilter: string;
   sourceOptions: OrganizerSourceFilterOption[];
   sortBy: OrganizerSortKey;
   visibleItems: OrganizerItem[];
   onBack?: () => void;
   onQueryChange: (value: string) => void;
-  onStatusFilterChange: (value: OrganizerStatusFilter) => void;
   onSourceFilterChange: (value: string) => void;
   onSortByChange: (value: OrganizerSortKey) => void;
 }
 
 export function OrganizerHeader({
   query,
-  statusFilter,
   sourceFilter,
   sourceOptions,
   sortBy,
   visibleItems,
   onBack,
   onQueryChange,
-  onStatusFilterChange,
   onSourceFilterChange,
   onSortByChange
 }: OrganizerHeaderProps) {
@@ -94,22 +90,12 @@ export function OrganizerHeader({
         </div>
 
         <select
-          value={statusFilter}
-          onChange={(event) => onStatusFilterChange(event.target.value as OrganizerStatusFilter)}
-          className="h-10 shrink-0 cursor-pointer appearance-none rounded-xl border-slate-200/60 bg-white/60 pl-4 pr-8 text-[13px] font-bold text-slate-600 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-        >
-          <option value="all">状态：全面概览</option>
-          <option value="organized">状态：已归档</option>
-          <option value="unorganized">状态：待整理</option>
-        </select>
-
-        <select
           value={sourceFilter}
           onChange={(event) => onSourceFilterChange(event.target.value)}
           className="h-10 min-w-[160px] shrink-0 cursor-pointer appearance-none rounded-xl border-slate-200/60 bg-white/60 pl-4 pr-8 text-[13px] font-bold text-slate-600 shadow-sm ring-1 ring-slate-200/50 transition-all hover:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-          title={sourceFilter === 'all' ? '目录: 全部' : sourceOptions.find((option) => option.path === sourceFilter)?.path ?? sourceFilter}
+          title={sourceFilter === 'all' ? '目录: 全部漫画' : sourceOptions.find((option) => option.path === sourceFilter)?.path ?? sourceFilter}
         >
-          <option value="all">目录：全面包含</option>
+          <option value="all">目录：全部漫画</option>
           {sourceOptions.map((option) => (
             <option key={option.path} value={option.path}>
               目录：{option.label}

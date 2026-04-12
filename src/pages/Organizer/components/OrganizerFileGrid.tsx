@@ -252,7 +252,7 @@ export function OrganizerFileGrid({
     <div className="flex h-full w-full flex-col items-center justify-center p-8">
       <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white/40 px-12 py-16 text-center shadow-sm backdrop-blur-md">
         <p className="text-[15px] font-bold tracking-wide text-slate-600">
-          当前没有匹配到待整理漫画
+          当前没有匹配到漫画
         </p>
       </div>
     </div>

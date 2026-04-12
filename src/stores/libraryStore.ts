@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { LibraryFolder, MangaBookWithCover, ScanProgress, ScanTaskEvent } from '@shared/types';
+import type { LibraryFolder, LibraryRoot, MangaBookWithCover, ScanProgress, ScanTaskEvent } from '@shared/types';
 import { ipcInvoke } from '@renderer/ipc/client';
 import type { SortKey } from '@renderer/pages/Library/types';
 import { useOrganizerMetadataStore } from './organizerMetadataStore';
@@ -13,7 +13,36 @@ type LibraryFetchOptions = {
 const resolvedCoverFolderPaths = new Set<string>();
 const locallyCancelledScanTaskIds = new Set<string>();
 
+function toLegacySources(root: LibraryRoot | null): LibraryFolder[] {
+  return root
+    ? [
+        {
+          id: root.path,
+          path: root.path,
+          displayName: root.displayName,
+          addedAt: root.initializedAt,
+          isTarget: true
+        }
+      ]
+    : [];
+}
+
+const idleProgress: ScanProgress = {
+  taskId: null,
+  status: 'idle',
+  current: 0,
+  total: 0,
+  message: 'Idle',
+  sourceCurrent: 0,
+  sourceTotal: 0,
+  sourceName: '',
+  itemCurrent: 0,
+  itemTotal: 0,
+  currentItemName: ''
+};
+
 interface LibraryState {
+  libraryRoot: LibraryRoot | null;
   sources: LibraryFolder[];
   mangas: MangaBookWithCover[];
   progress: ScanProgress;
@@ -21,6 +50,15 @@ interface LibraryState {
   error: string | null;
   lastFetchOptions: LibraryFetchOptions;
   clearError: () => void;
+  fetchLibraryRoot: () => Promise<void>;
+  setLibraryRoot: (rootPath: string) => Promise<void>;
+  createLibraryRoot: (parentPath: string, directoryName: string) => Promise<void>;
+  pickLibraryRootParent: () => Promise<string | null>;
+  clearLibraryRoot: () => Promise<void>;
+  openLibraryRoot: () => Promise<void>;
+  importDirectories: (paths: string[]) => Promise<void>;
+  pickAndImportDirectories: () => Promise<void>;
+  syncLibrary: () => Promise<void>;
   fetchSources: () => Promise<void>;
   fetchMangas: (options?: LibraryFetchOptions) => Promise<void>;
   addSource: (sourcePath: string) => Promise<void>;
@@ -39,21 +77,10 @@ interface LibraryState {
 }
 
 export const useLibraryStore = create<LibraryState>((set, get) => ({
+  libraryRoot: null,
   sources: [],
   mangas: [],
-  progress: {
-    taskId: null,
-    status: 'idle',
-    current: 0,
-    total: 0,
-    message: 'Idle',
-    sourceCurrent: 0,
-    sourceTotal: 0,
-    sourceName: '',
-    itemCurrent: 0,
-    itemTotal: 0,
-    currentItemName: ''
-  },
+  progress: idleProgress,
   loading: false,
   error: null,
   lastFetchOptions: {
@@ -62,6 +89,155 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
   clearError() {
     set({ error: null });
+  },
+
+  async fetchLibraryRoot() {
+    try {
+      const libraryRoot = await ipcInvoke('library.getRoot', undefined);
+      set({
+        libraryRoot,
+        sources: toLegacySources(libraryRoot)
+      });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to load library root' });
+    }
+  },
+
+  async setLibraryRoot(rootPath) {
+    set({ error: null, loading: true });
+    try {
+      const libraryRoot = await ipcInvoke('library.setRoot', { path: rootPath });
+      resolvedCoverFolderPaths.clear();
+      set({
+        libraryRoot,
+        sources: toLegacySources(libraryRoot)
+      });
+      await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
+      await get().syncLibrary();
+      await get().refreshScanProgress();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to set library root' });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  async createLibraryRoot(parentPath, directoryName) {
+    set({ error: null, loading: true });
+    try {
+      const libraryRoot = await ipcInvoke('library.setRoot', { parentPath, directoryName });
+      resolvedCoverFolderPaths.clear();
+      set({
+        libraryRoot,
+        sources: toLegacySources(libraryRoot)
+      });
+      await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
+      await get().syncLibrary();
+      await get().refreshScanProgress();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to create library root' });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  async pickLibraryRootParent() {
+    set({ error: null });
+    try {
+      const picked = await ipcInvoke('library.pickLibraryRootDirectory', undefined);
+      if (picked.paths.length === 0) {
+        return null;
+      }
+      return picked.paths[0] as string;
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to pick library root' });
+      return null;
+    }
+  },
+
+  async openLibraryRoot() {
+    set({ error: null });
+    try {
+      await ipcInvoke('library.openRoot', undefined);
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to open library root' });
+    }
+  },
+
+  async clearLibraryRoot() {
+    set({ error: null, loading: true });
+    try {
+      await ipcInvoke('library.clearRoot', undefined);
+      resolvedCoverFolderPaths.clear();
+      set({
+        libraryRoot: null,
+        sources: [],
+        mangas: [],
+        progress: idleProgress,
+        lastFetchOptions: {
+          sortBy: 'addedAtDesc'
+        }
+      });
+      await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to clear library root' });
+    } finally {
+      set({ loading: false });
+    }
+  },
+
+  async importDirectories(paths) {
+    set({ error: null });
+    try {
+      if (paths.length === 0) {
+        return;
+      }
+      const result = await ipcInvoke('library.importDirectories', { paths });
+      if (result.taskId) {
+        set({
+          progress: {
+            ...idleProgress,
+            taskId: result.taskId,
+            status: 'running',
+            message: 'Queued'
+          }
+        });
+      } else {
+        await get().fetchMangas();
+      }
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to import directories' });
+    }
+  },
+
+  async pickAndImportDirectories() {
+    set({ error: null });
+    try {
+      const picked = await ipcInvoke('library.pickImportDirectories', undefined);
+      if (picked.paths.length === 0) {
+        return;
+      }
+      await get().importDirectories(picked.paths);
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to pick directories' });
+    }
+  },
+
+  async syncLibrary() {
+    set({ error: null });
+    try {
+      const result = await ipcInvoke('library.syncLibrary', { forceRescan: true });
+      set({
+        progress: {
+          ...idleProgress,
+          taskId: result.taskId,
+          status: 'running',
+          message: 'Queued'
+        }
+      });
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to sync library' });
+    }
   },
 
   async handleScanTaskUpdate(payload) {
@@ -93,22 +269,13 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
 
     set({
       progress: {
-        taskId: null,
-        status: 'idle',
-        current: 0,
-        total: 0,
-        message: payload.status === 'completed' ? 'Idle' : payload.message,
-        sourceCurrent: 0,
-        sourceTotal: 0,
-        sourceName: '',
-        itemCurrent: 0,
-        itemTotal: 0,
-        currentItemName: ''
+        ...idleProgress,
+        message: payload.status === 'completed' ? 'Idle' : payload.message
       }
     });
 
     if (payload.status === 'completed') {
-      await Promise.all([get().fetchSources(), get().fetchMangas()]);
+      await Promise.all([get().fetchLibraryRoot(), get().fetchMangas()]);
       await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
     } else if (payload.status === 'failed') {
       set({ error: payload.error ?? 'Library sync failed' });
@@ -116,12 +283,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   async fetchSources() {
-    try {
-      const sources = await ipcInvoke('library.listSources', undefined);
-      set({ sources });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to load sources' });
-    }
+    await get().fetchLibraryRoot();
   },
 
   async fetchMangas(options) {
@@ -145,120 +307,27 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
   },
 
   async addSource(sourcePath) {
-    set({ error: null });
-    try {
-      await ipcInvoke('library.addSource', { path: sourcePath });
-      await Promise.all([get().fetchSources(), get().fetchMangas()]);
-      await get().refreshScanProgress();
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to add source' });
-    }
+    await get().importDirectories([sourcePath]);
   },
 
   async addSources(sourcePaths) {
-    set({ error: null });
-    try {
-      if (sourcePaths.length === 0) {
-        return;
-      }
-      const result = await ipcInvoke('library.addSources', { paths: sourcePaths });
-      await Promise.all([get().fetchSources(), get().fetchMangas()]);
-      if (result.taskId) {
-        set({
-          progress: {
-            taskId: result.taskId,
-            status: 'running',
-            current: 0,
-            total: 0,
-            message: 'Queued',
-            sourceCurrent: 0,
-            sourceTotal: 0,
-            sourceName: '',
-            itemCurrent: 0,
-            itemTotal: 0,
-            currentItemName: ''
-          }
-        });
-      }
-      if (result.added.length === 0 && result.skipped.length > 0) {
-        const firstSkip = result.skipped[0];
-        if (firstSkip) {
-          if (firstSkip.reason === 'DUPLICATE') {
-            set({ error: null });
-            return;
-          }
-          const message =
-            firstSkip.reason === 'NOT_FOUND'
-                ? `目录不存在: ${firstSkip.path}`
-                : firstSkip.reason === 'ORGANIZER_ROOT_CONFLICT'
-                  ? '检测到多个作者目录来源，仅允许导入一个作者目录来源。'
-                : '目录无效';
-          set({ error: message });
-        }
-      }
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to add sources' });
-    }
+    await get().importDirectories(sourcePaths);
   },
 
   async pickAndAddSources() {
-    set({ error: null });
-    try {
-      const picked = await ipcInvoke('library.pickSourceDirectories', undefined);
-      if (picked.paths.length === 0) {
-        return;
-      }
-      await get().addSources(picked.paths);
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to pick source directories' });
-    }
+    await get().pickAndImportDirectories();
   },
 
-  async removeSource(id) {
-    set({ error: null });
-    try {
-      await ipcInvoke('library.removeSource', { id });
-      await Promise.all([get().fetchSources(), get().fetchMangas()]);
-      await useOrganizerMetadataStore.getState().refreshOrganizerMetadata();
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to remove source' });
-    }
+  async removeSource() {
+    set({ error: '单库模式下不支持移除来源目录，请改为更换漫画库位置。' });
   },
 
-  async openSourceFolder(path) {
-    set({ error: null });
-    try {
-      await ipcInvoke('library.openSourceFolder', { path });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to open source folder' });
-    }
+  async openSourceFolder() {
+    await get().openLibraryRoot();
   },
 
-  async syncSources(paths) {
-    set({ error: null });
-    try {
-      const result = await ipcInvoke('library.syncSources', {
-        forceRescan: true,
-        ...(paths && paths.length > 0 ? { paths } : {})
-      });
-      set({
-        progress: {
-          taskId: result.taskId,
-          status: 'running',
-          current: 0,
-          total: 0,
-          message: 'Queued',
-          sourceCurrent: 0,
-          sourceTotal: 0,
-          sourceName: '',
-          itemCurrent: 0,
-          itemTotal: 0,
-          currentItemName: ''
-        }
-      });
-    } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to sync sources' });
-    }
+  async syncSources() {
+    await get().syncLibrary();
   },
 
   async cancelSync() {
@@ -268,19 +337,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
     }
     set({
       error: null,
-      progress: {
-        taskId: null,
-        status: 'idle',
-        current: 0,
-        total: 0,
-        message: 'Idle',
-        sourceCurrent: 0,
-        sourceTotal: 0,
-        sourceName: '',
-        itemCurrent: 0,
-        itemTotal: 0,
-        currentItemName: ''
-      }
+      progress: idleProgress
     });
     try {
       await ipcInvoke('library.cancelSync', {

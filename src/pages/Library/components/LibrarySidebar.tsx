@@ -14,7 +14,7 @@ import {
   Trash2,
   X
 } from 'lucide-react';
-import type { LibraryFolder } from '@shared/types';
+import type { LibraryRoot } from '@shared/types';
 import { Input } from '@renderer/components/ui/input';
 import { ipcInvoke } from '@renderer/ipc/client';
 import { cn } from '@renderer/lib/utils';
@@ -24,6 +24,7 @@ import { APP_NAME, APP_VERSION } from '@renderer/constants/appInfo';
 import appIconUrl from '../../../../build/icon.png';
 import type { TagItem } from '../types';
 import { SourceManagerDialog } from './SourceManagerDialog';
+import type { UnsortedImportSummary } from '../utils';
 
 interface LibrarySidebarProps {
   sidebarCollapsed: boolean;
@@ -31,18 +32,20 @@ interface LibrarySidebarProps {
   artistDirectories: OrganizerCategory[];
   tags: TagItem[];
   selectedTags: string[];
-  sources: LibraryFolder[];
+  libraryRoot: LibraryRoot | null;
   sourceMangaCountByPath: Record<string, number>;
+  unsortedImports: UnsortedImportSummary[];
   hasIpcBridge: boolean;
   scanRunning: boolean;
   onActiveMenuChange: (value: string) => void;
   onToggleTag: (id: string) => void;
   onClearSelectedTags: () => void;
   onOpenTagDialog: () => void;
-  onPickAndAddSources: () => void;
-  onOpenSourceFolder: (sourcePath: string) => void;
-  onSyncSource: (sourcePath: string) => void;
-  onRemoveSource: (sourceId: string) => void;
+  onPickAndSetLibraryRoot: () => void;
+  onOpenLibraryRoot: () => void;
+  onPickAndImportDirectories: () => void;
+  onSyncLibrary: () => void;
+  onClearLibraryRoot: () => void;
   importingAuthorDirectoryPath: string | null;
   onRequestImportToCategory: (category: OrganizerCategory) => void;
   onRequestAddAlias: (category: OrganizerCategory) => void;
@@ -69,18 +72,20 @@ export function LibrarySidebar({
   artistDirectories,
   tags,
   selectedTags,
-  sources,
+  libraryRoot,
   sourceMangaCountByPath,
+  unsortedImports,
   hasIpcBridge,
   scanRunning,
   onActiveMenuChange,
   onToggleTag,
   onClearSelectedTags,
   onOpenTagDialog,
-  onPickAndAddSources,
-  onOpenSourceFolder,
-  onSyncSource,
-  onRemoveSource,
+  onPickAndSetLibraryRoot,
+  onOpenLibraryRoot,
+  onPickAndImportDirectories,
+  onSyncLibrary,
+  onClearLibraryRoot,
   importingAuthorDirectoryPath,
   onRequestImportToCategory,
   onRequestAddAlias,
@@ -530,7 +535,7 @@ export function LibrarySidebar({
                 'sidebar-action-button group flex h-8 w-full items-center justify-center rounded-lg py-1.5 text-[12px] font-bold text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900',
                 sidebarCollapsed ? 'px-0' : 'px-2'
               )}
-              aria-label={`管理目录 (${sources.length})`}
+              aria-label={libraryRoot ? `漫画库 (${libraryRoot.displayName})` : '漫画库'}
               onClick={() => setSourceManagerOpen(true)}
             >
               <FolderCog className="h-4 w-4 transition-transform group-hover:rotate-12" />
@@ -563,15 +568,17 @@ export function LibrarySidebar({
 
       <SourceManagerDialog
         open={sourceManagerOpen}
-        sources={sources}
+        libraryRoot={libraryRoot}
         sourceMangaCountByPath={sourceMangaCountByPath}
+        unsortedImports={unsortedImports}
         hasIpcBridge={hasIpcBridge}
         scanRunning={scanRunning}
         onClose={() => setSourceManagerOpen(false)}
-        onPickAndAddSources={onPickAndAddSources}
-        onOpenSourceFolder={onOpenSourceFolder}
-        onSyncSource={onSyncSource}
-        onRemoveSource={onRemoveSource}
+        onPickAndSetLibraryRoot={onPickAndSetLibraryRoot}
+        onOpenLibraryRoot={onOpenLibraryRoot}
+        onPickAndImportDirectories={onPickAndImportDirectories}
+        onSyncLibrary={onSyncLibrary}
+        onClearLibraryRoot={onClearLibraryRoot}
       />
 
       {collapsedLibraryMenuOpen ? (

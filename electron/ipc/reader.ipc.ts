@@ -7,7 +7,7 @@ import type { MangaBook, ReaderChapter } from '@shared/types';
 import { normalizeAbsolutePath } from '@main/utils/pathUtils';
 import type { IpcContext } from './context';
 import { registerHandler, ok, fail } from './helpers';
-import { findArtistsDirectoryPath } from './organizer.common';
+import { findAuthorsDirectoryPath } from './organizer.common';
 
 const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const READER_MANUAL_CHAPTERS_KEY_PREFIX = 'reader_manual_chapters:';
@@ -207,12 +207,12 @@ function writeStoredChapterMetadata(
 }
 
 async function isMangaInsideAuthorDirectory(manga: MangaBook): Promise<boolean> {
-  const artistsDirectoryPath = await findArtistsDirectoryPath(manga.sourceFolderPath);
-  if (!artistsDirectoryPath) {
+  const authorsDirectoryPath = await findAuthorsDirectoryPath(manga.sourceFolderPath);
+  if (!authorsDirectoryPath) {
     return false;
   }
 
-  const normalizedArtistsDirectoryPath = normalizeAbsolutePath(artistsDirectoryPath);
+  const normalizedArtistsDirectoryPath = normalizeAbsolutePath(authorsDirectoryPath);
   const normalizedMangaFolderPath = normalizeAbsolutePath(manga.folderPath);
   if (!normalizedMangaFolderPath.startsWith(`${normalizedArtistsDirectoryPath}${path.sep}`)) {
     return false;

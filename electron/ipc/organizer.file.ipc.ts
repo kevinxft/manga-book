@@ -5,7 +5,13 @@ import type { DirectoryAlias, MangaStructure, OrganizerMergedMangaPath } from '@
 import type { IpcContext } from './context';
 import { fail, ok, registerHandler } from './helpers';
 import { invalidateAliasListCache, updateCachedCanonicalName } from './organizer.alias.ipc';
-import { listArtistsRoots, resolveSourceFolderPath } from './organizer.common';
+import {
+  getAuthorsDirectoryPath,
+  getLibraryRootPath,
+  isPathInsideDirectory,
+  listAuthorDirectories,
+  resolveSourceFolderPath
+} from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath, toKey } from '@main/utils/pathUtils';
 import { clearCoverPathCache, invalidateCoverPath } from '@main/scanner/coverFinder';
@@ -111,7 +117,8 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
     const nextFolderPath = moveTarget.path;
     await movePath(book.folderPath, nextFolderPath);
 
-    const sourcePaths = library.list().map((source) => source.path);
+    const sourceRootPath = getLibraryRootPath(library);
+    const sourcePaths = sourceRootPath ? [sourceRootPath] : [];
     const nextSourceFolderPath = resolveSourceFolderPath(nextFolderPath, sourcePaths, book.sourceFolderPath);
 
     invalidateCoverPath(book.folderPath);
@@ -135,7 +142,8 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
 
     await movePath(book.folderPath, nextFolderPath);
 
-    const sourcePaths = library.list().map((source) => source.path);
+    const sourceRootPath = getLibraryRootPath(library);
+    const sourcePaths = sourceRootPath ? [sourceRootPath] : [];
     const nextSourceFolderPath = resolveSourceFolderPath(nextFolderPath, sourcePaths, book.sourceFolderPath);
 
     invalidateCoverPath(book.folderPath);
@@ -155,19 +163,9 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
   });
 
   registerHandler('organizer.listAuthorDirectories', async () => {
-    const artistsRoots = await listArtistsRoots(library);
-    const directories: string[] = [];
-    const normalizedRoots = artistsRoots.map((rootPath) => normalizeAbsolutePath(rootPath));
-
-    for (const rootPath of normalizedRoots) {
-      if (!(await directoryExists(rootPath))) {
-        continue;
-      }
-      const children = (await listDirectories(rootPath)).filter((childPath) => !isMetadataDirectoryPath(childPath));
-      for (const childPath of children) {
-        directories.push(normalizeAbsolutePath(childPath));
-      }
-    }
+    const directories = await listAuthorDirectories(library);
+    const libraryRootPath = getLibraryRootPath(library);
+    const normalizedRoots = libraryRootPath ? [getAuthorsDirectoryPath(libraryRootPath)] : [];
 
     const mangaBooks = manga.list();
     const uniqueDirectories = Array.from(new Set(directories)).sort((a, b) => a.localeCompare(b));
@@ -218,19 +216,21 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
       return fail('VALIDATION', 'Invalid author directory name');
     }
 
-    const artistsRoots = await listArtistsRoots(library);
-    if (artistsRoots.length === 0) {
-      return fail('NO_TARGET_ROOT', 'No author-root directory found. Please keep exactly one imported source that contains author folders.');
+    const libraryRootPath = getLibraryRootPath(library);
+    if (!libraryRootPath) {
+      return fail('NO_TARGET_ROOT', '请先设置漫画库。');
     }
 
-    let targetRoot = artistsRoots[0] as string;
+    const authorsRootPath = getAuthorsDirectoryPath(libraryRootPath);
+    await ensureDirectory(authorsRootPath);
+
+    let targetRoot = authorsRootPath;
     const preferredBasePath = request.basePath?.trim();
     if (preferredBasePath) {
       const normalizedBasePath = normalizeAbsolutePath(preferredBasePath);
       const normalizedBaseParent = normalizeAbsolutePath(path.dirname(normalizedBasePath));
-      const matchedRoot = artistsRoots.find(
-        (rootPath) => rootPath === normalizedBasePath || rootPath === normalizedBaseParent
-      );
+      const matchedRoot =
+        authorsRootPath === normalizedBasePath || authorsRootPath === normalizedBaseParent ? authorsRootPath : null;
       if (matchedRoot) {
         targetRoot = matchedRoot;
       }
@@ -339,7 +339,8 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
       await ensureDirectory(targetPath);
     }
 
-    const sourceRoots = library.list().map((source) => source.path);
+    const sourceRootPath = getLibraryRootPath(library);
+    const sourceRoots = sourceRootPath ? [sourceRootPath] : [];
     const booksByFolderPath = new Map(manga.list().map((book) => [normalizeAbsolutePath(book.folderPath), book]));
     const movedMangas: OrganizerMergedMangaPath[] = [];
     const deletedSourcePaths: string[] = [];
@@ -431,13 +432,9 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
       return fail('NOT_FOUND', 'Author directory not found');
     }
 
-    const sourcePaths = library.list().map((source) => normalizeAbsolutePath(source.path));
-    const targetSourceRoot =
-      sourcePaths.find(
-        (sourcePath) => targetDirectoryPath === sourcePath || targetDirectoryPath.startsWith(`${sourcePath}${path.sep}`)
-      ) ?? null;
+    const targetSourceRoot = getLibraryRootPath(library);
     if (!targetSourceRoot) {
-      return fail('NO_SOURCE_ROOT', '未找到该作者目录对应的漫画来源目录。');
+      return fail('NO_SOURCE_ROOT', '请先设置漫画库。');
     }
 
     const result = await dialog.showOpenDialog({
@@ -529,9 +526,10 @@ export function registerOrganizerFileIpc(context: IpcContext): void {
       return fail('NOT_FOUND', 'Author directory not found');
     }
 
-    const artistsRoots = (await listArtistsRoots(library)).map((rootPath) => normalizeAbsolutePath(rootPath));
+    const libraryRootPath = getLibraryRootPath(library);
+    const authorsRootPath = libraryRootPath ? getAuthorsDirectoryPath(libraryRootPath) : null;
     const parentPath = normalizeAbsolutePath(path.dirname(currentPath));
-    if (!artistsRoots.includes(parentPath)) {
+    if (!authorsRootPath || normalizeAbsolutePath(authorsRootPath) !== parentPath) {
       return fail('VALIDATION', 'Only direct author directories can be deleted');
     }
 

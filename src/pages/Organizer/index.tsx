@@ -20,7 +20,6 @@ import { AddTagPopover } from '@renderer/components/manga/AddTagPopover';
 import { RenameMangaDialog } from '@renderer/components/manga/RenameMangaDialog';
 import { useOrganizerMetadataStore } from '@renderer/stores/organizerMetadataStore';
 import { useOrganizerSelectionStore } from '@renderer/stores/organizerSelectionStore';
-import { resolveTargetSourcePaths } from '@renderer/pages/Library/utils';
 
 interface OrganizerPageProps {
   active?: boolean;
@@ -40,16 +39,15 @@ const OrganizerFooter = memo(function OrganizerFooter({ visibleCount }: { visibl
   );
 });
 
-const EMPTY_SOURCES = [] as ReturnType<typeof useLibraryStore.getState>['sources'];
 const EMPTY_MANGAS = [] as ReturnType<typeof useLibraryStore.getState>['mangas'];
 const EMPTY_AUTHOR_DIRECTORIES = [] as ReturnType<typeof useOrganizerMetadataStore.getState>['authorDirectories'];
 const noopAsync = async () => {};
 const noop = () => {};
 
 export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerPageProps) {
-  const { sources, mangas, loading, error, fetchMangas, fetchCoverPaths, updateMangaLocal, removeMangaLocal } = useLibraryStore(
+  const { libraryRoot, mangas, loading, error, fetchMangas, fetchCoverPaths, updateMangaLocal, removeMangaLocal } = useLibraryStore(
     useShallow((state) => ({
-      sources: active ? state.sources : EMPTY_SOURCES,
+      libraryRoot: active ? state.libraryRoot : null,
       mangas: active ? state.mangas : EMPTY_MANGAS,
       loading: active ? state.loading : false,
       error: active ? state.error : null,
@@ -66,8 +64,8 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
     [authorDirectories]
   );
   const targetSourcePaths = useMemo(
-    () => resolveTargetSourcePaths(sources, authorDirectoryPaths),
-    [authorDirectoryPaths, sources]
+    () => (libraryRoot?.path ? [`${libraryRoot.path}/Authors`] : []),
+    [libraryRoot]
   );
   const {
     aliases,
@@ -89,8 +87,6 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
   const {
     query,
     setQuery,
-    statusFilter,
-    setStatusFilter,
     sourceFilter,
     setSourceFilter,
     sourceOptions,
@@ -201,14 +197,12 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <OrganizerHeader
           query={query}
-          statusFilter={statusFilter}
           sourceFilter={sourceFilter}
           sourceOptions={sourceOptions}
           sortBy={sortBy}
           visibleItems={visibleItems}
           onBack={onBack}
           onQueryChange={setQuery}
-          onStatusFilterChange={setStatusFilter}
           onSourceFilterChange={setSourceFilter}
           onSortByChange={setSortBy}
         />
@@ -226,7 +220,7 @@ export function OrganizerPage({ active = true, onBack, onOpenManga }: OrganizerP
               error={error}
               visibleItems={visibleItems}
               categories={categories}
-              scrollToTopKey={`${statusFilter}:${sourceFilter}:${query}`}
+              scrollToTopKey={`${sourceFilter}:${query}`}
               onVisibleItemsChange={handleVisibleItemsChange}
               onToggleItem={toggleItem}
               onOpenManga={(item) => onOpenManga?.(item, visibleItems.map((visibleItem) => visibleItem.id))}
