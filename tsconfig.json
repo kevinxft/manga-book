@@ -12,11 +12,10 @@
     "jsx": "react-jsx",
     "types": ["node"],
     "skipLibCheck": true,
-    "baseUrl": ".",
     "paths": {
-      "@shared/*": ["shared/*"],
-      "@main/*": ["electron/*"],
-      "@renderer/*": ["src/*"]
+      "@shared/*": ["./shared/*"],
+      "@main/*": ["./electron/*"],
+      "@renderer/*": ["./src/*"]
     }
   },
   "include": ["electron", "src", "shared", "electron.vite.config.ts"],
