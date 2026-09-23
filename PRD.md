@@ -63,7 +63,7 @@
 - 右键操作：打开、移动、重命名、标签、删除
 
 ## 5.2 整理中心（Organizer）
-- 固定根目录（包含 Artists / Series / Inbox）
+- 固定根目录采用当前产品结构：`Authors / Unsorted`；作者目录下支持漫画目录和多卷目录
 - 来源目录多选过滤
 - 批量整理（按分类移动）
 - 快速移动（右键）
@@ -230,13 +230,14 @@ CREATE INDEX idx_aliases_canonical_key ON directory_aliases(canonical_key);
 
 ## 6.4 文件系统约定
 - 一个漫画 = 一个目录
-- 支持图片：`.jpg .jpeg .png .webp`
+- 支持图片：`.jpg .jpeg .png .webp .avif .bmp .gif .heic .heif .tif .tiff`
 - 单卷：目录直接包含图片
 - 多卷：子目录包含图片
-- 固定整理根下目录：
-  - `Artists/<name>/...`
-  - `Series/<name>/...`
-  - `Inbox/...`
+- 扫描读目录发生权限或 I/O 错误时保留原有记录，不基于不完整扫描清理数据。
+- 图片格式须在扫描、阅读与导入流程中保持一致。
+- 当前实现使用 `Authors/<author>/...` 和 `Unsorted/...`
+- `Artists / Series / Inbox` 属于早期规划命名，不是当前默认目录结构
+
 
 ## 6.5 缓存结构（非持久主数据）
 

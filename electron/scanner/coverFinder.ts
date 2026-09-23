@@ -1,7 +1,6 @@
 import path from 'node:path';
+import { isSupportedImageFile } from '@main/utils/imageFiles';
 import { listDirectories, listFiles } from '@main/utils/fsUtils';
-
-const SUPPORTED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 
 interface CoverPathCacheEntry {
   folderPath: string;
@@ -19,11 +18,6 @@ function isIgnorableDirectoryReadError(error: unknown): boolean {
     (error.code === 'ENOENT' || error.code === 'ENOTDIR')
   );
 }
-
-function isImage(filePath: string): boolean {
-  return SUPPORTED_EXTENSIONS.has(path.extname(filePath).toLowerCase());
-}
-
 async function findCoverInDirectory(directoryPath: string): Promise<string | null> {
   let files: string[];
   try {
@@ -35,7 +29,7 @@ async function findCoverInDirectory(directoryPath: string): Promise<string | nul
     throw error;
   }
   const sorted = files.sort((a, b) => a.localeCompare(b));
-  const firstImage = sorted.find(isImage);
+  const firstImage = sorted.find((filePath) => isSupportedImageFile(filePath));
   return firstImage ?? null;
 }
 

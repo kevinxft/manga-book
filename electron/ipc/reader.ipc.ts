@@ -1,23 +1,21 @@
 import fs from 'node:fs/promises';
+import { isSupportedImageFile } from '@main/utils/imageFiles';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type Database from 'better-sqlite3';
 import { shell } from 'electron';
 import type { MangaBook, ReaderChapter } from '@shared/types';
-import { normalizeAbsolutePath } from '@main/utils/pathUtils';
 import type { IpcContext } from './context';
 import { registerHandler, ok, fail } from './helpers';
-import { findAuthorsDirectoryPath } from './organizer.common';
 
-const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
 const READER_MANUAL_CHAPTERS_KEY_PREFIX = 'reader_manual_chapters:';
-const READER_CHAPTER_METADATA_KEY_PREFIX = 'reader_chapter_metadata:';
 const MAX_CHAPTER_TITLE_LENGTH = 120;
+const READER_CHAPTER_METADATA_KEY_PREFIX = 'reader_chapter_metadata:';
 
 async function listImagePaths(directoryPath: string): Promise<string[]> {
   const entries = await fs.readdir(directoryPath, { withFileTypes: true });
   return entries
-    .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+    .filter((entry) => entry.isFile() && isSupportedImageFile(entry.name))
     .map((entry) => path.join(directoryPath, entry.name))
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 }
@@ -206,22 +204,6 @@ function writeStoredChapterMetadata(
   });
 }
 
-async function isMangaInsideAuthorDirectory(manga: MangaBook): Promise<boolean> {
-  const authorsDirectoryPath = await findAuthorsDirectoryPath(manga.sourceFolderPath);
-  if (!authorsDirectoryPath) {
-    return false;
-  }
-
-  const normalizedArtistsDirectoryPath = normalizeAbsolutePath(authorsDirectoryPath);
-  const normalizedMangaFolderPath = normalizeAbsolutePath(manga.folderPath);
-  if (!normalizedMangaFolderPath.startsWith(`${normalizedArtistsDirectoryPath}${path.sep}`)) {
-    return false;
-  }
-
-  const relativeSegments = path.relative(normalizedArtistsDirectoryPath, normalizedMangaFolderPath).split(path.sep).filter(Boolean);
-  return relativeSegments.length >= 2;
-}
-
 async function listBaseReaderChaptersForManga(
   manga: MangaBook,
   canEditManualChapters: boolean,
@@ -379,7 +361,7 @@ export function registerReaderIpc(context: IpcContext): void {
     }
 
     try {
-      const chapters = await listReaderChaptersForManga(existing, sourceMetadata, await isMangaInsideAuthorDirectory(existing));
+      const chapters = await listReaderChaptersForManga(existing, sourceMetadata, true);
       return ok(chapters);
     } catch (error) {
       return fail('FS_ERROR', error instanceof Error ? error.message : 'Failed to list manga chapters');
@@ -393,9 +375,6 @@ export function registerReaderIpc(context: IpcContext): void {
     }
     if (existing.structure !== 'singleVolume') {
       return fail('UNSUPPORTED', '当前漫画已按目录分章节，暂不支持在阅读页新增章节。');
-    }
-    if (!(await isMangaInsideAuthorDirectory(existing))) {
-      return fail('VALIDATION_ERROR', '只有作者目录下的漫画才能设定章节。');
     }
 
     try {
@@ -444,9 +423,6 @@ export function registerReaderIpc(context: IpcContext): void {
     if (existing.structure !== 'singleVolume') {
       return fail('UNSUPPORTED', '当前漫画已按目录分章节，暂不支持删除章节。');
     }
-    if (!(await isMangaInsideAuthorDirectory(existing))) {
-      return fail('VALIDATION_ERROR', '只有作者目录下的漫画才能设定章节。');
-    }
 
     const chapterId = request.chapterId?.trim();
     if (!chapterId || chapterId.startsWith('generated:')) {
@@ -479,11 +455,6 @@ export function registerReaderIpc(context: IpcContext): void {
       return fail('NOT_FOUND', 'Manga not found');
     }
 
-    const canManageChapters = await isMangaInsideAuthorDirectory(existing);
-    if (!canManageChapters) {
-      return fail('VALIDATION_ERROR', '只有作者目录下的漫画才能编辑章节。');
-    }
-
     const chapterId = request.chapterId?.trim();
     if (!chapterId) {
       return fail('VALIDATION_ERROR', '章节标识无效。');
@@ -496,7 +467,7 @@ export function registerReaderIpc(context: IpcContext): void {
     }
 
     try {
-      const baseChapters = await listBaseReaderChaptersForManga(existing, canManageChapters, sourceMetadata);
+      const baseChapters = await listBaseReaderChaptersForManga(existing, true, sourceMetadata);
       const targetChapter = baseChapters.find((chapter) => chapter.id === chapterId);
       if (!targetChapter) {
         return fail('NOT_FOUND', 'Chapter not found');
@@ -520,7 +491,7 @@ export function registerReaderIpc(context: IpcContext): void {
         })
       );
 
-      return ok(await listReaderChaptersForManga(existing, sourceMetadata, canManageChapters));
+      return ok(await listReaderChaptersForManga(existing, sourceMetadata, true));
     } catch (error) {
       return fail('FS_ERROR', error instanceof Error ? error.message : 'Failed to update manga chapter');
     }

@@ -14,12 +14,12 @@ import {
 } from './organizer.common';
 import { directoryExists, ensureDirectory, listDirectories, movePath, pathExists } from '@main/utils/fsUtils';
 import { normalizeAbsolutePath, toKey } from '@main/utils/pathUtils';
-import { clearCoverPathCache, invalidateCoverPath } from '@main/scanner/coverFinder';
 import { isMetadataDirectoryPath } from '@main/db/sourceMetadata';
-
+import { clearCoverPathCache, invalidateCoverPath } from '@main/scanner/coverFinder';
+import { isSupportedImageFile } from '@main/utils/imageFiles';
 const AUTHOR_ALIAS_METADATA_FILENAME = '.mangabook-author.json';
 const IGNORABLE_AUTHOR_DIRECTORY_FILES = new Set([AUTHOR_ALIAS_METADATA_FILENAME, '.DS_Store']);
-const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp']);
+
 const MIN_MANGA_IMAGE_COUNT = 4;
 
 async function getAvailableDirectoryPath(
@@ -62,7 +62,7 @@ async function assertDirectoryHasOnlyChildDirectories(directoryPath: string): Pr
 async function listImageFiles(directoryPath: string): Promise<string[]> {
   const entries = await fs.readdir(directoryPath, { withFileTypes: true });
   return entries
-    .filter((entry) => entry.isFile() && IMAGE_EXTENSIONS.has(path.extname(entry.name).toLowerCase()))
+    .filter((entry) => entry.isFile() && isSupportedImageFile(entry.name))
     .map((entry) => path.join(directoryPath, entry.name));
 }
 

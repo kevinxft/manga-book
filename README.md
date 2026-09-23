@@ -5,7 +5,7 @@
 ## 特性
 
 - 导入本地漫画目录，递归扫描并建立漫画库
-- 支持 `Artists / Series / 未整理` 分类筛选
+- 支持 `Authors / Unsorted` 分类筛选；可在作者目录下整理系列
 - 支持重新扫描、导入目录管理、重复目录自动跳过
 - 漫画封面网格展示（含作者角标、页数）
 - 阅读器支持：
@@ -26,9 +26,9 @@
 
 ## 开发环境
 
-- Node.js 18+
+- Node.js 20.19+ 或 22.12+（Vite 7 要求）
 - Bun 1.0+
-- macOS / Windows / Linux（当前主要在 macOS 下开发验证）
+- 当前主要在 macOS 下开发验证；Windows/Linux 尚未逐平台验证
 
 ## 快速开始
 
@@ -73,9 +73,11 @@ src/             # 渲染进程（React UI）
 
 ## 目录识别规则（当前实现）
 
-- 递归扫描目录
-- 当某目录下图片文件数量 >= 4 时，识别为一本漫画
-- 支持 `Artists` 结构下作者名识别与展示
+- 漫画目录包含至少 4 张受支持图片时识别为单卷；作者目录下可按子目录识别多卷
+- 支持 `Authors` 作者结构和 `Unsorted` 待整理目录
+- 图片格式：`.jpg .jpeg .png .webp .avif .bmp .gif .heic .heif .tif .tiff`
+- `Artists / Series / Inbox` 为早期规划命名，当前默认目录为 `Authors / Unsorted`
+- 扫描时遇到目录读取错误会中止清理阶段，避免因部分扫描结果删掉漫画记录
 
 ## License
 
