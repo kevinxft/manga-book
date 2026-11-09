@@ -30,6 +30,10 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string></string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>漫书使用麦克风接收您的语音指令。</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>漫书使用语音识别支持语音搜索与免动手语音翻页。</string>
 	<key>NSSupportsAutomaticTermination</key>
 	<true/>
 	<key>NSSupportsSuddenTermination</key>

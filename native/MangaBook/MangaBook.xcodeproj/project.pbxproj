@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		04CC9837DACB6F06BEF2D6A3 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE198C45ECD13D271725A0FE /* GlassComponents.swift */; };
 		0DAC4A78D871EDC877DB0504 /* library-folder-icon.png in Resources */ = {isa = PBXBuildFile; fileRef = C9FD34F293D83B3E3A03E6C2 /* library-folder-icon.png */; };
 		13F860C0B003C4269898745F /* TagEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3399029B848A6F3D9A04CCDF /* TagEditorSheet.swift */; };
 		16E067D0C14207807CA0FC63 /* OrganizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F345F48B6397FCB6567CC75 /* OrganizerView.swift */; };
@@ -18,6 +19,7 @@
 		3A140D954B7BFB0BBAC734AB /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F3119D6B1D0AF546764C89B /* OnboardingView.swift */; };
 		3AE5ACBBEC6446536B595ABD /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18FF7BFE0E77C4ADA97037AE /* SidebarView.swift */; };
 		401A171D27ABBDEA12951359 /* MangaBookApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22A891EB968A26AE98F2A656 /* MangaBookApp.swift */; };
+		4B5B281B8963F07A79950FCE /* SpeechUI.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBC0BB83D9F91EC3829088D1 /* SpeechUI.swift */; };
 		5928C53636835076EF54BB95 /* KeyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058AA757DD6571821D1EC8A9 /* KeyMonitor.swift */; };
 		5BE7F597BFFFAFFF04523741 /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 495DF2DB8B44321CE01C3D36 /* ReaderView.swift */; };
 		61AE75D7E37E8BF1DBFD9915 /* AuthorAliasesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5670C06B8446963075987AB9 /* AuthorAliasesSheet.swift */; };
@@ -26,6 +28,7 @@
 		7D088E2D82A0BFC3EAF312F2 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCE8D301BB7D883ADDBA3487 /* RootView.swift */; };
 		885A1BED102C91BC31F05B40 /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = FB35141F36FDA6A694A589ED /* AppModel.swift */; };
 		95D61591553B29E345B71753 /* MangaGridItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE233061C67280A71742757B /* MangaGridItem.swift */; };
+		9D0A3547DA10FBC6374F02EE /* SpeechService.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFE01EA849E9FBD9897194CC /* SpeechService.swift */; };
 		A7B70E57CC59ABC46038C7CF /* SetAuthorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95C679D2EFD878548470D351 /* SetAuthorSheet.swift */; };
 		AA75DB41A3AC40B3E21D4498 /* CreateAuthorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D6A590F861FB64F3D02EF6C /* CreateAuthorSheet.swift */; };
 		ACF873E710C9ECB3A0EC8418 /* icon.png in Resources */ = {isa = PBXBuildFile; fileRef = EB827A88114CE8D9C59CCAA8 /* icon.png */; };
@@ -59,12 +62,15 @@
 		BE233061C67280A71742757B /* MangaGridItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MangaGridItem.swift; sourceTree = "<group>"; };
 		C9FD34F293D83B3E3A03E6C2 /* library-folder-icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "library-folder-icon.png"; sourceTree = "<group>"; };
 		CCE8D301BB7D883ADDBA3487 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		CE198C45ECD13D271725A0FE /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassComponents.swift; sourceTree = "<group>"; };
 		DE97A0ABB8E67C8ECFD7A7ED /* MergeAuthorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MergeAuthorSheet.swift; sourceTree = "<group>"; };
 		E8F81D6BE9D1174025536861 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		EB827A88114CE8D9C59CCAA8 /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon.png; sourceTree = "<group>"; };
 		EB8C744144E3C7DAD66EB323 /* PageEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PageEditorSheet.swift; sourceTree = "<group>"; };
 		FA9DC2826DFCF7BD45A288C5 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		FB35141F36FDA6A694A589ED /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		FBC0BB83D9F91EC3829088D1 /* SpeechUI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechUI.swift; sourceTree = "<group>"; };
+		FFE01EA849E9FBD9897194CC /* SpeechService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -121,6 +127,7 @@
 				FB35141F36FDA6A694A589ED /* AppModel.swift */,
 				5670C06B8446963075987AB9 /* AuthorAliasesSheet.swift */,
 				4D6A590F861FB64F3D02EF6C /* CreateAuthorSheet.swift */,
+				CE198C45ECD13D271725A0FE /* GlassComponents.swift */,
 				058AA757DD6571821D1EC8A9 /* KeyMonitor.swift */,
 				2184958984069E6A2BC321B9 /* LibraryView.swift */,
 				22A891EB968A26AE98F2A656 /* MangaBookApp.swift */,
@@ -138,6 +145,8 @@
 				95C679D2EFD878548470D351 /* SetAuthorSheet.swift */,
 				E8F81D6BE9D1174025536861 /* SettingsView.swift */,
 				18FF7BFE0E77C4ADA97037AE /* SidebarView.swift */,
+				FFE01EA849E9FBD9897194CC /* SpeechService.swift */,
+				FBC0BB83D9F91EC3829088D1 /* SpeechUI.swift */,
 				1CACE6AB3704B6446C418795 /* StartupErrorView.swift */,
 				3399029B848A6F3D9A04CCDF /* TagEditorSheet.swift */,
 				FA9DC2826DFCF7BD45A288C5 /* Theme.swift */,
@@ -225,6 +234,7 @@
 				885A1BED102C91BC31F05B40 /* AppModel.swift in Sources */,
 				61AE75D7E37E8BF1DBFD9915 /* AuthorAliasesSheet.swift in Sources */,
 				AA75DB41A3AC40B3E21D4498 /* CreateAuthorSheet.swift in Sources */,
+				04CC9837DACB6F06BEF2D6A3 /* GlassComponents.swift in Sources */,
 				5928C53636835076EF54BB95 /* KeyMonitor.swift in Sources */,
 				B8462086655681B763CA7B82 /* LibraryView.swift in Sources */,
 				401A171D27ABBDEA12951359 /* MangaBookApp.swift in Sources */,
@@ -242,6 +252,8 @@
 				A7B70E57CC59ABC46038C7CF /* SetAuthorSheet.swift in Sources */,
 				1C977AC71F136083111457D0 /* SettingsView.swift in Sources */,
 				3AE5ACBBEC6446536B595ABD /* SidebarView.swift in Sources */,
+				9D0A3547DA10FBC6374F02EE /* SpeechService.swift in Sources */,
+				4B5B281B8963F07A79950FCE /* SpeechUI.swift in Sources */,
 				F2C93E48CA50A72B5ABDF15B /* StartupErrorView.swift in Sources */,
 				13F860C0B003C4269898745F /* TagEditorSheet.swift in Sources */,
 				663A19FEF356D6F3E5E52046 /* Theme.swift in Sources */,

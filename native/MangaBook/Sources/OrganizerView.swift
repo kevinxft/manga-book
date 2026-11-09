@@ -222,6 +222,9 @@ struct OrganizerView: View {
                     .foregroundStyle(.tertiary)
                 TextField("搜索漫画标题…", text: $mangaQuery)
                     .textFieldStyle(.plain)
+                VoiceSearchButton { text in
+                    mangaQuery = text
+                }
                 if !mangaQuery.isEmpty {
                     Button {
                         mangaQuery = ""
@@ -369,7 +372,9 @@ struct OrganizerView: View {
         }
         .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.standard)
-        .background(Color.secondary.opacity(0.04))
+        .liquidGlassCard(cornerRadius: Theme.Radius.standard)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
     }
 
     private var authorSearchBar: some View {
@@ -379,6 +384,9 @@ struct OrganizerView: View {
             TextField("过滤作者目录…", text: $authorQuery)
                 .textFieldStyle(.plain)
                 .font(.callout)
+            VoiceSearchButton { text in
+                authorQuery = text
+            }
             if !authorQuery.isEmpty {
                 Button {
                     authorQuery = ""

@@ -47,6 +47,12 @@ struct LibraryView: View {
         .searchable(text: $model.searchText, placement: .toolbar, prompt: "搜索标题或路径")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
+                VoiceSearchButton { text in
+                    model.searchText = text
+                }
+            }
+
+            ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Picker("排序", selection: $model.sort) {
                         ForEach(MangaSort.allCases, id: \.self) { option in
@@ -116,56 +122,58 @@ private struct TagFilterBar: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: Theme.Spacing.tight) {
-                TagPillButton(
-                    title: "全部",
-                    systemImage: "square.grid.2x2",
-                    count: nil,
-                    isSelected: model.selectedTag == nil
-                ) {
-                    model.selectedTag = nil
-                }
-
-                ForEach(model.tags) { tag in
-                    let count = model.tagCount(tag.name)
+            LiquidGlass.container(spacing: Theme.Spacing.tight) {
+                HStack(spacing: Theme.Spacing.tight) {
                     TagPillButton(
-                        title: tag.name,
-                        systemImage: "tag.fill",
-                        count: count,
-                        isSelected: model.selectedTag == tag.name
+                        title: "全部",
+                        systemImage: "square.grid.2x2",
+                        count: nil,
+                        isSelected: model.selectedTag == nil
                     ) {
-                        if model.selectedTag == tag.name {
-                            model.selectedTag = nil
-                        } else {
-                            model.selectedTag = tag.name
-                        }
-                    }
-                    .contextMenu {
-                        Button("删除标签", role: .destructive) {
-                            Task { await model.deleteTag(tag) }
-                        }
-                    }
-                }
-
-                if model.selectedTag != nil {
-                    Button {
                         model.selectedTag = nil
-                    } label: {
-                        HStack(spacing: 3) {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.caption)
-                            Text("清除筛选")
-                                .font(.caption)
-                        }
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
                     }
-                    .buttonStyle(.plain)
+
+                    ForEach(model.tags) { tag in
+                        let count = model.tagCount(tag.name)
+                        TagPillButton(
+                            title: tag.name,
+                            systemImage: "tag.fill",
+                            count: count,
+                            isSelected: model.selectedTag == tag.name
+                        ) {
+                            if model.selectedTag == tag.name {
+                                model.selectedTag = nil
+                            } else {
+                                model.selectedTag = tag.name
+                            }
+                        }
+                        .contextMenu {
+                            Button("删除标签", role: .destructive) {
+                                Task { await model.deleteTag(tag) }
+                            }
+                        }
+                    }
+
+                    if model.selectedTag != nil {
+                        Button {
+                            model.selectedTag = nil
+                        } label: {
+                            HStack(spacing: 3) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption)
+                                Text("清除筛选")
+                                    .font(.caption)
+                            }
+                            .foregroundStyle(.secondary)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
+                .padding(.horizontal, Theme.Spacing.generous)
+                .padding(.vertical, 8)
             }
-            .padding(.horizontal, Theme.Spacing.generous)
-            .padding(.vertical, 8)
         }
         .background(.bar)
     }
@@ -193,7 +201,7 @@ private struct TagPillButton: View {
                 if let count {
                     Text("\(count)")
                         .font(.caption2.monospacedDigit())
-                        .foregroundStyle(isSelected ? Color.accentColor.opacity(0.8) : Color.secondary)
+                        .foregroundStyle(isSelected ? Color.accentColor.opacity(0.85) : Color.secondary)
                         .padding(.horizontal, 4)
                         .padding(.vertical, 1)
                         .background(
@@ -204,17 +212,9 @@ private struct TagPillButton: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 5)
             .contentShape(Capsule())
-            .background(
-                Capsule().fill(isSelected ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.06))
-            )
-            .overlay(
-                Capsule().stroke(
-                    isSelected ? Color.accentColor.opacity(0.6) : Color.primary.opacity(0.08),
-                    lineWidth: 1
-                )
-            )
         }
         .buttonStyle(.plain)
+        .liquidGlassCapsule(interactive: true, tint: isSelected ? Color.accentColor : nil)
         .animation(.snappy(duration: 0.16), value: isSelected)
     }
 }

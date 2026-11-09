@@ -155,11 +155,11 @@ struct ReaderView: View {
                                 .font(.system(size: 10, weight: .semibold))
                         }
                         .padding(.horizontal, 6)
-                        .padding(.vertical, 1.5)
-                        .background(Capsule().fill(Color.accentColor.opacity(0.20)))
-                        .foregroundStyle(Color.accentColor)
+                        .padding(.vertical, 2)
+                        .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .liquidGlassCapsule(interactive: true, tint: Color.accentColor)
                     .help("设置或更改此漫画的作者目录")
 
                     ForEach(model.tags(for: book).prefix(3)) { tag in
@@ -177,7 +177,11 @@ struct ReaderView: View {
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 4) {
+            HStack(spacing: 6) {
+                HandsFreeReaderControl { command in
+                    handleVoiceCommand(command)
+                }
+
                 iconButton("list.bullet.rectangle", help: "章节列表") {
                     withAnimation(.easeOut(duration: 0.15)) { showChapterPanel.toggle() }
                 }
@@ -191,10 +195,7 @@ struct ReaderView: View {
         }
         .padding(.horizontal, Theme.Spacing.generous)
         .frame(height: 50)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5)
-        }
+        .applyLiquidGlass(in: .rect(cornerRadius: 0))
     }
 
     private func iconButton(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {
@@ -341,10 +342,7 @@ struct ReaderView: View {
         }
         .padding(.horizontal, Theme.Spacing.generous)
         .frame(height: 52)
-        .background(.ultraThinMaterial)
-        .overlay(alignment: .top) {
-            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5)
-        }
+        .applyLiquidGlass(in: .rect(cornerRadius: 0))
     }
 
     // MARK: - Chapter panel
@@ -519,6 +517,17 @@ struct ReaderView: View {
             widthModeRaw = widthMode == .fit ? ReaderWidthMode.fixed.rawValue : ReaderWidthMode.fit.rawValue
         }
         return true
+    }
+
+    private func handleVoiceCommand(_ command: VoiceCommand) {
+        switch command {
+        case .nextPage:
+            setPage(currentIndex + 1)
+        case .previousPage:
+            setPage(currentIndex - 1)
+        case .close:
+            close()
+        }
     }
 
     private func scheduleSave() {
