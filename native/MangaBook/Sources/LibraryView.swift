@@ -191,21 +191,21 @@ private struct TagPillButton: View {
             HStack(spacing: 5) {
                 Image(systemName: systemImage)
                     .font(.caption2)
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+                    .foregroundStyle(isSelected ? Color.white : Color.secondary)
 
                 Text(title)
                     .font(.caption)
                     .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+                    .foregroundStyle(isSelected ? Color.white : Color.primary)
 
                 if let count {
                     Text("\(count)")
                         .font(.caption2.monospacedDigit())
-                        .foregroundStyle(isSelected ? Color.accentColor.opacity(0.85) : Color.secondary)
-                        .padding(.horizontal, 4)
+                        .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
+                        .padding(.horizontal, 5)
                         .padding(.vertical, 1)
                         .background(
-                            Capsule().fill(isSelected ? Color.accentColor.opacity(0.18) : Color.secondary.opacity(0.12))
+                            Capsule().fill(isSelected ? Color.white.opacity(0.22) : Color.secondary.opacity(0.12))
                         )
                 }
             }
