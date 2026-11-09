@@ -116,58 +116,56 @@ private struct TagFilterBar: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LiquidGlass.container(spacing: Theme.Spacing.tight) {
-                HStack(spacing: Theme.Spacing.tight) {
+            HStack(spacing: Theme.Spacing.tight) {
+                TagPillButton(
+                    title: "全部",
+                    systemImage: "square.grid.2x2",
+                    count: nil,
+                    isSelected: model.selectedTag == nil
+                ) {
+                    model.selectedTag = nil
+                }
+
+                ForEach(model.tags) { tag in
+                    let count = model.tagCount(tag.name)
                     TagPillButton(
-                        title: "全部",
-                        systemImage: "square.grid.2x2",
-                        count: nil,
-                        isSelected: model.selectedTag == nil
+                        title: tag.name,
+                        systemImage: "tag.fill",
+                        count: count,
+                        isSelected: model.selectedTag == tag.name
                     ) {
-                        model.selectedTag = nil
-                    }
-
-                    ForEach(model.tags) { tag in
-                        let count = model.tagCount(tag.name)
-                        TagPillButton(
-                            title: tag.name,
-                            systemImage: "tag.fill",
-                            count: count,
-                            isSelected: model.selectedTag == tag.name
-                        ) {
-                            if model.selectedTag == tag.name {
-                                model.selectedTag = nil
-                            } else {
-                                model.selectedTag = tag.name
-                            }
-                        }
-                        .contextMenu {
-                            Button("删除标签", role: .destructive) {
-                                Task { await model.deleteTag(tag) }
-                            }
-                        }
-                    }
-
-                    if model.selectedTag != nil {
-                        Button {
+                        if model.selectedTag == tag.name {
                             model.selectedTag = nil
-                        } label: {
-                            HStack(spacing: 3) {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.caption)
-                                Text("清除筛选")
-                                    .font(.caption)
-                            }
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
+                        } else {
+                            model.selectedTag = tag.name
                         }
-                        .buttonStyle(.plain)
+                    }
+                    .contextMenu {
+                        Button("删除标签", role: .destructive) {
+                            Task { await model.deleteTag(tag) }
+                        }
                     }
                 }
-                .padding(.horizontal, Theme.Spacing.generous)
-                .padding(.vertical, 8)
+
+                if model.selectedTag != nil {
+                    Button {
+                        model.selectedTag = nil
+                    } label: {
+                        HStack(spacing: 3) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.caption)
+                            Text("清除筛选")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
+            .padding(.horizontal, Theme.Spacing.generous)
+            .padding(.vertical, 8)
         }
         .background(.bar)
     }
@@ -182,33 +180,37 @@ private struct TagPillButton: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Image(systemName: systemImage)
                     .font(.caption2)
-                    .foregroundStyle(isSelected ? Color.white : Color.secondary)
 
                 Text(title)
                     .font(.caption)
                     .fontWeight(isSelected ? .semibold : .regular)
-                    .foregroundStyle(isSelected ? Color.white : Color.primary)
 
                 if let count {
                     Text("\(count)")
                         .font(.caption2.monospacedDigit())
-                        .foregroundStyle(isSelected ? Color.white.opacity(0.9) : Color.secondary)
-                        .padding(.horizontal, 5)
-                        .padding(.vertical, 1)
+                        .opacity(0.85)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 0.5)
                         .background(
                             Capsule().fill(isSelected ? Color.white.opacity(0.22) : Color.secondary.opacity(0.12))
                         )
                 }
             }
-            .padding(.horizontal, 10)
+            .foregroundStyle(isSelected ? Color.white : Color.primary)
+            .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .contentShape(Capsule())
+            .background(
+                Capsule().fill(isSelected ? Color.accentColor : Color.secondary.opacity(0.08))
+            )
+            .overlay(
+                Capsule().stroke(isSelected ? Color.clear : Color.primary.opacity(0.08), lineWidth: 0.5)
+            )
         }
         .buttonStyle(.plain)
-        .liquidGlassCapsule(interactive: true, tint: isSelected ? Color.accentColor : nil)
         .animation(.snappy(duration: 0.16), value: isSelected)
     }
 }

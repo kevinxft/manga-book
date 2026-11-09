@@ -156,10 +156,10 @@ struct ReaderView: View {
                         }
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
-                        .contentShape(Capsule())
+                        .background(Capsule().fill(Color.accentColor.opacity(0.18)))
+                        .foregroundStyle(Color.accentColor)
                     }
                     .buttonStyle(.plain)
-                    .liquidGlassCapsule(interactive: true, tint: Color.accentColor)
                     .help("设置或更改此漫画的作者目录")
 
                     ForEach(model.tags(for: book).prefix(3)) { tag in
@@ -191,7 +191,10 @@ struct ReaderView: View {
         }
         .padding(.horizontal, Theme.Spacing.generous)
         .frame(height: 50)
-        .applyLiquidGlass(in: .rect(cornerRadius: 0))
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5)
+        }
     }
 
     private func iconButton(_ systemName: String, help: String, action: @escaping () -> Void) -> some View {
@@ -338,7 +341,10 @@ struct ReaderView: View {
         }
         .padding(.horizontal, Theme.Spacing.generous)
         .frame(height: 52)
-        .applyLiquidGlass(in: .rect(cornerRadius: 0))
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .top) {
+            Rectangle().fill(Color.white.opacity(0.08)).frame(height: 0.5)
+        }
     }
 
     // MARK: - Chapter panel

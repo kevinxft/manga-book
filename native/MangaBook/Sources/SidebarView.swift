@@ -280,27 +280,25 @@ private struct SidebarToolsFooter: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        LiquidGlass.container(spacing: 4) {
-            VStack(spacing: 4) {
-                ToolButton(
-                    title: "漫画整理",
-                    systemImage: "square.grid.2x2.fill",
-                    isActive: model.section == .organizer
-                ) {
-                    model.section = .organizer
-                }
-
-                ToolButton(
-                    title: "设置",
-                    systemImage: "gearshape.fill",
-                    isActive: false
-                ) {
-                    model.showSettings = true
-                }
+        VStack(spacing: 2) {
+            ToolButton(
+                title: "漫画整理",
+                systemImage: "square.grid.2x2.fill",
+                isActive: model.section == .organizer
+            ) {
+                model.section = .organizer
             }
-            .padding(.horizontal, Theme.Spacing.standard)
-            .padding(.vertical, Theme.Spacing.tight)
+
+            ToolButton(
+                title: "设置",
+                systemImage: "gearshape.fill",
+                isActive: false
+            ) {
+                model.showSettings = true
+            }
         }
+        .padding(.horizontal, Theme.Spacing.standard)
+        .padding(.vertical, 6)
         .background(.bar)
     }
 }
@@ -329,14 +327,13 @@ private struct ToolButton: View {
                 }
             }
             .padding(.horizontal, Theme.Spacing.standard)
-            .padding(.vertical, 7)
+            .padding(.vertical, 6)
             .contentShape(Rectangle())
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.small)
+                    .fill(isActive ? Color.accentColor.opacity(0.12) : Color.clear)
+            )
         }
         .buttonStyle(.plain)
-        .liquidGlassCard(
-            cornerRadius: Theme.Radius.small,
-            interactive: true,
-            tint: isActive ? Color.accentColor : nil
-        )
     }
 }

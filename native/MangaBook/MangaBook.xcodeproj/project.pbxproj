@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		04CC9837DACB6F06BEF2D6A3 /* GlassComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE198C45ECD13D271725A0FE /* GlassComponents.swift */; };
 		0DAC4A78D871EDC877DB0504 /* library-folder-icon.png in Resources */ = {isa = PBXBuildFile; fileRef = C9FD34F293D83B3E3A03E6C2 /* library-folder-icon.png */; };
 		13F860C0B003C4269898745F /* TagEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3399029B848A6F3D9A04CCDF /* TagEditorSheet.swift */; };
 		16E067D0C14207807CA0FC63 /* OrganizerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F345F48B6397FCB6567CC75 /* OrganizerView.swift */; };
@@ -60,7 +59,6 @@
 		BE233061C67280A71742757B /* MangaGridItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MangaGridItem.swift; sourceTree = "<group>"; };
 		C9FD34F293D83B3E3A03E6C2 /* library-folder-icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "library-folder-icon.png"; sourceTree = "<group>"; };
 		CCE8D301BB7D883ADDBA3487 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		CE198C45ECD13D271725A0FE /* GlassComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassComponents.swift; sourceTree = "<group>"; };
 		DE97A0ABB8E67C8ECFD7A7ED /* MergeAuthorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MergeAuthorSheet.swift; sourceTree = "<group>"; };
 		E8F81D6BE9D1174025536861 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		EB827A88114CE8D9C59CCAA8 /* icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = icon.png; sourceTree = "<group>"; };
@@ -123,7 +121,6 @@
 				FB35141F36FDA6A694A589ED /* AppModel.swift */,
 				5670C06B8446963075987AB9 /* AuthorAliasesSheet.swift */,
 				4D6A590F861FB64F3D02EF6C /* CreateAuthorSheet.swift */,
-				CE198C45ECD13D271725A0FE /* GlassComponents.swift */,
 				058AA757DD6571821D1EC8A9 /* KeyMonitor.swift */,
 				2184958984069E6A2BC321B9 /* LibraryView.swift */,
 				22A891EB968A26AE98F2A656 /* MangaBookApp.swift */,
@@ -228,7 +225,6 @@
 				885A1BED102C91BC31F05B40 /* AppModel.swift in Sources */,
 				61AE75D7E37E8BF1DBFD9915 /* AuthorAliasesSheet.swift in Sources */,
 				AA75DB41A3AC40B3E21D4498 /* CreateAuthorSheet.swift in Sources */,
-				04CC9837DACB6F06BEF2D6A3 /* GlassComponents.swift in Sources */,
 				5928C53636835076EF54BB95 /* KeyMonitor.swift in Sources */,
 				B8462086655681B763CA7B82 /* LibraryView.swift in Sources */,
 				401A171D27ABBDEA12951359 /* MangaBookApp.swift in Sources */,

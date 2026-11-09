@@ -369,7 +369,7 @@ struct OrganizerView: View {
         }
         .padding(.horizontal, Theme.Spacing.standard)
         .padding(.vertical, Theme.Spacing.standard)
-        .liquidGlassCard(cornerRadius: Theme.Radius.standard)
+        .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: Theme.Radius.standard))
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
     }
