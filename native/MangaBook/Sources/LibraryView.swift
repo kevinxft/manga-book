@@ -47,12 +47,6 @@ struct LibraryView: View {
         .searchable(text: $model.searchText, placement: .toolbar, prompt: "搜索标题或路径")
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                VoiceSearchButton { text in
-                    model.searchText = text
-                }
-            }
-
-            ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Picker("排序", selection: $model.sort) {
                         ForEach(MangaSort.allCases, id: \.self) { option in

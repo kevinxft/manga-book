@@ -222,9 +222,6 @@ struct OrganizerView: View {
                     .foregroundStyle(.tertiary)
                 TextField("搜索漫画标题…", text: $mangaQuery)
                     .textFieldStyle(.plain)
-                VoiceSearchButton { text in
-                    mangaQuery = text
-                }
                 if !mangaQuery.isEmpty {
                     Button {
                         mangaQuery = ""
@@ -384,9 +381,6 @@ struct OrganizerView: View {
             TextField("过滤作者目录…", text: $authorQuery)
                 .textFieldStyle(.plain)
                 .font(.callout)
-            VoiceSearchButton { text in
-                authorQuery = text
-            }
             if !authorQuery.isEmpty {
                 Button {
                     authorQuery = ""

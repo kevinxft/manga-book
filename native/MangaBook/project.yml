@@ -47,8 +47,6 @@ targets:
         NSSupportsAutomaticTermination: true
         NSSupportsSuddenTermination: true
         NSHumanReadableCopyright: ""
-        NSSpeechRecognitionUsageDescription: "漫书使用语音识别支持语音搜索与免动手语音翻页。"
-        NSMicrophoneUsageDescription: "漫书使用麦克风接收您的语音指令。"
     settings:
       base:
         PRODUCT_NAME: MangaBook

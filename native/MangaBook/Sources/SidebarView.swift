@@ -98,9 +98,6 @@ struct SidebarView: View {
                         TextField("过滤作者…", text: $authorSearch)
                             .textFieldStyle(.plain)
                             .font(.caption)
-                        VoiceSearchButton { text in
-                            authorSearch = text
-                        }
                         if !authorSearch.isEmpty {
                             Button {
                                 authorSearch = ""

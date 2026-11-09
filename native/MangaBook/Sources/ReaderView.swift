@@ -177,11 +177,7 @@ struct ReaderView: View {
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 6) {
-                HandsFreeReaderControl { command in
-                    handleVoiceCommand(command)
-                }
-
+            HStack(spacing: 4) {
                 iconButton("list.bullet.rectangle", help: "章节列表") {
                     withAnimation(.easeOut(duration: 0.15)) { showChapterPanel.toggle() }
                 }
@@ -517,17 +513,6 @@ struct ReaderView: View {
             widthModeRaw = widthMode == .fit ? ReaderWidthMode.fixed.rawValue : ReaderWidthMode.fit.rawValue
         }
         return true
-    }
-
-    private func handleVoiceCommand(_ command: VoiceCommand) {
-        switch command {
-        case .nextPage:
-            setPage(currentIndex + 1)
-        case .previousPage:
-            setPage(currentIndex - 1)
-        case .close:
-            close()
-        }
     }
 
     private func scheduleSave() {
