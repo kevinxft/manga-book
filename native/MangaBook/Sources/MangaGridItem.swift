@@ -109,6 +109,7 @@ final class MangaGridItem: NSCollectionViewItem {
     private let multiVolumeIcon = NSImageView()
     private let multiVolumeLabel = NSTextField(labelWithString: "多卷")
     private let checkmarkBadge = NSImageView()
+    private let tagsStackView = NSStackView()
 
     // Title below the book
     private let titleLabel = NSTextField(labelWithString: "")
@@ -206,6 +207,15 @@ final class MangaGridItem: NSCollectionViewItem {
         progress.translatesAutoresizingMaskIntoConstraints = false
         bookCoverContainer.addSubview(progress)
 
+        // Floating tag pills along bottom of cover
+        tagsStackView.orientation = .horizontal
+        tagsStackView.spacing = 4
+        tagsStackView.alignment = .centerY
+        tagsStackView.distribution = .fill
+        tagsStackView.translatesAutoresizingMaskIntoConstraints = false
+        tagsStackView.isHidden = true
+        bookCoverContainer.addSubview(tagsStackView)
+
         // 3. Manga Title below the book
         titleLabel.font = .systemFont(ofSize: 12.5, weight: .semibold)
         titleLabel.textColor = .labelColor
@@ -269,6 +279,11 @@ final class MangaGridItem: NSCollectionViewItem {
             progress.trailingAnchor.constraint(equalTo: bookCoverContainer.trailingAnchor),
             progress.bottomAnchor.constraint(equalTo: bookCoverContainer.bottomAnchor),
             progress.heightAnchor.constraint(equalToConstant: 3),
+
+            tagsStackView.leadingAnchor.constraint(equalTo: bookCoverContainer.leadingAnchor, constant: 8),
+            tagsStackView.trailingAnchor.constraint(lessThanOrEqualTo: bookCoverContainer.trailingAnchor, constant: -8),
+            tagsStackView.bottomAnchor.constraint(equalTo: progress.topAnchor, constant: -6),
+            tagsStackView.heightAnchor.constraint(equalToConstant: 18),
 
             titleLabel.topAnchor.constraint(equalTo: bookShadowHost.bottomAnchor, constant: 8),
             titleLabel.leadingAnchor.constraint(equalTo: root.leadingAnchor, constant: 4),
@@ -343,6 +358,7 @@ final class MangaGridItem: NSCollectionViewItem {
         multiVolumeBadge.isHidden = true
         checkmarkBadge.isHidden = true
         progress.setProgress(0)
+        clearTags()
     }
 
     func configure(book: MangaBook, tags: [MangaTag], coverResolver: CoverResolver?) {
@@ -358,6 +374,7 @@ final class MangaGridItem: NSCollectionViewItem {
         pageCountBadge.isHidden = book.totalPages <= 0
         multiVolumeBadge.isHidden = book.structure != .multiVolume
         progress.setProgress(book.progress)
+        updateTags(tags)
         updateSelectionAppearance()
 
         loadTask?.cancel()
@@ -373,6 +390,52 @@ final class MangaGridItem: NSCollectionViewItem {
             guard let self, self.bookID == book.id else { return }
             self.coverView.setImage(image)
         }
+    }
+
+    private func clearTags() {
+        for subview in tagsStackView.arrangedSubviews {
+            tagsStackView.removeArrangedSubview(subview)
+            subview.removeFromSuperview()
+        }
+        tagsStackView.isHidden = true
+    }
+
+    private func updateTags(_ tags: [MangaTag]) {
+        clearTags()
+        guard !tags.isEmpty else { return }
+        tagsStackView.isHidden = false
+
+        let maxDisplayTags = 2
+        let displayTags = tags.prefix(maxDisplayTags)
+        for tag in displayTags {
+            let label = createTagPill(tag.name)
+            tagsStackView.addArrangedSubview(label)
+        }
+        let remaining = tags.count - maxDisplayTags
+        if remaining > 0 {
+            let moreLabel = createTagPill("+\(remaining)")
+            tagsStackView.addArrangedSubview(moreLabel)
+        }
+    }
+
+    private func createTagPill(_ text: String) -> NSTextField {
+        let label = NSTextField(labelWithString: text)
+        label.font = .systemFont(ofSize: 9.5, weight: .bold)
+        label.textColor = .white
+        label.drawsBackground = true
+        label.backgroundColor = NSColor.black.withAlphaComponent(0.60)
+        label.alignment = .center
+        label.wantsLayer = true
+        label.layer?.cornerRadius = 4
+        label.layer?.masksToBounds = true
+        label.layer?.borderWidth = 0.5
+        label.layer?.borderColor = NSColor.white.withAlphaComponent(0.25).cgColor
+        label.translatesAutoresizingMaskIntoConstraints = false
+
+        let textSize = (text as NSString).size(withAttributes: [.font: label.font!])
+        label.widthAnchor.constraint(equalToConstant: max(16, textSize.width + 10)).isActive = true
+        label.heightAnchor.constraint(equalToConstant: 17).isActive = true
+        return label
     }
 
     private func updateSelectionAppearance() {
