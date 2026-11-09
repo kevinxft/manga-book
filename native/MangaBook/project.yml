@@ -1,0 +1,57 @@
+name: MangaBook
+options:
+  bundleIdPrefix: com.kevin
+  deploymentTarget:
+    macOS: "15.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    MARKETING_VERSION: "0.8.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_APP_SANDBOX: NO
+    ENABLE_HARDENED_RUNTIME: NO
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGN_IDENTITY: "-"
+    DEAD_CODE_STRIPPING: YES
+
+packages:
+  MangaBookCore:
+    path: ..
+
+targets:
+  MangaBook:
+    type: application
+    platform: macOS
+    sources:
+      - path: Sources
+      - path: Resources
+        buildPhase: resources
+    dependencies:
+      - package: MangaBookCore
+        product: MangaBookCore
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: 漫书
+        CFBundleName: MangaBook
+        CFBundleShortVersionString: "0.8.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "15.0"
+        LSApplicationCategoryType: public.app-category.entertainment
+        CFBundleIconFile: icon
+        NSHighResolutionCapable: true
+        NSSupportsAutomaticTermination: true
+        NSSupportsSuddenTermination: true
+        NSHumanReadableCopyright: ""
+    settings:
+      base:
+        PRODUCT_NAME: MangaBook
+        PRODUCT_BUNDLE_IDENTIFIER: com.kevin.mangabook
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        GENERATE_INFOPLIST_FILE: NO
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: NO
