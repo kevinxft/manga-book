@@ -1,11 +1,10 @@
-node_modules
-out
-dist
 .DS_Store
 *.log
-icon.png
 
-native/.build
-native/.build-xcode
-**/xcuserdata
-**/*.xcuserstate
+# Xcode & Swift Package Manager
+native/.build/
+native/.build-xcode/
+.build/
+*.xcuserstate
+xcuserdata/
+DerivedData/
