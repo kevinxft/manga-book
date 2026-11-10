@@ -1,6 +1,6 @@
 /**
  * MangaBook Hitomi Content Script
- * Clean, native-matched button injection and silent background communication.
+ * Clean native-matched button, duplicate detection, and silent background download.
  */
 
 (function () {
@@ -17,6 +17,7 @@
 
   const isReaderPage = window.location.pathname.startsWith('/reader/');
   let pollInterval = null;
+  let cachedTaskInfo = null;
 
   function sendApiMessage(action, payload = {}) {
     return new Promise(resolve => {
@@ -24,6 +25,19 @@
         resolve(response || { ok: false });
       });
     });
+  }
+
+  function getPageMetadata() {
+    let title = '';
+    let artist = '';
+    if (typeof galleryinfo !== 'undefined' && galleryinfo) {
+      title = galleryinfo.title || '';
+      artist = (galleryinfo.artists && galleryinfo.artists[0] && galleryinfo.artists[0].artist) || '';
+    } else {
+      title = document.querySelector('#gallery-brand')?.textContent?.trim() || '';
+      artist = document.querySelector('#artists a')?.textContent?.trim() || document.querySelector('#artists')?.textContent?.trim() || '';
+    }
+    return { title, artist };
   }
 
   function setButtonLabel(btn, text) {
@@ -76,7 +90,8 @@
   }
 
   async function checkInitialStatus(btn) {
-    const res = await sendApiMessage('status', { id: galleryId });
+    const meta = getPageMetadata();
+    const res = await sendApiMessage('status', { id: galleryId, title: meta.title, artist: meta.artist });
     if (res && res.ok && res.data && res.data.task) {
       updateButtonState(btn, res.data.task);
       if (res.data.task.state === 'downloading' || res.data.task.state === 'fetching') {
@@ -92,12 +107,31 @@
 
     if (btn.classList.contains('is-downloading')) return;
 
-    btn.className = (isReaderPage ? 'mangabook-reader-btn' : '') + ' is-downloading';
-    setButtonLabel(btn, '正在连接…');
+    // If already in library, clicking opens it directly in MangaBook!
+    if (btn.classList.contains('is-completed')) {
+      setButtonLabel(btn, '正在打开漫书…');
+      await sendApiMessage('open', { id: galleryId });
+      setTimeout(() => {
+        if (cachedTaskInfo) {
+          updateButtonState(btn, cachedTaskInfo);
+        } else {
+          setButtonLabel(btn, '已在漫书中 (点击阅读)');
+        }
+      }, 1200);
+      return;
+    }
 
+    btn.className = (isReaderPage ? 'mangabook-reader-btn' : '') + ' is-downloading';
+    setButtonLabel(btn, '下载中…');
+
+    const meta = getPageMetadata();
     const res = await sendApiMessage('download', { url: window.location.href, id: galleryId });
     if (res && res.ok) {
-      setButtonLabel(btn, '获取画册信息…');
+      if (res.data && res.data.task && res.data.task.alreadyExists) {
+        updateButtonState(btn, res.data.task);
+        return;
+      }
+      setButtonLabel(btn, '下载中…');
       startPolling(btn);
       return;
     }
@@ -112,8 +146,9 @@
 
   function startPolling(btn) {
     if (pollInterval) clearInterval(pollInterval);
+    const meta = getPageMetadata();
     pollInterval = setInterval(async () => {
-      const res = await sendApiMessage('status', { id: galleryId });
+      const res = await sendApiMessage('status', { id: galleryId, title: meta.title, artist: meta.artist });
       if (res && res.ok && res.data && res.data.task) {
         updateButtonState(btn, res.data.task);
         if (res.data.task.state === 'completed' || res.data.task.state === 'failed') {
@@ -121,20 +156,21 @@
           pollInterval = null;
         }
       }
-    }, 1000);
+    }, 600);
   }
 
   function updateButtonState(btn, task) {
+    cachedTaskInfo = task;
     btn.className = isReaderPage ? 'mangabook-reader-btn' : '';
 
     switch (task.state) {
       case 'fetching':
         btn.classList.add('is-downloading');
-        setButtonLabel(btn, '获取画册信息…');
+        setButtonLabel(btn, '下载中…');
         break;
       case 'downloading':
         btn.classList.add('is-downloading');
-        const pct = Math.round(task.progress * 100);
+        const pct = Math.round((task.progress || 0) * 100);
         if (task.totalPages > 0) {
           setButtonLabel(btn, `下载中 (${task.completedPages}/${task.totalPages}页 · ${pct}%)`);
         } else {
@@ -143,7 +179,12 @@
         break;
       case 'completed':
         btn.classList.add('is-completed');
-        setButtonLabel(btn, '已存入漫书 ✓');
+        const pagesText = task.totalPages > 0 ? ` (共 ${task.totalPages} 页)` : '';
+        if (task.alreadyExists) {
+          setButtonLabel(btn, `已在漫书中${pagesText}`);
+        } else {
+          setButtonLabel(btn, `已下载完成${pagesText} ✓`);
+        }
         break;
       case 'failed':
         btn.classList.add('is-failed');

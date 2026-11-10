@@ -10,20 +10,23 @@ public final class LocalDownloadServer: @unchecked Sendable {
     private var isRunning = false
     private let lock = NSLock()
 
-    private var onDownloadRequested: (@Sendable (String) async -> [String: Any]?)?
+    private var onDownloadRequested: (@Sendable (String, Bool) async -> [String: Any]?)?
     private var taskProvider: (@Sendable () async -> [[String: Any]])?
-    private var singleTaskProvider: (@Sendable (String) async -> [String: Any]?)?
+    private var singleTaskProvider: (@Sendable (String, String?, String?) async -> [String: Any]?)?
+    private var onOpenRequested: (@Sendable (String) async -> Bool)?
 
     public init() {}
 
     public func configure(
-        onDownloadRequested: @escaping @Sendable (String) async -> [String: Any]?,
+        onDownloadRequested: @escaping @Sendable (String, Bool) async -> [String: Any]?,
         taskProvider: @escaping @Sendable () async -> [[String: Any]],
-        singleTaskProvider: @escaping @Sendable (String) async -> [String: Any]?
+        singleTaskProvider: @escaping @Sendable (String, String?, String?) async -> [String: Any]?,
+        onOpenRequested: (@Sendable (String) async -> Bool)? = nil
     ) {
         self.onDownloadRequested = onDownloadRequested
         self.taskProvider = taskProvider
         self.singleTaskProvider = singleTaskProvider
+        self.onOpenRequested = onOpenRequested
     }
 
     public func start(port: UInt16 = defaultPort) {
@@ -62,7 +65,7 @@ public final class LocalDownloadServer: @unchecked Sendable {
 
             serverFd = fd
             isRunning = true
-            print("[MangaBook] 本地下载服务已启动，监听 127.0.0.1:\(port)")
+            print("[MangaBook] 本地服务已启动，监听 127.0.0.1:\(port)")
 
             listenTask = Task.detached(priority: .utility) { [weak self] in
                 while !Task.isCancelled {
@@ -148,10 +151,12 @@ public final class LocalDownloadServer: @unchecked Sendable {
             return
         }
 
-        // GET /api/status?id=123
+        // GET /api/status?id=123&title=...&artist=...
         if method == "GET" && path == "/api/status" {
             let id = urlComponents?.queryItems?.first(where: { $0.name == "id" })?.value ?? ""
-            if let task = await singleTaskProvider?(id) {
+            let title = urlComponents?.queryItems?.first(where: { $0.name == "title" })?.value
+            let artist = urlComponents?.queryItems?.first(where: { $0.name == "artist" })?.value
+            if let task = await singleTaskProvider?(id, title, artist) {
                 sendJSON(clientFd: clientFd, object: [
                     "ok": true,
                     "task": task
@@ -165,6 +170,25 @@ public final class LocalDownloadServer: @unchecked Sendable {
             return
         }
 
+        // POST /api/open
+        if method == "POST" && path == "/api/open" {
+            var bodyString = ""
+            if let range = reqText.range(of: "\r\n\r\n") {
+                bodyString = String(reqText[range.upperBound...])
+            }
+            var targetId = ""
+            if let bodyData = bodyString.data(using: .utf8),
+               let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] {
+                targetId = (json["id"] as? String) ?? (json["url"] as? String) ?? ""
+            }
+            if let opened = await onOpenRequested?(targetId), opened {
+                sendJSON(clientFd: clientFd, object: ["ok": true, "message": "Opened in MangaBook"])
+            } else {
+                sendJSON(clientFd: clientFd, status: 404, object: ["ok": false, "message": "Manga not found"])
+            }
+            return
+        }
+
         // POST /api/download
         if method == "POST" && path == "/api/download" {
             var bodyString = ""
@@ -173,9 +197,11 @@ public final class LocalDownloadServer: @unchecked Sendable {
             }
 
             var targetUrlOrId = ""
+            var force = false
             if let bodyData = bodyString.data(using: .utf8),
                let json = try? JSONSerialization.jsonObject(with: bodyData) as? [String: Any] {
                 targetUrlOrId = (json["url"] as? String) ?? (json["id"] as? String) ?? ""
+                force = (json["force"] as? Bool) ?? false
             }
 
             if targetUrlOrId.isEmpty {
@@ -186,10 +212,10 @@ public final class LocalDownloadServer: @unchecked Sendable {
                 return
             }
 
-            if let task = await onDownloadRequested?(targetUrlOrId) {
+            if let task = await onDownloadRequested?(targetUrlOrId, force) {
                 sendJSON(clientFd: clientFd, object: [
                     "ok": true,
-                    "message": "Download task created",
+                    "message": task["alreadyExists"] != nil ? "Manga already in library" : "Download task created",
                     "task": task
                 ])
             } else {

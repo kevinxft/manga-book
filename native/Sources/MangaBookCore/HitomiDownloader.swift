@@ -275,4 +275,23 @@ public enum HitomiDownloader {
         progress?(total, total, "《\(gallery.title)》下载完成！")
         return (targetDir, downloaded)
     }
+
+    public static func normalizeTitleForMatching(_ raw: String) -> String {
+        var s = raw
+        let patterns = [
+            #"\([^\)]*\)"#,
+            #"\[[^\]]*\]"#,
+            #"（[^）]*）"#,
+            #"【[^】]*】"#,
+            #"\{[^\}]*\}"#
+        ]
+        for p in patterns {
+            if let regex = try? NSRegularExpression(pattern: p) {
+                s = regex.stringByReplacingMatches(in: s, range: NSRange(s.startIndex..., in: s), withTemplate: " ")
+            }
+        }
+        let allowed = CharacterSet.alphanumerics.union(.letters)
+        let normalized = s.lowercased().unicodeScalars.filter { allowed.contains($0) }.map(String.init).joined()
+        return normalized.isEmpty ? raw.lowercased().filter { allowed.contains($0.unicodeScalars.first!) } : normalized
+    }
 }

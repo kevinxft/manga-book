@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let currentGalleryId = null;
   let currentUrl = null;
+  let isAlreadyInLibrary = false;
 
   function sendApiMessage(action, payload = {}) {
     return new Promise(resolve => {
@@ -17,13 +18,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // 1. Check current active tab
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+  chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
     if (tabs && tabs[0] && tabs[0].url) {
       currentUrl = tabs[0].url;
       const match = currentUrl.match(/[/-]([0-9]+)\.html/) || currentUrl.match(/\/galleries\/([0-9]+)/) || currentUrl.match(/\/reader\/([0-9]+)/);
       if (match && currentUrl.includes('hitomi.la')) {
         currentGalleryId = match[1];
         hitomiPanel.style.display = 'block';
+
+        // Check if already in library
+        const statusRes = await sendApiMessage('status', { id: currentGalleryId });
+        if (statusRes && statusRes.ok && statusRes.data && statusRes.data.task) {
+          const t = statusRes.data.task;
+          if (t.alreadyExists || t.state === 'completed') {
+            isAlreadyInLibrary = true;
+            document.getElementById('page-gallery-title').textContent = `${t.title || '当前漫画'} · 已在漫书中`;
+            downloadCurrentBtn.textContent = '在漫书中打开阅读';
+            return;
+          }
+        }
         document.getElementById('page-gallery-title').textContent = `画册 ID: ${currentGalleryId}`;
       }
     }
@@ -65,14 +78,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // 4. Download Current Button
+  // 4. Download / Open Current Button
   downloadCurrentBtn.addEventListener('click', async () => {
     if (!currentGalleryId) return;
+
+    if (isAlreadyInLibrary) {
+      downloadCurrentBtn.disabled = true;
+      downloadCurrentBtn.textContent = '正在打开阅读器…';
+      await sendApiMessage('open', { id: currentGalleryId });
+      setTimeout(() => {
+        downloadCurrentBtn.disabled = false;
+        downloadCurrentBtn.textContent = '在漫书中打开阅读';
+      }, 1000);
+      return;
+    }
+
     downloadCurrentBtn.disabled = true;
     downloadCurrentBtn.textContent = '正在发送请求…';
 
     const res = await sendApiMessage('download', { url: currentUrl, id: currentGalleryId });
     if (res && res.ok) {
+      if (res.data && res.data.task && res.data.task.alreadyExists) {
+        isAlreadyInLibrary = true;
+        downloadCurrentBtn.disabled = false;
+        downloadCurrentBtn.textContent = '在漫书中打开阅读';
+        return;
+      }
       downloadCurrentBtn.textContent = '已开始后台下载';
       setTimeout(() => {
         loadTasks();

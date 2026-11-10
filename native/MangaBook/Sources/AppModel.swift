@@ -34,6 +34,7 @@ final class AppModel {
     private(set) var tagCounts: [String: Int] = [:]
     private(set) var authors: [TargetDirectorySummary] = []
     private(set) var aliases: [DirectoryAlias] = []
+    private var hitomiIdCache: [String: String] = [:]
 
     var section: AppSection = .library
     var selection: SidebarItem = .all {
@@ -135,9 +136,22 @@ final class AppModel {
 
     private func setupDownloadServer() {
         LocalDownloadServer.shared.configure(
-            onDownloadRequested: { [weak self] urlOrId in
+            onDownloadRequested: { [weak self] urlOrId, force in
                 await MainActor.run {
-                    if let item = self?.downloadHitomi(urlOrId: urlOrId) {
+                    guard let self else { return nil }
+                    let galleryId = HitomiDownloader.extractGalleryId(from: urlOrId)
+                    if !force, let existing = self.findExistingManga(galleryId: galleryId) {
+                        return [
+                            "alreadyExists": true,
+                            "id": existing.id,
+                            "title": existing.title,
+                            "folderPath": existing.folderPath,
+                            "totalPages": existing.totalPages,
+                            "state": "completed",
+                            "statusText": "已在漫书中 (共 \(existing.totalPages) 页)"
+                        ]
+                    }
+                    if let item = self.downloadHitomi(urlOrId: urlOrId, force: force) {
                         return DownloadManager.shared.serializedTask(id: item.id)
                     }
                     return nil
@@ -146,15 +160,138 @@ final class AppModel {
             taskProvider: {
                 DownloadManager.shared.serializedTasks()
             },
-            singleTaskProvider: { id in
-                DownloadManager.shared.serializedTask(id: id)
+            singleTaskProvider: { [weak self] id, title, artist in
+                await MainActor.run {
+                    if let task = DownloadManager.shared.serializedTask(id: id) {
+                        return task
+                    }
+                    if let self, let existing = self.findExistingManga(galleryId: id, title: title, artist: artist) {
+                        return [
+                            "id": id,
+                            "title": existing.title,
+                            "folderPath": existing.folderPath,
+                            "totalPages": existing.totalPages,
+                            "state": "completed",
+                            "alreadyExists": true,
+                            "statusText": "已在漫书中 (共 \(existing.totalPages) 页)"
+                        ]
+                    }
+                    return nil
+                }
+            },
+            onOpenRequested: { [weak self] target in
+                await MainActor.run {
+                    guard let self else { return false }
+                    let galleryId = HitomiDownloader.extractGalleryId(from: target) ?? target
+                    if let book = self.findExistingManga(galleryId: galleryId) {
+                        NSApp.activate(ignoringOtherApps: true)
+                        self.openReader(book)
+                        return true
+                    }
+                    return false
+                }
             }
         )
         LocalDownloadServer.shared.start()
     }
 
+    func findExistingManga(
+        galleryId: String? = nil,
+        title: String? = nil,
+        artist: String? = nil
+    ) -> MangaBook? {
+        // 1. By Hitomi Gallery ID (from memory cache or completed tasks)
+        if let galleryId, !galleryId.isEmpty {
+            if let folder = hitomiIdCache[galleryId],
+               let book = allBooks.first(where: { $0.folderPath == folder }) {
+                return book
+            }
+            if let completed = DownloadManager.shared.task(for: galleryId),
+               case .completed = completed.state,
+               let folder = completed.folderPath,
+               let book = allBooks.first(where: { $0.folderPath == folder }) {
+                hitomiIdCache[galleryId] = folder
+                return book
+            }
+        }
+
+        // 2. By disk folder path under library root (fast single path lookup)
+        if let root = root?.path, let title, !title.isEmpty {
+            let titleClean = PathUtils.sanitizePathComponent(title)
+            if let artist, !artist.isEmpty {
+                let artistClean = PathUtils.sanitizePathComponent(artist)
+                let authorFolder = PathUtils.join(PathUtils.join(PathUtils.join(root, "Authors"), artistClean), titleClean)
+                if let book = allBooks.first(where: { $0.folderPath == authorFolder }) {
+                    if let galleryId { hitomiIdCache[galleryId] = book.folderPath }
+                    return book
+                }
+            }
+            let unsortedFolder = PathUtils.join(PathUtils.join(root, "Unsorted"), titleClean)
+            if let book = allBooks.first(where: { $0.folderPath == unsortedFolder }) {
+                if let galleryId { hitomiIdCache[galleryId] = book.folderPath }
+                return book
+            }
+        }
+
+        // 3. By normalized title match in memory
+        if let title, !title.isEmpty {
+            let normHitomi = HitomiDownloader.normalizeTitleForMatching(title)
+            if !normHitomi.isEmpty {
+                for book in allBooks {
+                    let normBook = HitomiDownloader.normalizeTitleForMatching(book.title)
+                    if normBook == normHitomi {
+                        if let artist, !artist.isEmpty {
+                            let normArtist = artist.lowercased()
+                            if book.folderPath.lowercased().contains(normArtist) || book.title.lowercased().contains(normArtist) {
+                                if let galleryId { hitomiIdCache[galleryId] = book.folderPath }
+                                return book
+                            }
+                        } else {
+                            if let galleryId { hitomiIdCache[galleryId] = book.folderPath }
+                            return book
+                        }
+                    }
+                }
+            }
+        }
+
+        return nil
+    }
+
+    private func indexHitomiFiles() {
+        Task.detached(priority: .utility) { [weak self] in
+            guard let self else { return }
+            let books = await MainActor.run { self.allBooks }
+            var mapped: [String: String] = [:]
+            for book in books {
+                let hitomiJsonPath = (book.folderPath as NSString).appendingPathComponent(".hitomi.json")
+                if FileManager.default.fileExists(atPath: hitomiJsonPath),
+                   let data = try? Data(contentsOf: URL(fileURLWithPath: hitomiJsonPath)),
+                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                   let id = json["id"] as? String {
+                    mapped[id] = book.folderPath
+                }
+            }
+            await MainActor.run {
+                self.hitomiIdCache.merge(mapped) { (_, new) in new }
+            }
+        }
+    }
+
     @discardableResult
-    func downloadHitomi(urlOrId: String, preferArtistFolder: Bool = true) -> DownloadTaskItem? {
+    func downloadHitomi(urlOrId: String, preferArtistFolder: Bool = true, force: Bool = false) -> DownloadTaskItem? {
+        guard let galleryId = HitomiDownloader.extractGalleryId(from: urlOrId) else { return nil }
+
+        if !force, let existing = findExistingManga(galleryId: galleryId) {
+            let completedItem = DownloadTaskItem(id: galleryId, title: existing.title)
+            completedItem.totalPages = existing.totalPages
+            completedItem.completedPages = existing.totalPages
+            completedItem.state = .completed
+            completedItem.folderPath = existing.folderPath
+            completedItem.statusText = "已存在于漫书库中 (共 \(existing.totalPages) 页)"
+            return completedItem
+        }
+
         let currentRoot = root?.path ?? (try? service?.root()?.path)
         guard let libraryRoot = currentRoot else {
             errorMessage = "请先选择或创建一个漫画库"
@@ -209,6 +346,7 @@ final class AppModel {
             authors = try service.authorDirectories()
             aliases = try service.aliases.list()
             rebuildVisible()
+            indexHitomiFiles()
         } catch {
             errorMessage = error.localizedDescription
         }
