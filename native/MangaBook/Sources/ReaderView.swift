@@ -487,6 +487,7 @@ struct ReaderView: View {
             currentIndex = start
             scrollPageID = start
             loading = false
+            preloadAdjacentPages(around: start)
         } catch {
             errorText = error.localizedDescription
             loading = false
@@ -498,6 +499,7 @@ struct ReaderView: View {
         let clamped = min(max(index, 0), pages.count - 1)
         if clamped != currentIndex {
             currentIndex = clamped
+            preloadAdjacentPages(around: clamped)
         }
         if scroll, mode == .scroll, scrollPageID != clamped {
             scrollPageID = clamped
@@ -505,6 +507,23 @@ struct ReaderView: View {
         if save {
             scheduleSave()
         }
+    }
+
+    private func preloadAdjacentPages(around index: Int) {
+        guard !pages.isEmpty else { return }
+        var targets: [String] = []
+        // Preload next 3 pages and previous 1 page
+        for offset in [1, 2, 3, -1] {
+            let i = index + offset
+            if i >= 0 && i < pages.count {
+                targets.append(pages[i])
+            }
+        }
+        if index >= 0 && index < pages.count {
+            targets.insert(pages[index], at: 0)
+        }
+        let maxPixel = 2800
+        PageImageCache.shared.preload(paths: targets, maxPixelSize: maxPixel)
     }
 
     private func handleKey(_ command: ReaderKeyCommand) -> Bool {
