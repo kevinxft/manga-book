@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       res.data.tasks.forEach(t => {
         const card = document.createElement('div');
         card.className = 'task-card';
-        const stateLabel = t.state === 'completed' ? '✅ 完成' : (t.state === 'downloading' ? `📥 ${Math.round(t.progress * 100)}%` : t.statusText);
+        const stateLabel = t.state === 'completed' ? '完成 ✓' : (t.state === 'downloading' ? `下载中 ${Math.round(t.progress * 100)}%` : t.statusText);
         card.innerHTML = `
           <div class="task-name" title="${t.title}">${t.title}</div>
           <div class="task-status">
@@ -69,22 +69,22 @@ document.addEventListener('DOMContentLoaded', async () => {
   downloadCurrentBtn.addEventListener('click', async () => {
     if (!currentGalleryId) return;
     downloadCurrentBtn.disabled = true;
-    downloadCurrentBtn.textContent = '⏳ 发送中…';
+    downloadCurrentBtn.textContent = '正在发送请求…';
 
     const res = await sendApiMessage('download', { url: currentUrl, id: currentGalleryId });
     if (res && res.ok) {
-      downloadCurrentBtn.textContent = '✅ 已开始静默下载！';
+      downloadCurrentBtn.textContent = '已开始后台下载';
       setTimeout(() => {
         loadTasks();
         downloadCurrentBtn.disabled = false;
-        downloadCurrentBtn.textContent = '📥 重新下载';
+        downloadCurrentBtn.textContent = '重新下载';
       }, 1500);
     } else {
       window.open(`mangabook://download?id=${currentGalleryId}`);
-      downloadCurrentBtn.textContent = '🚀 已唤起漫书 App';
+      downloadCurrentBtn.textContent = '已唤起漫书客户端';
       setTimeout(() => {
         downloadCurrentBtn.disabled = false;
-        downloadCurrentBtn.textContent = '📥 下载此漫画到漫书';
+        downloadCurrentBtn.textContent = '下载此漫画到漫书';
       }, 2000);
     }
   });

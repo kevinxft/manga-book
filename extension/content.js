@@ -1,6 +1,6 @@
 /**
  * MangaBook Hitomi Content Script
- * Injects "下载到漫书" button and communicates silently with MangaBook via extension background worker.
+ * Clean, native-matched button injection and silent background communication.
  */
 
 (function () {
@@ -26,12 +26,22 @@
     });
   }
 
+  function setButtonLabel(btn, text) {
+    if (isReaderPage) {
+      btn.textContent = text;
+    } else {
+      btn.innerHTML = `<h1>${text}</h1>`;
+    }
+  }
+
   function createButton() {
     const btn = document.createElement('a');
     btn.id = 'mangabook-dl-button';
     btn.href = 'javascript:void(0);';
-    btn.className = isReaderPage ? 'mangabook-reader-floating-btn' : 'mangabook-dl-btn';
-    btn.innerHTML = '📥 下载到漫书';
+    if (isReaderPage) {
+      btn.className = 'mangabook-reader-btn';
+    }
+    setButtonLabel(btn, '下载到漫书');
 
     btn.addEventListener('click', onButtonClick);
     return btn;
@@ -82,18 +92,18 @@
 
     if (btn.classList.contains('is-downloading')) return;
 
-    btn.className = (isReaderPage ? 'mangabook-reader-floating-btn' : 'mangabook-dl-btn') + ' is-downloading';
-    btn.innerHTML = '⏳ 正在请求漫书…';
+    btn.className = (isReaderPage ? 'mangabook-reader-btn' : '') + ' is-downloading';
+    setButtonLabel(btn, '正在连接…');
 
     const res = await sendApiMessage('download', { url: window.location.href, id: galleryId });
     if (res && res.ok) {
-      btn.innerHTML = '⏳ 正在解析画册…';
+      setButtonLabel(btn, '获取画册信息…');
       startPolling(btn);
       return;
     }
 
     // Local server unreachable, fallback to custom URL scheme
-    btn.innerHTML = '🚀 正在唤起漫书 App…';
+    setButtonLabel(btn, '正在唤起漫书…');
     window.location.href = `mangabook://download?id=${galleryId}`;
     setTimeout(() => {
       startPolling(btn);
@@ -115,33 +125,32 @@
   }
 
   function updateButtonState(btn, task) {
-    const baseClass = isReaderPage ? 'mangabook-reader-floating-btn' : 'mangabook-dl-btn';
-    btn.className = baseClass;
+    btn.className = isReaderPage ? 'mangabook-reader-btn' : '';
 
     switch (task.state) {
       case 'fetching':
         btn.classList.add('is-downloading');
-        btn.innerHTML = '⏳ 正在获取画册信息…';
+        setButtonLabel(btn, '获取画册信息…');
         break;
       case 'downloading':
         btn.classList.add('is-downloading');
         const pct = Math.round(task.progress * 100);
         if (task.totalPages > 0) {
-          btn.innerHTML = `📥 下载中 (${task.completedPages}/${task.totalPages}页 · ${pct}%)`;
+          setButtonLabel(btn, `下载中 (${task.completedPages}/${task.totalPages}页 · ${pct}%)`);
         } else {
-          btn.innerHTML = `📥 下载中 (${pct}%)…`;
+          setButtonLabel(btn, `下载中 (${pct}%)…`);
         }
         break;
       case 'completed':
         btn.classList.add('is-completed');
-        btn.innerHTML = '✅ 已存入漫画库！';
+        setButtonLabel(btn, '已存入漫书 ✓');
         break;
       case 'failed':
         btn.classList.add('is-failed');
-        btn.innerHTML = '❌ 下载失败 (点击重试)';
+        setButtonLabel(btn, '下载失败 (点击重试)');
         break;
       default:
-        btn.innerHTML = '📥 下载到漫书';
+        setButtonLabel(btn, '下载到漫书');
         break;
     }
   }
@@ -153,7 +162,7 @@
     injectButton();
   }
 
-  // Also monitor DOM in case Hitomi SPA dynamically mounts elements
+  // Monitor DOM for SPA changes
   const observer = new MutationObserver(() => {
     if (!document.getElementById('mangabook-dl-button')) {
       injectButton();

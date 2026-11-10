@@ -1,86 +1,97 @@
-/* MangaBook Hitomi Injected Button Styles */
+/* MangaBook Hitomi - Clean Native-Matched Styles (Zero AI Slop) */
 
-.mangabook-dl-btn {
-  display: block !important;
-  box-sizing: border-box !important;
-  width: 100% !important;
-  margin: 10px 0 !important;
-  padding: 10px 14px !important;
-  background: linear-gradient(135deg, #6d28d9 0%, #4f46e5 100%) !important;
-  color: #ffffff !important;
-  text-decoration: none !important;
-  text-align: center !important;
-  border: none !important;
-  border-radius: 6px !important;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif !important;
-  font-size: 14px !important;
-  font-weight: 700 !important;
-  line-height: 1.4 !important;
-  cursor: pointer !important;
-  box-shadow: 0 4px 12px rgba(109, 40, 217, 0.35) !important;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-  user-select: none !important;
-  letter-spacing: 0.2px !important;
+/* Gallery Page Button */
+a#mangabook-dl-button {
+  display: block;
+  text-decoration: none;
+  cursor: pointer;
+  margin-top: 4px;
 }
 
-.mangabook-dl-btn:hover {
-  background: linear-gradient(135deg, #7c3aed 0%, #6366f1 100%) !important;
-  box-shadow: 0 6px 16px rgba(109, 40, 217, 0.5) !important;
-  transform: translateY(-1px) !important;
-  color: #ffffff !important;
+#mangabook-dl-button h1 {
+  margin: 0;
+  padding: 6px 0;
+  font: bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Helvetica, sans-serif;
+  text-align: center;
+  color: #ffffff;
+  background-color: #4b5266;
+  border: 1px solid #29313e;
+  box-sizing: border-box;
+  text-shadow:
+    -1px -1px 0 #29313e,
+    1px -1px 0 #29313e,
+    -1px 1px 0 #29313e,
+    1px 1px 0 #29313e;
+  transition: background-color 0.15s ease;
+  user-select: none;
 }
 
-.mangabook-dl-btn:active {
-  transform: translateY(0) !important;
-  box-shadow: 0 2px 6px rgba(109, 40, 217, 0.3) !important;
+#mangabook-dl-button:hover h1 {
+  background-color: #343b4f;
 }
 
-.mangabook-dl-btn.is-downloading {
-  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4) !important;
-  animation: mangabook-pulse 2s infinite ease-in-out !important;
-  cursor: default !important;
+#mangabook-dl-button:active h1 {
+  background-color: #232836;
 }
 
-.mangabook-dl-btn.is-completed {
-  background: linear-gradient(135deg, #059669 0%, #10b981 100%) !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4) !important;
-  cursor: default !important;
+/* Downloading state */
+#mangabook-dl-button.is-downloading h1 {
+  background-color: #2d4869;
+  cursor: default;
 }
 
-.mangabook-dl-btn.is-failed {
-  background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%) !important;
-  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.4) !important;
+/* Completed state */
+#mangabook-dl-button.is-completed h1 {
+  background-color: #2b593f;
+  border-color: #1e3d2b;
+  cursor: default;
 }
 
-@keyframes mangabook-pulse {
-  0% { opacity: 0.92; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.01); }
-  100% { opacity: 0.92; transform: scale(1); }
+/* Failed state */
+#mangabook-dl-button.is-failed h1 {
+  background-color: #7a3232;
+  border-color: #4a1e1e;
 }
 
-/* Floating button on reader page */
-.mangabook-reader-floating-btn {
-  position: fixed !important;
-  top: 16px !important;
-  right: 16px !important;
-  z-index: 999999 !important;
-  padding: 8px 16px !important;
-  background: rgba(30, 27, 75, 0.88) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  color: #ffffff !important;
-  font-size: 13px !important;
-  font-weight: 600 !important;
-  border: 1px solid rgba(139, 92, 246, 0.4) !important;
-  border-radius: 20px !important;
-  cursor: pointer !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
-  transition: all 0.2s ease !important;
+/* Reader Page Floating Button */
+.mangabook-reader-btn {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 999999;
+  padding: 6px 14px;
+  background-color: #22252a;
+  border: 1px solid #3c434f;
+  color: #d1d5db;
+  font: 500 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  transition: all 0.15s ease;
+  user-select: none;
 }
 
-.mangabook-reader-floating-btn:hover {
-  background: rgba(46, 16, 101, 0.95) !important;
-  border-color: rgba(167, 139, 250, 0.8) !important;
-  transform: translateY(-1px) !important;
+.mangabook-reader-btn:hover {
+  background-color: #2f343c;
+  color: #ffffff;
+  border-color: #555e6e;
+}
+
+.mangabook-reader-btn.is-downloading {
+  background-color: #1e3048;
+  color: #93c5fd;
+  border-color: #3b82f6;
+}
+
+.mangabook-reader-btn.is-completed {
+  background-color: #1a3826;
+  color: #86efac;
+  border-color: #22c55e;
+}
+
+.mangabook-reader-btn.is-failed {
+  background-color: #451a1a;
+  color: #fca5a5;
+  border-color: #ef4444;
 }
