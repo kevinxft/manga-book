@@ -1,0 +1,35 @@
+{
+  "manifest_version": 3,
+  "name": "漫书助手 (MangaBook)",
+  "version": "1.0.0",
+  "description": "一键将 Hitomi 漫画下载并自动归类、打标导入漫书 Mac 客户端",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": [
+    "activeTab"
+  ],
+  "host_permissions": [
+    "https://hitomi.la/*",
+    "http://127.0.0.1:48123/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://hitomi.la/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "漫书助手",
+    "default_icon": {
+      "16": "icon16.png",
+      "48": "icon48.png",
+      "128": "icon128.png"
+    }
+  }
+}

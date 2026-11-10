@@ -47,6 +47,10 @@ targets:
         NSSupportsAutomaticTermination: true
         NSSupportsSuddenTermination: true
         NSHumanReadableCopyright: ""
+        CFBundleURLTypes:
+          - CFBundleURLName: com.kevin.mangabook
+            CFBundleURLSchemes:
+              - mangabook
     settings:
       base:
         PRODUCT_NAME: MangaBook

@@ -84,10 +84,13 @@ final class AppModel {
         let storedSort = UserDefaults.standard.string(forKey: Self.sortDefaultsKey)
         sort = storedSort.flatMap(MangaSort.init(rawValue:)) ?? .addedAtDesc
         do {
-            service = try MangaBookService()
+            let s = try MangaBookService()
+            service = s
+            root = try s.root()
         } catch {
             startupError = error.localizedDescription
         }
+        setupDownloadServer()
     }
 
     var authorsRootPath: String? {
@@ -125,8 +128,75 @@ final class AppModel {
     // MARK: - Lifecycle
 
     func bootstrap() async {
+        setupDownloadServer()
         guard service != nil else { return }
         await reload()
+    }
+
+    private func setupDownloadServer() {
+        LocalDownloadServer.shared.configure(
+            onDownloadRequested: { [weak self] urlOrId in
+                await MainActor.run {
+                    if let item = self?.downloadHitomi(urlOrId: urlOrId) {
+                        return DownloadManager.shared.serializedTask(id: item.id)
+                    }
+                    return nil
+                }
+            },
+            taskProvider: {
+                DownloadManager.shared.serializedTasks()
+            },
+            singleTaskProvider: { id in
+                DownloadManager.shared.serializedTask(id: id)
+            }
+        )
+        LocalDownloadServer.shared.start()
+    }
+
+    @discardableResult
+    func downloadHitomi(urlOrId: String, preferArtistFolder: Bool = true) -> DownloadTaskItem? {
+        let currentRoot = root?.path ?? (try? service?.root()?.path)
+        guard let libraryRoot = currentRoot else {
+            errorMessage = "请先选择或创建一个漫画库"
+            return nil
+        }
+        return DownloadManager.shared.startDownload(
+            urlOrId: urlOrId,
+            libraryRoot: libraryRoot,
+            preferArtistFolder: preferArtistFolder
+        ) { [weak self] folderPath, tags in
+            await MainActor.run {
+                guard let self else { return }
+                Task {
+                    if let service = self.service, let root = self.root {
+                        try? await service.scanner.syncImportedDirectories(
+                            sourcePath: root.path,
+                            directoryPaths: [folderPath]
+                        )
+                        await self.reload()
+                        if let book = self.allBooks.first(where: { $0.folderPath == folderPath }) {
+                            for tag in tags {
+                                _ = try? service.tags.addToManga(mangaId: book.id, tagName: tag)
+                            }
+                            await self.reload()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    func handleIncomingURL(_ url: URL) {
+        guard url.scheme == "mangabook" else { return }
+        guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return }
+        let action = components.host ?? components.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        if action == "download" {
+            let target = components.queryItems?.first(where: { $0.name == "url" || $0.name == "id" })?.value
+            if let target, !target.isEmpty {
+                downloadHitomi(urlOrId: target)
+                DownloadManager.shared.showDownloadCenter = true
+            }
+        }
     }
 
     func reload() async {

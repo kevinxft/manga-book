@@ -9,6 +9,9 @@ struct MangaBookApp: App {
             RootView()
                 .environment(model)
                 .frame(minWidth: 980, minHeight: 640)
+                .onOpenURL { url in
+                    model.handleIncomingURL(url)
+                }
         }
         .defaultSize(width: 1320, height: 860)
         .windowToolbarStyle(.unified(showsTitle: true))
@@ -19,6 +22,18 @@ struct MangaBookApp: App {
             }
 
             CommandGroup(after: .newItem) {
+                Button("下载在线漫画…") {
+                    DownloadManager.shared.showManualInputSheet = true
+                }
+                .keyboardShortcut("d", modifiers: .command)
+
+                Button("下载中心") {
+                    DownloadManager.shared.showDownloadCenter.toggle()
+                }
+                .keyboardShortcut("j", modifiers: .command)
+
+                Divider()
+
                 Button("同步漫画库") {
                     Task { await model.sync() }
                 }

@@ -278,9 +278,22 @@ private struct SidebarHeaderView: View {
 
 private struct SidebarToolsFooter: View {
     @Environment(AppModel.self) private var model
+    private var downloadManager: DownloadManager { DownloadManager.shared }
 
     var body: some View {
         VStack(spacing: 2) {
+            ToolButton(
+                title: downloadManager.activeCount > 0 ? "下载中心 (\(downloadManager.activeCount))" : "下载中心",
+                systemImage: downloadManager.isDownloading ? "arrow.down.circle.fill" : "arrow.down.circle",
+                isActive: downloadManager.showDownloadCenter
+            ) {
+                downloadManager.showDownloadCenter.toggle()
+            }
+            .popover(isPresented: Bindable(downloadManager).showDownloadCenter) {
+                DownloadCenterView()
+                    .environment(model)
+            }
+
             ToolButton(
                 title: "漫画整理",
                 systemImage: "square.grid.2x2.fill",

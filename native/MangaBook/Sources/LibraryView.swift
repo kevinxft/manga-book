@@ -62,6 +62,28 @@ struct LibraryView: View {
 
             ToolbarItem(placement: .primaryAction) {
                 Button {
+                    DownloadManager.shared.showDownloadCenter.toggle()
+                } label: {
+                    Label {
+                        Text("下载中心")
+                    } icon: {
+                        ZStack(alignment: .topTrailing) {
+                            Image(systemName: DownloadManager.shared.isDownloading ? "arrow.down.circle.fill" : "arrow.down.circle")
+                                .foregroundStyle(DownloadManager.shared.isDownloading ? Color.accentColor : Color.primary)
+                            if DownloadManager.shared.activeCount > 0 {
+                                Circle()
+                                    .fill(Color.red)
+                                    .frame(width: 7, height: 7)
+                                    .offset(x: 2, y: -2)
+                            }
+                        }
+                    }
+                }
+                .help("下载中心（⌘J）")
+            }
+
+            ToolbarItem(placement: .primaryAction) {
+                Button {
                     Task { await model.sync() }
                 } label: {
                     Label("同步", systemImage: "arrow.clockwise")

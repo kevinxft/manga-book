@@ -69,6 +69,10 @@ struct RootView: View {
             SettingsView()
                 .environment(model)
         }
+        .sheet(isPresented: Bindable(DownloadManager.shared).showManualInputSheet) {
+            ManualDownloadSheet()
+                .environment(model)
+        }
         .confirmationDialog(
             "删除所选漫画？",
             isPresented: Binding(

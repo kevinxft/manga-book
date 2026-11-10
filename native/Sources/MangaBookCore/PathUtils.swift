@@ -37,6 +37,13 @@ public enum PathUtils {
     public static func key(_ value: String) -> String {
         value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
+
+    public static func sanitizePathComponent(_ name: String) -> String {
+        let invalidChars = CharacterSet(charactersIn: "/\\?%*|\":<>")
+        let sanitized = name.components(separatedBy: invalidChars).joined(separator: "_")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return sanitized.isEmpty ? "Untitled" : sanitized
+    }
 }
 
 public enum AppPaths {
