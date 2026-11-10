@@ -1,5 +1,3 @@
-const MANGABOOK_SERVER = 'http://127.0.0.1:48123';
-
 document.addEventListener('DOMContentLoaded', async () => {
   const badge = document.getElementById('conn-badge');
   const text = document.getElementById('conn-text');
@@ -9,6 +7,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   let currentGalleryId = null;
   let currentUrl = null;
+
+  function sendApiMessage(action, payload = {}) {
+    return new Promise(resolve => {
+      chrome.runtime.sendMessage({ action, ...payload }, response => {
+        resolve(response || { ok: false });
+      });
+    });
+  }
 
   // 1. Check current active tab
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
@@ -25,16 +31,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 2. Ping MangaBook server
   async function refreshServerStatus() {
-    try {
-      const res = await fetch(`${MANGABOOK_SERVER}/api/ping`);
-      if (res.ok) {
-        badge.className = 'badge online';
-        text.textContent = '漫书已连接';
-        loadTasks();
-      } else {
-        throw new Error();
-      }
-    } catch {
+    const res = await sendApiMessage('ping');
+    if (res && res.ok) {
+      badge.className = 'badge online';
+      text.textContent = '漫书已连接';
+      loadTasks();
+    } else {
       badge.className = 'badge';
       text.textContent = '漫书未启动';
     }
@@ -42,31 +44,24 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 3. Load Tasks
   async function loadTasks() {
-    try {
-      const res = await fetch(`${MANGABOOK_SERVER}/api/tasks`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.tasks && data.tasks.length > 0) {
-          taskList.innerHTML = '';
-          data.tasks.forEach(t => {
-            const card = document.createElement('div');
-            card.className = 'task-card';
-            const stateLabel = t.state === 'completed' ? '✅ 完成' : (t.state === 'downloading' ? `📥 ${Math.round(t.progress * 100)}%` : t.statusText);
-            card.innerHTML = `
-              <div class="task-name" title="${t.title}">${t.title}</div>
-              <div class="task-status">
-                <span>${t.artist || '未知作者'}</span>
-                <span>${stateLabel}</span>
-              </div>
-            `;
-            taskList.appendChild(card);
-          });
-        } else {
-          taskList.innerHTML = '<div class="empty-tasks">暂无下载记录</div>';
-        }
-      }
-    } catch {
-      // Ignored
+    const res = await sendApiMessage('tasks');
+    if (res && res.ok && res.data && res.data.tasks && res.data.tasks.length > 0) {
+      taskList.innerHTML = '';
+      res.data.tasks.forEach(t => {
+        const card = document.createElement('div');
+        card.className = 'task-card';
+        const stateLabel = t.state === 'completed' ? '✅ 完成' : (t.state === 'downloading' ? `📥 ${Math.round(t.progress * 100)}%` : t.statusText);
+        card.innerHTML = `
+          <div class="task-name" title="${t.title}">${t.title}</div>
+          <div class="task-status">
+            <span>${t.artist || '未知作者'}</span>
+            <span>${stateLabel}</span>
+          </div>
+        `;
+        taskList.appendChild(card);
+      });
+    } else {
+      taskList.innerHTML = '<div class="empty-tasks">暂无下载记录</div>';
     }
   }
 
@@ -76,24 +71,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     downloadCurrentBtn.disabled = true;
     downloadCurrentBtn.textContent = '⏳ 发送中…';
 
-    try {
-      const res = await fetch(`${MANGABOOK_SERVER}/api/download`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: currentUrl, id: currentGalleryId })
-      });
-      if (res.ok) {
-        downloadCurrentBtn.textContent = '✅ 已开始下载！';
-        setTimeout(() => {
-          loadTasks();
-          downloadCurrentBtn.disabled = false;
-          downloadCurrentBtn.textContent = '📥 重新下载';
-        }, 1500);
-      } else {
-        throw new Error();
-      }
-    } catch {
-      // Fallback URL scheme
+    const res = await sendApiMessage('download', { url: currentUrl, id: currentGalleryId });
+    if (res && res.ok) {
+      downloadCurrentBtn.textContent = '✅ 已开始静默下载！';
+      setTimeout(() => {
+        loadTasks();
+        downloadCurrentBtn.disabled = false;
+        downloadCurrentBtn.textContent = '📥 重新下载';
+      }, 1500);
+    } else {
       window.open(`mangabook://download?id=${currentGalleryId}`);
       downloadCurrentBtn.textContent = '🚀 已唤起漫书 App';
       setTimeout(() => {

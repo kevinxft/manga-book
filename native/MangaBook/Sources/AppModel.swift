@@ -194,7 +194,6 @@ final class AppModel {
             let target = components.queryItems?.first(where: { $0.name == "url" || $0.name == "id" })?.value
             if let target, !target.isEmpty {
                 downloadHitomi(urlOrId: target)
-                DownloadManager.shared.showDownloadCenter = true
             }
         }
     }

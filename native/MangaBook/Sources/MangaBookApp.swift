@@ -96,5 +96,13 @@ struct MangaBookApp: App {
         }
         .defaultSize(width: 1180, height: 900)
         .windowToolbarStyle(.unifiedCompact(showsTitle: false))
+
+        MenuBarExtra {
+            MenuBarView()
+                .environment(model)
+        } label: {
+            MenuBarIconView()
+        }
+        .menuBarExtraStyle(.window)
     }
 }

@@ -1,12 +1,10 @@
 /**
  * MangaBook Hitomi Content Script
- * Injects "下载到漫书" button and communicates with MangaBook Mac App.
+ * Injects "下载到漫书" button and communicates silently with MangaBook via extension background worker.
  */
 
 (function () {
   'use strict';
-
-  const MANGABOOK_SERVER = 'http://127.0.0.1:48123';
 
   function extractGalleryId() {
     const path = window.location.pathname;
@@ -18,8 +16,15 @@
   if (!galleryId) return;
 
   const isReaderPage = window.location.pathname.startsWith('/reader/');
-
   let pollInterval = null;
+
+  function sendApiMessage(action, payload = {}) {
+    return new Promise(resolve => {
+      chrome.runtime.sendMessage({ action, ...payload }, response => {
+        resolve(response || { ok: false });
+      });
+    });
+  }
 
   function createButton() {
     const btn = document.createElement('a');
@@ -61,19 +66,12 @@
   }
 
   async function checkInitialStatus(btn) {
-    try {
-      const res = await fetch(`${MANGABOOK_SERVER}/api/status?id=${galleryId}`, { method: 'GET' });
-      if (res.ok) {
-        const data = await res.json();
-        if (data && data.task) {
-          updateButtonState(btn, data.task);
-          if (data.task.state === 'downloading' || data.task.state === 'fetching') {
-            startPolling(btn);
-          }
-        }
+    const res = await sendApiMessage('status', { id: galleryId });
+    if (res && res.ok && res.data && res.data.task) {
+      updateButtonState(btn, res.data.task);
+      if (res.data.task.state === 'downloading' || res.data.task.state === 'fetching') {
+        startPolling(btn);
       }
-    } catch {
-      // MangaBook not running or no active task
     }
   }
 
@@ -87,50 +85,31 @@
     btn.className = (isReaderPage ? 'mangabook-reader-floating-btn' : 'mangabook-dl-btn') + ' is-downloading';
     btn.innerHTML = '⏳ 正在请求漫书…';
 
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 2500);
-
-      const res = await fetch(`${MANGABOOK_SERVER}/api/download`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: window.location.href, id: galleryId }),
-        signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-
-      if (res.ok) {
-        btn.innerHTML = '⏳ 正在解析画册…';
-        startPolling(btn);
-        return;
-      }
-    } catch {
-      // Local server unreachable, fallback to custom URL scheme to wake up MangaBook
-      btn.innerHTML = '🚀 正在唤起漫书 App…';
-      window.location.href = `mangabook://download?id=${galleryId}`;
-      setTimeout(() => {
-        startPolling(btn);
-      }, 1500);
+    const res = await sendApiMessage('download', { url: window.location.href, id: galleryId });
+    if (res && res.ok) {
+      btn.innerHTML = '⏳ 正在解析画册…';
+      startPolling(btn);
       return;
     }
+
+    // Local server unreachable, fallback to custom URL scheme
+    btn.innerHTML = '🚀 正在唤起漫书 App…';
+    window.location.href = `mangabook://download?id=${galleryId}`;
+    setTimeout(() => {
+      startPolling(btn);
+    }, 1500);
   }
 
   function startPolling(btn) {
     if (pollInterval) clearInterval(pollInterval);
     pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch(`${MANGABOOK_SERVER}/api/status?id=${galleryId}`);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data && data.task) {
-          updateButtonState(btn, data.task);
-          if (data.task.state === 'completed' || data.task.state === 'failed') {
-            clearInterval(pollInterval);
-            pollInterval = null;
-          }
+      const res = await sendApiMessage('status', { id: galleryId });
+      if (res && res.ok && res.data && res.data.task) {
+        updateButtonState(btn, res.data.task);
+        if (res.data.task.state === 'completed' || res.data.task.state === 'failed') {
+          clearInterval(pollInterval);
+          pollInterval = null;
         }
-      } catch {
-        // App might still be launching
       }
     }, 1000);
   }

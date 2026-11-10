@@ -1,11 +1,15 @@
 import Foundation
-import Network
+import Darwin
 
 public final class LocalDownloadServer: @unchecked Sendable {
     public static let shared = LocalDownloadServer()
     public static let defaultPort: UInt16 = 48123
 
-    private var listener: NWListener?
+    private var serverFd: Int32 = -1
+    private var listenTask: Task<Void, Never>?
+    private var isRunning = false
+    private let lock = NSLock()
+
     private var onDownloadRequested: (@Sendable (String) async -> [String: Any]?)?
     private var taskProvider: (@Sendable () async -> [[String: Any]])?
     private var singleTaskProvider: (@Sendable (String) async -> [String: Any]?)?
@@ -23,54 +27,85 @@ public final class LocalDownloadServer: @unchecked Sendable {
     }
 
     public func start(port: UInt16 = defaultPort) {
-        stop()
-        do {
-            let params = NWParameters.tcp
-            listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
-            listener?.stateUpdateHandler = { state in
-                switch state {
-                case .ready:
-                    print("[MangaBook] 本地下载服务已启动，监听端口: \(port)")
-                case .failed(let error):
-                    print("[MangaBook] 本地下载服务启动失败: \(error)")
-                default:
-                    break
+        lock.withLock {
+            guard !isRunning else { return }
+            stopInternal()
+
+            let fd = socket(AF_INET, SOCK_STREAM, 0)
+            guard fd >= 0 else {
+                print("[MangaBook] 无法创建 socket: errno \(errno)")
+                return
+            }
+
+            var yes: Int32 = 1
+            setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, socklen_t(MemoryLayout<Int32>.size))
+
+            var addr = sockaddr_in()
+            addr.sin_family = sa_family_t(AF_INET)
+            addr.sin_port = in_port_t(port).bigEndian
+            addr.sin_addr.s_addr = inet_addr("127.0.0.1")
+
+            var bindAddr = sockaddr()
+            memcpy(&bindAddr, &addr, Int(MemoryLayout<sockaddr_in>.size))
+
+            guard bind(fd, &bindAddr, socklen_t(MemoryLayout<sockaddr_in>.size)) == 0 else {
+                print("[MangaBook] 绑定端口 \(port) 失败: errno \(errno)")
+                Darwin.close(fd)
+                return
+            }
+
+            guard listen(fd, 32) == 0 else {
+                print("[MangaBook] 监听端口 \(port) 失败: errno \(errno)")
+                Darwin.close(fd)
+                return
+            }
+
+            serverFd = fd
+            isRunning = true
+            print("[MangaBook] 本地下载服务已启动，监听 127.0.0.1:\(port)")
+
+            listenTask = Task.detached(priority: .utility) { [weak self] in
+                while !Task.isCancelled {
+                    var clientAddr = sockaddr()
+                    var len = socklen_t(MemoryLayout<sockaddr>.size)
+                    let clientFd = accept(fd, &clientAddr, &len)
+                    guard clientFd >= 0 else { break }
+
+                    Task.detached(priority: .utility) { [weak self] in
+                        await self?.handleClient(clientFd)
+                    }
                 }
             }
-            listener?.newConnectionHandler = { [weak self] connection in
-                self?.handleConnection(connection)
-            }
-            listener?.start(queue: .global(qos: .utility))
-        } catch {
-            print("[MangaBook] 无法创建 NWListener: \(error)")
         }
     }
 
     public func stop() {
-        listener?.cancel()
-        listener = nil
-    }
-
-    private func handleConnection(_ connection: NWConnection) {
-        connection.start(queue: .global(qos: .utility))
-        connection.receive(minimumIncompleteLength: 1, maximumLength: 65536) { [weak self] data, _, _, _ in
-            guard let self, let data, let reqText = String(data: data, encoding: .utf8) else {
-                connection.cancel()
-                return
-            }
-
-            Task {
-                await self.processRequest(connection: connection, reqText: reqText)
-            }
+        lock.withLock {
+            stopInternal()
         }
     }
 
-    private func processRequest(connection: NWConnection, reqText: String) async {
+    private func stopInternal() {
+        isRunning = false
+        listenTask?.cancel()
+        listenTask = nil
+        if serverFd >= 0 {
+            Darwin.close(serverFd)
+            serverFd = -1
+        }
+    }
+
+    private func handleClient(_ clientFd: Int32) async {
+        defer { Darwin.close(clientFd) }
+
+        var buffer = [UInt8](repeating: 0, count: 65536)
+        let bytesRead = read(clientFd, &buffer, buffer.count)
+        guard bytesRead > 0 else { return }
+
+        let reqText = String(decoding: buffer.prefix(bytesRead), as: UTF8.self)
         let lines = reqText.components(separatedBy: "\r\n")
-        guard let firstLine = lines.first else {
-            connection.cancel()
-            return
-        }
+        guard let firstLine = lines.first else { return }
+
         let parts = firstLine.split(separator: " ")
         let method = parts.count > 0 ? String(parts[0]) : ""
         let fullPath = parts.count > 1 ? String(parts[1]) : ""
@@ -78,7 +113,7 @@ public final class LocalDownloadServer: @unchecked Sendable {
         let urlComponents = URLComponents(string: "http://localhost" + fullPath)
         let path = urlComponents?.path ?? fullPath
 
-        // Handle CORS Preflight
+        // CORS Preflight
         if method == "OPTIONS" {
             let cors = """
             HTTP/1.1 204 No Content\r
@@ -89,13 +124,13 @@ public final class LocalDownloadServer: @unchecked Sendable {
             Content-Length: 0\r
             \r\n
             """
-            connection.send(content: cors.data(using: .utf8), completion: .contentProcessed({ _ in connection.cancel() }))
+            _ = cors.withCString { write(clientFd, $0, strlen($0)) }
             return
         }
 
-        // Route: GET /api/ping
+        // GET /api/ping
         if method == "GET" && path == "/api/ping" {
-            self.sendJSON(connection: connection, object: [
+            sendJSON(clientFd: clientFd, object: [
                 "ok": true,
                 "app": "MangaBook",
                 "version": "0.8.0"
@@ -103,26 +138,26 @@ public final class LocalDownloadServer: @unchecked Sendable {
             return
         }
 
-        // Route: GET /api/tasks
+        // GET /api/tasks
         if method == "GET" && path == "/api/tasks" {
-            let tasks = await self.taskProvider?() ?? []
-            self.sendJSON(connection: connection, object: [
+            let tasks = await taskProvider?() ?? []
+            sendJSON(clientFd: clientFd, object: [
                 "ok": true,
                 "tasks": tasks
             ])
             return
         }
 
-        // Route: GET /api/status?id=123
+        // GET /api/status?id=123
         if method == "GET" && path == "/api/status" {
             let id = urlComponents?.queryItems?.first(where: { $0.name == "id" })?.value ?? ""
-            if let task = await self.singleTaskProvider?(id) {
-                self.sendJSON(connection: connection, object: [
+            if let task = await singleTaskProvider?(id) {
+                sendJSON(clientFd: clientFd, object: [
                     "ok": true,
                     "task": task
                 ])
             } else {
-                self.sendJSON(connection: connection, status: 404, object: [
+                sendJSON(clientFd: clientFd, status: 404, object: [
                     "ok": false,
                     "message": "Task not found"
                 ])
@@ -130,7 +165,7 @@ public final class LocalDownloadServer: @unchecked Sendable {
             return
         }
 
-        // Route: POST /api/download
+        // POST /api/download
         if method == "POST" && path == "/api/download" {
             var bodyString = ""
             if let range = reqText.range(of: "\r\n\r\n") {
@@ -144,21 +179,21 @@ public final class LocalDownloadServer: @unchecked Sendable {
             }
 
             if targetUrlOrId.isEmpty {
-                self.sendJSON(connection: connection, status: 400, object: [
+                sendJSON(clientFd: clientFd, status: 400, object: [
                     "ok": false,
                     "message": "Missing url or id in request body"
                 ])
                 return
             }
 
-            if let task = await self.onDownloadRequested?(targetUrlOrId) {
-                self.sendJSON(connection: connection, object: [
+            if let task = await onDownloadRequested?(targetUrlOrId) {
+                sendJSON(clientFd: clientFd, object: [
                     "ok": true,
                     "message": "Download task created",
                     "task": task
                 ])
             } else {
-                self.sendJSON(connection: connection, status: 400, object: [
+                sendJSON(clientFd: clientFd, status: 400, object: [
                     "ok": false,
                     "message": "Invalid Hitomi URL or ID"
                 ])
@@ -166,54 +201,14 @@ public final class LocalDownloadServer: @unchecked Sendable {
             return
         }
 
-        // 404 Default
-        self.sendJSON(connection: connection, status: 404, object: ["ok": false, "message": "Endpoint not found"])
+        sendJSON(clientFd: clientFd, status: 404, object: [
+            "ok": false,
+            "message": "Endpoint not found"
+        ])
     }
 
-    private func serializeTask(_ item: DownloadTaskItem) -> [String: Any] {
-        var stateStr = "fetching"
-        var progress = item.progressValue
-        switch item.state {
-        case .fetching:
-            stateStr = "fetching"
-        case .downloading(let p):
-            stateStr = "downloading"
-            progress = p
-        case .completed:
-            stateStr = "completed"
-            progress = 1.0
-        case .failed(let err):
-            stateStr = "failed"
-            return [
-                "id": item.id,
-                "title": item.title,
-                "artist": item.artist ?? "",
-                "state": stateStr,
-                "error": err,
-                "progress": 0,
-                "statusText": item.statusText
-            ]
-        }
-
-        return [
-            "id": item.id,
-            "title": item.title,
-            "artist": item.artist ?? "",
-            "tags": item.tags,
-            "totalPages": item.totalPages,
-            "completedPages": item.completedPages,
-            "state": stateStr,
-            "progress": progress,
-            "statusText": item.statusText,
-            "folderPath": item.folderPath ?? ""
-        ]
-    }
-
-    private func sendJSON(connection: NWConnection, status: Int = 200, object: Any) {
-        guard let data = try? JSONSerialization.data(withJSONObject: object) else {
-            connection.cancel()
-            return
-        }
+    private func sendJSON(clientFd: Int32, status: Int = 200, object: Any) {
+        guard let data = try? JSONSerialization.data(withJSONObject: object) else { return }
         let statusText = status == 200 ? "OK" : (status == 404 ? "Not Found" : "Bad Request")
         let header = """
         HTTP/1.1 \(status) \(statusText)\r
@@ -222,13 +217,12 @@ public final class LocalDownloadServer: @unchecked Sendable {
         Content-Length: \(data.count)\r
         \r\n
         """
-        guard let headerData = header.data(using: .utf8) else {
-            connection.cancel()
-            return
-        }
+        guard let headerData = header.data(using: .utf8) else { return }
         var full = Data()
         full.append(headerData)
         full.append(data)
-        connection.send(content: full, completion: .contentProcessed({ _ in connection.cancel() }))
+        _ = full.withUnsafeBytes { ptr in
+            write(clientFd, ptr.baseAddress, ptr.count)
+        }
     }
 }
