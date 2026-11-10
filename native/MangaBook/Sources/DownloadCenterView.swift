@@ -274,7 +274,7 @@ struct ManualDownloadSheet: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
-                TextField("如：https://hitomi.la/doujinshi/...-4318844.html 或 4318844", text: $input)
+                TextField("粘贴漫画网址或画册编号…", text: $input)
                     .textFieldStyle(.roundedBorder)
 
                 Toggle("按作者自动创建分类目录 (Authors/作者/漫画名)", isOn: $preferArtist)
