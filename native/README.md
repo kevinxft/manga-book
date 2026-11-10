@@ -18,13 +18,26 @@ SwiftUI 卡顿的三个根因换掉：
 native/
 ├── Package.swift                  # MangaBookCore SPM 包（GRDB 7）
 ├── Sources/
-│   ├── MangaBookCore/             # 数据层 / 扫描器 / 缩略图 / 阅读器 / 整理逻辑
+│   ├── MangaBookCore/
+│   │   ├── Models/                # 领域模型与查询参数
+│   │   ├── Storage/               # GRDB 数据库与 Schema
+│   │   ├── Repositories/          # 漫画、标签、书签、别名、阅读进度
+│   │   ├── Services/              # 扫描、整理、封面与缩略图
+│   │   ├── Downloads/             # Hitomi 元数据与下载
+│   │   └── Support/               # 路径、文件系统、哈希等基础设施
 │   ├── MangaBookProbe/            # 只读探针：打印真实库统计，用于排查数据问题
 │   └── MangaBookSelfTest/         # 隔离自测：在临时目录跑完整业务流程
 ├── MangaBook/
 │   ├── project.yml                # XcodeGen 工程定义
 │   ├── Resources/                 # App 图标、漫画库文件夹图标
-│   └── Sources/                   # SwiftUI 壳 + AppKit 网格/阅读器
+│   └── Sources/
+│       ├── App/                   # App 入口、AppModel、根视图、菜单栏
+│       ├── Library/               # 漫画库、侧边栏、AppKit 网格
+│       ├── Reader/                # 阅读器、页面缓存与页面管理
+│       ├── Downloads/             # 下载中心与本地 HTTP 服务
+│       ├── Organizer/             # 整理页与作者目录操作
+│       ├── Settings/              # 设置窗口
+│       └── Shared/                # 主题与跨功能组件
 ├── build.sh                       # 构建脚本
 └── run.sh                         # 构建并启动 Debug 版
 ```
@@ -47,6 +60,9 @@ xcodegen generate
 xcodebuild -project MangaBook.xcodeproj -scheme MangaBook \
   -configuration Release -derivedDataPath ../.build-xcode \
   CODE_SIGNING_ALLOWED=NO build
+codesign --force --sign "$(security find-identity -v -p codesigning | awk '/"Developer ID Application:/ { print $2; exit }')" \
+  --identifier com.kevin.mangabook --timestamp=none \
+  ../.build-xcode/Build/Products/Release/MangaBook.app
 open ../.build-xcode/Build/Products/Release/MangaBook.app
 ```
 
@@ -79,7 +95,7 @@ open ../.build-xcode/Build/Products/Release/MangaBook.app
 - 同步进度、取消同步、状态栏统计
 - 新建/更换漫画库、应用文件夹图标、导入漫画到未分类
 
-**阅读器（独立窗口）**
+**阅读器（主窗口沉浸层）**
 - 单页翻页 / 纵向滚动两种模式
 - 鼠标左键下一页、右键上一页；空格/方向键/PageUp/PageDown/A/W/S/D/F/Esc
 - 记忆阅读进度（280ms 防抖写库）
@@ -89,6 +105,7 @@ open ../.build-xcode/Build/Products/Release/MangaBook.app
 - 标签编辑、在 Finder 中显示、删除漫画
 
 **整理中心**
+- 独立全宽页面，不显示漫画库侧边栏
 - 作者目录统计（漫画数、最近移动时间）
 - 新建、重命名、合并、删除作者目录
 - 批量移动到作者目录（含新建作者）
@@ -107,7 +124,8 @@ open ../.build-xcode/Build/Products/Release/MangaBook.app
 - `ThumbnailService`：actor，`CGImageSourceCreateThumbnailAtIndex` 降采样，
   `NSCache` 内存缓存 + `~/Library/Caches/MangaBook/thumbnails` 磁盘缓存，缓存键包含
   文件 mtime 与大小。
-- `PageImageCache`：阅读器页面解码缓存，限制 18 张，避免一次解 300 页 OOM。
+- `PageImageCache`：阅读器页面解码缓存，最多 48 张、总成本上限 800 MB；预加载当前页
+  前后相邻页面。
 - 网格：`NSCollectionViewDiffableDataSource`，内容签名不变时跳过快照更新，选中变化
   不会触发整页重载。
 - 无 App Sandbox：需要扫描任意目录，走裸路径（与 Electron 版一致）。
@@ -135,7 +153,7 @@ swift run MangaBookProbe
 - 书签只有数据层，阅读器里还没有书签面板。
 - 旧版全局库 → 来源库的迁移逻辑未复刻；当前数据已经迁移完成，直接可用。若要把
   只被旧版 Electron 使用过的库接进来，需要补 `legacy_migration_complete` 那套迁移。
-- 签名/公证、DMG 打包未做；目前是本地 Debug/Release `.app`。
+- Developer ID 签名已接入 `build.sh`；公证与 DMG 打包尚未做。
 - 阅读器章节面板的“仅作者目录漫画可编辑”限制简化成了“单卷即可编辑”。
 - `organizer.moveManga` 仍是“先移动文件、后写库”，与 Electron 版一致；目标始终在
   库内时不会出问题。

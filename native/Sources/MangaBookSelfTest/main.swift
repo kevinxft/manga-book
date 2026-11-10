@@ -142,7 +142,7 @@ do {
     expect(false, "renameAuthorDirectory failed: \(error)")
 }
 
-try service.organizer.createAuthorDirectory(name: "Carol")
+_ = try service.organizer.createAuthorDirectory(name: "Carol")
 try makeImages("\(authorsRoot)/Carol/C1", count: 4)
 try await service.scanner.syncSources([libraryRoot])
 let merge = try service.organizer.mergeAuthorDirectories(
@@ -170,7 +170,7 @@ do {
     expect(true, "deleteAuthorDirectory refuses a directory with manga")
 }
 
-try service.organizer.createAuthorDirectory(name: "EmptyAuthor")
+_ = try service.organizer.createAuthorDirectory(name: "EmptyAuthor")
 _ = try service.organizer.deleteAuthorDirectory(path: "\(authorsRoot)/EmptyAuthor")
 expect(!fileManager.fileExists(atPath: "\(authorsRoot)/EmptyAuthor"), "empty author directory is trashed")
 
