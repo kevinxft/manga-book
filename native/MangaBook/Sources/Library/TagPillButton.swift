@@ -2,16 +2,19 @@ import SwiftUI
 
 struct TagPillButton: View {
     let title: String
-    let systemImage: String
-    let count: Int?
+    var systemImage: String? = nil
+    var count: Int? = nil
     let isSelected: Bool
+    var onClear: (() -> Void)? = nil
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: 4) {
-                Image(systemName: systemImage)
-                    .font(.caption2)
+                if let systemImage {
+                    Image(systemName: systemImage)
+                        .font(.caption2)
+                }
 
                 Text(title)
                     .font(.caption)
@@ -27,9 +30,21 @@ struct TagPillButton: View {
                             Capsule().fill(isSelected ? Color.white.opacity(0.22) : Color.secondary.opacity(0.12))
                         )
                 }
+
+                if isSelected, let onClear {
+                    Button(action: onClear) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 8, weight: .bold))
+                            .foregroundStyle(.white.opacity(0.9))
+                            .padding(2)
+                            .background(Circle().fill(Color.white.opacity(0.25)))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.leading, 1)
+                }
             }
             .foregroundStyle(isSelected ? Color.white : Color.primary)
-            .padding(.horizontal, 9)
+            .padding(.horizontal, isSelected && onClear != nil ? 7 : 9)
             .padding(.vertical, 5)
             .contentShape(Capsule())
             .background(

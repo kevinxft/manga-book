@@ -534,6 +534,20 @@ final class AppModel {
         tagCounts[PathUtils.key(name)] ?? 0
     }
 
+    var sortedTags: [MangaTag] {
+        tags.sorted { t1, t2 in
+            let c1 = tagCount(t1.name)
+            let c2 = tagCount(t2.name)
+            if (c1 > 0) != (c2 > 0) {
+                return c1 > 0
+            }
+            if c1 != c2 {
+                return c1 > c2
+            }
+            return t1.name.localizedStandardCompare(t2.name) == .orderedAscending
+        }
+    }
+
     private static func countTags(_ links: [String: [MangaTag]]) -> [String: Int] {
         var counts: [String: Int] = [:]
         for tags in links.values {
