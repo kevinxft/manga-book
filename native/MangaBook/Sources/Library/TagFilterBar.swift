@@ -7,6 +7,7 @@ struct TagFilterBar: View {
     @AppStorage("library.tagBarExpanded") private var isExpanded = false
     @State private var showTagPopover = false
     @State private var filterQuery = ""
+    @State private var expandedHeight: CGFloat = 0
 
     private var displayTags: [MangaTag] {
         model.sortedTags
@@ -218,7 +219,7 @@ struct TagFilterBar: View {
             .padding(.top, 8)
 
             // Wrapped Tag Flow
-            ScrollView(.vertical, showsIndicators: true) {
+            ScrollView(.vertical, showsIndicators: expandedHeight > 180) {
                 FlowLayout(spacing: 6, lineSpacing: 6) {
                     TagPillButton(
                         title: "全部",
@@ -248,9 +249,17 @@ struct TagFilterBar: View {
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.bottom, 10)
+                .padding(.bottom, 6)
+                .background(
+                    GeometryReader { geo in
+                        Color.clear.preference(key: TagContentHeightKey.self, value: geo.size.height)
+                    }
+                )
             }
-            .frame(maxHeight: 180)
+            .frame(height: expandedHeight > 0 ? min(expandedHeight, 180) : nil)
+            .onPreferenceChange(TagContentHeightKey.self) { height in
+                expandedHeight = height
+            }
         }
     }
 
@@ -260,6 +269,13 @@ struct TagFilterBar: View {
         } else {
             model.selectedTag = name
         }
+    }
+}
+
+private struct TagContentHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
     }
 }
 
